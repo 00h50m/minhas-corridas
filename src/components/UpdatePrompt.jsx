@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { bindUpdater } from '../services/appUpdate.js'
 
 /** Avisa quando há uma versão nova publicada e atualiza com um toque. */
 export default function UpdatePrompt() {
@@ -14,6 +16,7 @@ export default function UpdatePrompt() {
       setInterval(check, 60 * 60 * 1000)
     }
   })
+  useEffect(() => bindUpdater(updateServiceWorker, setNeedRefresh), [updateServiceWorker, setNeedRefresh])
   if (!needRefresh) return null
   return (
     <div className="update-bar" role="status">

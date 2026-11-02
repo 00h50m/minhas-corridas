@@ -8,6 +8,7 @@ import { formatDateBR } from '../lib/dates.js'
 import { Link } from 'react-router-dom'
 import { IconCloud } from '../components/Icons.jsx'
 import { useSync } from '../services/sync.js'
+import { APP_VERSION, checkForUpdate, hardReload } from '../services/appUpdate.js'
 import { syncLabel } from './Account.jsx'
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
@@ -22,6 +23,35 @@ export default function Settings() {
   const [usage, setUsage] = useState(null)
   const [withFiles, setWithFiles] = useState(false)
   const [busy, setBusy] = useState(null)
+
+  const [updateMsg, setUpdateMsg] = useState(null)
+
+  const onCheckUpdate = async () => {
+    setUpdateMsg(null)
+    setBusy('update')
+    try {
+      const r = await checkForUpdate()
+      if (r === 'latest') setUpdateMsg({ ok: true, text: 'Você já está na versão mais recente.' })
+    } catch (err) {
+      setUpdateMsg({ ok: false, text: err.message || 'Não foi possível procurar atualização.' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const onHardReload = async () => {
+    const ok = await confirm({
+      title: 'Recarregar o app do zero?',
+      message: 'O app apaga só os arquivos dele guardados no aparelho e baixa a versão mais recente. Suas corridas, objetivos, fotos e a conta continuam aqui. Precisa de internet.',
+      confirmLabel: 'Recarregar'
+    })
+    if (!ok) return
+    try {
+      await hardReload()
+    } catch (err) {
+      setUpdateMsg({ ok: false, text: err.message })
+    }
+  }
 
   const refreshUsage = () => filesUsage().then(setUsage).catch(() => setUsage({ count: 0, bytes: 0, error: true }))
   useEffect(() => {
@@ -159,7 +189,15 @@ export default function Settings() {
         <div className="section-title"><h2>Zona de cuidado</h2></div>
         <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>
 
-        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.5</p>
+        <div className="section-title"><h2>Atualização do app</h2></div>
+        <div className="card">
+          <p style={{ marginTop: 0 }}>Você está na <b>versão {APP_VERSION}</b>.</p>
+          <button className="btn btn-dark btn-block" disabled={!!busy} onClick={onCheckUpdate}>{busy === 'update' ? 'Procurando…' : 'Procurar atualização'}</button>
+          {updateMsg && <div className={`alert small ${updateMsg.ok ? 'alert-ok' : 'alert-error'}`} role="status" style={{ marginTop: 10 }}><div>{updateMsg.text}</div></div>}
+          <button className="link-btn" style={{ marginTop: 6 }} disabled={!!busy} onClick={onHardReload}>Travou numa versão antiga? Recarregar o app do zero</button>
+        </div>
+
+        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão {APP_VERSION}</p>
       </div>
     </>
   )

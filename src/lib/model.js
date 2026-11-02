@@ -1,4 +1,5 @@
 import { isValidISODate, isValidTimeHM } from './dates.js'
+import { isValidWatch } from './activityFile.js'
 
 export const STATUSES = [
   { id: 'interesse', label: 'Tenho interesse', short: 'Interesse', icon: '☆' },
@@ -84,7 +85,8 @@ export function emptyResult() {
     officialUrl: '',
     isOfficial: true, // false = registro pessoal, sem resultado oficial
     effort: null,
-    report: ''
+    report: '',
+    watch: null // resumo do arquivo do relógio (GPX/TCX): distância, tempo, FC, elevação, parciais
   }
 }
 
@@ -160,6 +162,7 @@ export function normalizeRace(raw) {
   const r = { ...base, ...raw }
   r.availableDistances = Array.isArray(r.availableDistances) ? r.availableDistances.filter((n) => typeof n === 'number' && n > 0) : []
   r.result = r.result ? { ...emptyResult(), ...r.result } : null
+  if (r.result && !isValidWatch(r.result.watch)) r.result.watch = null
   r.checklist = Array.isArray(r.checklist)
     ? r.checklist.filter((c) => c && typeof c.text === 'string' && c.text.trim()).map((c) => ({ id: String(c.id || newId()), text: c.text.trim().slice(0, 120), done: !!c.done }))
     : defaultChecklist(r.status)

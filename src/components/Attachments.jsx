@@ -3,6 +3,7 @@ import { Sheet, useUI } from './ui.jsx'
 import { IconCamera, IconClip, IconFile, IconTrash, IconExternal, IconDownload } from './Icons.jsx'
 import { FILE_KINDS, FILE_KIND_LABEL, addFile, deleteFile, formatBytes, useObjectURL, useRaceFiles } from '../services/files.js'
 import { downloadBlob } from '../services/backup.js'
+import { useSync } from '../services/sync.js'
 
 const DOC_KINDS = FILE_KINDS.filter((k) => k.id !== 'foto')
 
@@ -13,6 +14,7 @@ const DOC_KINDS = FILE_KINDS.filter((k) => k.id !== 'foto')
  */
 export default function Attachments({ raceId, mode = 'docs' }) {
   const { status, files, error } = useRaceFiles(raceId)
+  const sync = useSync()
   const { confirm, notify } = useUI()
   const inputRef = useRef()
   const [kind, setKind] = useState(mode === 'photos' ? 'foto' : 'comprovante')
@@ -110,7 +112,7 @@ export default function Attachments({ raceId, mode = 'docs' }) {
         data-testid={mode === 'photos' ? 'photo-input' : 'file-input'}
       />
       {addError && <div className="alert alert-error small" role="alert" style={{ marginTop: 10 }}>{addError}</div>}
-      <p className="note">{mode === 'photos' ? 'Fotos grandes são reduzidas para economizar espaço.' : 'Imagens ou PDF, até 15 MB cada.'} Ficam só neste aparelho.</p>
+      <p className="note">{mode === 'photos' ? 'Fotos grandes são reduzidas para economizar espaço.' : 'Imagens ou PDF, até 15 MB cada.'} {sync.user ? 'Sincronizados com a sua conta.' : 'Ficam só neste aparelho.'}</p>
 
       {viewing && <Viewer file={viewing} onClose={() => setViewing(null)} onDelete={() => onDelete(viewing)} />}
     </div>

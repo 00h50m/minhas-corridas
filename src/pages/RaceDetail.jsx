@@ -9,6 +9,7 @@ import { nearbyRaces } from '../lib/stats.js'
 import { raceCosts } from '../lib/costs.js'
 import Checklist from '../components/Checklist.jsx'
 import Attachments from '../components/Attachments.jsx'
+import WatchSummary from '../components/WatchSummary.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
 
@@ -128,12 +129,18 @@ export default function RaceDetail() {
               )}
               <dl className="kv" style={{ marginTop: 14 }}>
                 <Row k="Tempo bruto" v={res.grossTime && formatDuration(res.grossTime)} />
-                <Row k="Distância no relógio" v={res.watchDistanceKm && `${formatKm(res.watchDistanceKm)} (pace ${formatPace(watchPace)})`} />
+                <Row k="Distância no relógio" v={!res.watch && res.watchDistanceKm && `${formatKm(res.watchDistanceKm)} (pace ${formatPace(watchPace)})`} />
                 <Row k="Classificação geral" v={res.overallPlace && `${res.overallPlace}º`} />
                 <Row k="Categoria" v={res.category} />
                 <Row k="Classif. na categoria" v={res.categoryPlace && `${res.categoryPlace}º`} />
                 <Row k="Esforço percebido" v={res.effort && `${res.effort}/10`} />
               </dl>
+              {res.watch && (
+                <>
+                  <div className="list-group-title" style={{ marginTop: 16 }}>Do relógio</div>
+                  <WatchSummary watch={res.watch} officialKm={res.officialDistanceKm} />
+                </>
+              )}
               {res.report && <p style={{ marginTop: 14, whiteSpace: 'pre-wrap' }}>{res.report}</p>}
               <div className="list-group-title" style={{ marginTop: 16 }}>Fotos</div>
               <Attachments raceId={r.id} mode="photos" />

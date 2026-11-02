@@ -3,6 +3,7 @@
 import puppeteer from 'puppeteer-core'
 import fs from 'node:fs'
 import path from 'node:path'
+import { parseRacePage } from '../src/lib/pageParse.js'
 
 const BASE = process.env.BASE || 'http://localhost:4173'
 const SHOTS = process.env.SHOTS || 'shots'
@@ -531,6 +532,79 @@ if (!t3.includes('Tenho interesse') || t3.includes('Registrar resultado')) throw
 const count5k = await page2.evaluate(() => JSON.parse(localStorage.getItem('minhas-corridas:v1')).races.filter((r) => r.name === '5K do Parque').length)
 if (count5k !== 2) throw new Error('Original alterado em vez de copiado')
 ok('Repetir prova no ano seguinte: preenchida, sem data/resultado, original intacto')
+
+// Rodada 2a: preencher pelo link (resposta da função simulada com o leitor real)
+const fixture = `<html><head><title>Maratona de Floripa 2027 | Ticket</title><script type="application/ld+json">{"@type":"SportsEvent","name":"Maratona Internacional de Floripa","startDate":"${iso(200)}T06:30:00-03:00","location":{"name":"Beira-Mar Norte","address":{"addressLocality":"Florianópolis","addressRegion":"SC"}},"offers":{"price":"189.90"},"description":"Provas de 5K, 10K, meia maratona e maratona"}</script></head><body></body></html>`
+await page2.setRequestInterception(true)
+page2.on('request', (req) => {
+  const u = new URL(req.url())
+  if (u.pathname !== '/api/preview') return req.continue()
+  const target = u.searchParams.get('url')
+  if (target.includes('quebrado')) return req.respond({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: 'O site respondeu com erro (500).' }) })
+  const { fields, sources } = parseRacePage(fixture, target)
+  req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ fields, sources }) })
+})
+await page2.goto(BASE + '/corridas/nova', { waitUntil: 'networkidle0' })
+await page2.evaluate(() => (document.querySelector('details.link-import').open = true))
+const linkInput = 'input[aria-label="Link da página de inscrição"]'
+await page2.type(linkInput, 'site sem https')
+await page2.evaluate(() => [...document.querySelectorAll('.link-import button')].find((b) => b.innerText === 'Buscar').click())
+await new Promise((r) => setTimeout(r, 200))
+if (!(await page2.evaluate(() => document.body.innerText)).includes('Cole o link completo')) throw new Error('Link inválido aceito')
+await page2.$eval(linkInput, (el) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ''); el.dispatchEvent(new Event('input', { bubbles: true })) })
+await page2.type(linkInput, 'https://exemplo.com/quebrado')
+await page2.keyboard.press('Enter')
+await page2.waitForFunction(() => document.body.innerText.includes('respondeu com erro'))
+await page2.$eval(linkInput, (el) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ''); el.dispatchEvent(new Event('input', { bubbles: true })) })
+await page2.type(linkInput, 'https://exemplo.com/maratona-floripa')
+await page2.evaluate(() => [...document.querySelectorAll('.link-import button')].find((b) => b.innerText === 'Buscar').click())
+await page2.waitForSelector('.link-import .found')
+await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-link-encontrado.png`, fullPage: true })
+// desmarca o valor
+await page2.evaluate(() => [...document.querySelectorAll('.link-import .found label')].find((l) => l.innerText.includes('INSCRIÇÃO A PARTIR DE') || l.innerText.toLowerCase().includes('inscrição a partir de')).querySelector('input').click())
+await page2.evaluate(() => [...document.querySelectorAll('.link-import button')].find((b) => b.innerText === 'Aplicar').click())
+await new Promise((r) => setTimeout(r, 200))
+const vals = await page2.evaluate(() => ({ name: document.querySelector('#name').value, date: document.querySelector('#date')?.value, city: document.querySelector('#city').value, state: document.querySelector('#state').value, start: document.querySelector('#startTime').value, fee: document.querySelector('#fee').value, url: document.querySelector('#signupUrl').value }))
+if (vals.name !== 'Maratona Internacional de Floripa' || vals.date !== iso(200) || vals.city !== 'Florianópolis' || vals.state !== 'SC' || vals.start !== '06:30' || vals.fee !== '' || vals.url !== 'https://exemplo.com/maratona-floripa') throw new Error('Preenchimento pelo link incorreto: ' + JSON.stringify(vals))
+await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar corrida')).click())
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+t3 = await page2.evaluate(() => document.body.innerText)
+if (!t3.includes('Opções: 5 / 10 / 21,1 / 42,195 km')) throw new Error('Distâncias do evento não aplicadas\n' + t3.slice(0, 600))
+ok('2a. Preencher pelo link: validação, erro do site, conferência campo a campo e aplicação')
+
+// Rodada 2b: arquivo do relógio no resultado
+function tcxFile() {
+  let t = Date.parse(iso(-20) + 'T09:00:00Z')
+  const pts = []
+  for (let d = 0; d <= 5080; d += 40) { pts.push({ d, t, hr: 160, alt: 700 + (d % 1000) / 200 }); t += d >= 3000 && d < 4000 ? 15000 : 14000 }
+  return `<?xml version="1.0"?><TrainingCenterDatabase><Activities><Activity Sport="Running"><Lap StartTime="x"><TotalTimeSeconds>${(pts.at(-1).t - pts[0].t) / 1000}</TotalTimeSeconds><DistanceMeters>5080</DistanceMeters><Track>${pts.map((x) => `<Trackpoint><Time>${new Date(x.t).toISOString()}</Time><AltitudeMeters>${x.alt}</AltitudeMeters><DistanceMeters>${x.d}</DistanceMeters><HeartRateBpm><Value>${x.hr}</Value></HeartRateBpm></Trackpoint>`).join('')}</Track></Lap></Activity></Activities></TrainingCenterDatabase>`
+}
+const tcxPath = path.join(DL, 'track-field.tcx'); fs.writeFileSync(tcxPath, tcxFile())
+const fitPath = path.join(DL, 'atividade.fit'); fs.writeFileSync(fitPath, 'FIT')
+await page2.goto(BASE + '/historico', { waitUntil: 'networkidle0' })
+await page2.evaluate(() => [...document.querySelectorAll('[role=tab]')].find((b) => b.innerText === 'Provas').click())
+await page2.evaluate(() => [...document.querySelectorAll('a')].find((a) => a.innerText.includes('Track & Field 5K')).click())
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+const tfUrl = new URL(page2.url()).pathname
+await page2.goto(BASE + tfUrl + '/resultado', { waitUntil: 'networkidle0' })
+const watchInput = await page2.$('input[data-testid=watch-input]')
+await watchInput.uploadFile(fitPath)
+await page2.waitForFunction(() => document.body.innerText.includes('Exportar para TCX'))
+await watchInput.uploadFile(tcxPath)
+await page2.waitForFunction(() => document.body.innerText.includes('Arquivo lido'))
+t3 = await page2.evaluate(() => document.body.innerText)
+if (!t3.includes('5,08 km') || !t3.includes('mais lento') || !t3.includes('+80 m da oficial')) throw new Error('Resumo do relógio incompleto\n' + t3.slice(0, 1500))
+if ((await page2.$eval('#netTime', (el) => el.value)) !== '29:40') throw new Error('Tempo oficial foi sobrescrito')
+await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-resultado-relogio.png`, fullPage: true })
+await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar resultado')).click())
+await page2.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+t3 = await page2.evaluate(() => document.body.innerText)
+if (!t3.includes('DO RELÓGIO') && !t3.includes('Do relógio')) throw new Error('Resumo do relógio não aparece no detalhe')
+if (!t3.includes('29:40') || !t3.includes('5:56')) throw new Error('Pace oficial mudou')
+await page2.reload({ waitUntil: 'networkidle0' })
+if (!(await page2.evaluate(() => document.body.innerText)).includes('Frequência cardíaca')) throw new Error('Resumo do relógio não persistiu')
+await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-detalhe-relogio.png`, fullPage: true })
+ok('2b. Arquivo do relógio: .FIT recusado com instrução, TCX lido (parciais, FC, diferença p/ oficial), tempo oficial preservado')
 
 await browser.close()
 if (errors.length) {

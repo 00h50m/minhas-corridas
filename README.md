@@ -50,6 +50,14 @@ Como funciona:
 - Primeiro login num aparelho com dados: o app pergunta se envia esses dados para a conta.
 - Sair da conta apaga os dados deste aparelho; eles continuam na conta.
 
+## Recursos extras
+- **Avisos dos próximos 7 dias** no Início (fim da inscrição, mudança de lote, retirada do kit, dia da prova).
+- **Agenda (.ics)** com lembrete na véspera e eventos separados para retirada do kit e fim da inscrição.
+- **Aviso de nova versão** com botão "Atualizar".
+- **Repetir prova** no ano seguinte (copia o evento, sem data, valores ou resultado).
+- **Preencher pelo link da inscrição**: a função `api/preview.js` (Vercel) lê só a página indicada e devolve campos sugeridos (prioriza dados estruturados schema.org; senão, título e texto). Bloqueia endereços internos, limita tempo e tamanho e nunca devolve o HTML. Só funciona no app publicado.
+- **Arquivo do relógio** (GPX/TCX exportado do Garmin Connect) no resultado: distância e tempo do relógio, FC, subida e parciais por km. Guarda só o resumo. Arquivos .FIT ainda não são aceitos.
+
 ## Regras de custos
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).
 - Em cada categoria (inscrição, transporte, hospedagem, outros) vale o pago; sem pago, o estimado.

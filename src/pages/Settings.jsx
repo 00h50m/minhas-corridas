@@ -159,7 +159,7 @@ export default function Settings() {
         <div className="section-title"><h2>Zona de cuidado</h2></div>
         <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>
 
-        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.4</p>
+        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.5</p>
       </div>
     </>
   )

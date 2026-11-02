@@ -497,3 +497,25 @@ details.section .body { padding: 0 16px 6px; }
 .update-bar span { flex: 1; }
 .update-bar .btn { min-height: 40px; padding: 0 14px; font-size: 14.5px; }
 .update-bar .mini-btn { color: var(--bg); }
+
+/* ---------- Rodada 2 ---------- */
+details.link-import { margin-top: 0; }
+.link-import .found ul { list-style: none; margin: 0 0 8px; padding: 0; }
+.link-import .found li + li { border-top: 1px solid var(--line); }
+.link-import .found label { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; cursor: pointer; }
+.link-import .found input { width: 22px; height: 22px; accent-color: var(--brand); flex: none; margin-top: 2px; }
+.link-import .found label > span { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; min-width: 0; }
+.link-import .found .k { width: 100%; font-size: 12px; font-weight: 800; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.4px; }
+.link-import .found b { overflow-wrap: anywhere; }
+.splits { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14.5px; }
+.splits th, .splits td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: 700; }
+.splits thead th { font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.5px; }
+.splits tbody th { width: 52px; }
+.splits td:nth-child(2) { white-space: nowrap; padding-right: 10px; }
+.splits .bar-cell { width: 38%; }
+.splits .bar-cell span { display: block; height: 8px; border-radius: 999px; background: var(--brand-soft); }
+.splits tr.fast .bar-cell span { background: var(--ok); }
+.splits tr.slow .bar-cell span { background: var(--warn); }
+.split-tag { font-size: 12px; color: var(--ink-3); font-weight: 700; }
+.splits tr.fast .split-tag { color: var(--ok); }
+.splits tr.slow .split-tag { color: var(--warn); }

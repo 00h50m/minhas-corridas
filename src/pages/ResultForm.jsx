@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react'
 import { addFile, checkFile } from '../services/files.js'
+import { parseActivity } from '../lib/activityFile.js'
+import { toISODate } from '../lib/dates.js'
+import WatchSummary from '../components/WatchSummary.jsx'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { getRace, saveRace } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconCamera, IconInfo, IconX } from '../components/Icons.jsx'
 import { emptyResult, validateResult } from '../lib/model.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
-import { durationToInput, formatDuration, formatPace, kmToInput, paceSeconds, parseDuration, parseKm } from '../lib/format.js'
+import { durationToInput, formatDuration, formatKm, formatPace, kmToInput, paceSeconds, parseDuration, parseKm } from '../lib/format.js'
 
 function toInt(s) {
   if (s === '' || s == null) return null
@@ -34,6 +37,9 @@ export default function ResultForm() {
   }))
   const [errors, setErrors] = useState({})
   const [photos, setPhotos] = useState([])
+  const [watch, setWatch] = useState(base.watch ?? null)
+  const [watchMsg, setWatchMsg] = useState(null)
+  const watchRef = useRef()
   const [saving, setSaving] = useState(false)
   const photoRef = useRef()
 
@@ -66,7 +72,8 @@ export default function ResultForm() {
       officialUrl: f.officialUrl.trim(),
       isOfficial: f.isOfficial,
       effort: f.effort ?? null,
-      report: f.report.trim()
+      report: f.report.trim(),
+      watch
     }
     if (f.officialDistanceKm && off == null) errs.officialDistanceKm = 'Use km, ex.: 5 ou 21,1.'
     if (f.netTime && net == null) errs.netTime = 'Use mm:ss ou h:mm:ss, ex.: 28:45 ou 1:05:30.'
@@ -109,6 +116,34 @@ export default function ResultForm() {
     }
     notify(failed ? `Resultado salvo, mas ${failed} ${failed === 1 ? 'foto não pôde' : 'fotos não puderam'} ser guardada(s).` : race.result ? 'Resultado atualizado' : 'Resultado registrado. Parabéns!')
     nav(`/corridas/${race.id}`, { replace: true })
+  }
+
+  const onWatchFile = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setWatchMsg(null)
+    try {
+      if (file.size > 30 * 1024 * 1024) throw new Error('Arquivo grande demais (máx. 30 MB).')
+      const w = parseActivity(/\.(fit|zip)$/i.test(file.name) ? '' : await file.text(), file.name)
+      setWatch(w)
+      const notes = []
+      setF((p) => {
+        const n = { ...p }
+        if (!p.watchDistanceKm) n.watchDistanceKm = kmToInput(w.distanceKm)
+        if (!p.netTime) {
+          n.netTime = durationToInput(w.elapsedSec)
+          n.isOfficial = false
+          notes.push('Tempo líquido preenchido com o tempo do relógio e marcado como registro pessoal — troque pelo oficial quando sair.')
+        }
+        return n
+      })
+      const fileDate = toISODate(new Date(w.startTime))
+      if (race.date && fileDate !== race.date) notes.push(`Atenção: a atividade é de ${formatDateBR(fileDate)}, mas a prova está em ${formatDateBR(race.date)}.`)
+      setWatchMsg({ ok: true, text: ['Arquivo lido.', ...notes].join(' ') })
+    } catch (err) {
+      setWatchMsg({ ok: false, text: err.message })
+    }
   }
 
   const onPhotos = (e) => {
@@ -194,6 +229,19 @@ export default function ResultForm() {
           </div>
         </details>
 
+        <details className="section" open={!!watch || !!watchMsg}>
+          <summary>Arquivo do relógio<span className="sum">{watch ? `${watch.source.toUpperCase()} · ${formatKm(watch.distanceKm)}` : 'GPX ou TCX'}</span></summary>
+          <div className="body" style={{ paddingBottom: 16 }}>
+            {watch ? <WatchSummary watch={watch} officialKm={off} /> : <p className="hint" style={{ marginTop: 0 }}>No Garmin Connect: abra a atividade → ⚙ → “Exportar para TCX” (ou GPX). O app guarda só o resumo: distância, tempo, frequência cardíaca, subida e parciais por km.</p>}
+            {watchMsg && <div className={`alert small ${watchMsg.ok ? 'alert-ok' : 'alert-error'}`} role={watchMsg.ok ? 'status' : 'alert'} style={{ margin: '10px 0' }}><div>{watchMsg.text}</div></div>}
+            <div className="btn-row" style={{ marginTop: 10, gridTemplateColumns: watch ? '1fr 1fr' : '1fr' }}>
+              <button type="button" className="btn" onClick={() => watchRef.current?.click()}>{watch ? 'Trocar arquivo' : 'Escolher arquivo'}</button>
+              {watch && <button type="button" className="btn btn-danger" onClick={() => { setWatch(null); setWatchMsg(null) }}>Remover</button>}
+            </div>
+            <input ref={watchRef} type="file" accept=".gpx,.tcx,.fit,.zip,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml" hidden onChange={onWatchFile} data-testid="watch-input" />
+          </div>
+        </details>
+
         <details className="section" open={photos.length > 0}>
           <summary>Fotos<span className="sum">{photos.length ? `${photos.length} para salvar` : 'opcional'}</span></summary>
           <div className="body" style={{ paddingBottom: 16 }}>
@@ -210,7 +258,7 @@ export default function ResultForm() {
             <button type="button" className="btn btn-block" onClick={() => photoRef.current?.click()}><IconCamera /> Escolher fotos</button>
             <input ref={photoRef} type="file" accept="image/*" multiple hidden onChange={onPhotos} data-testid="result-photo-input" />
             {errors.photos && <div className="err" role="alert">{errors.photos}</div>}
-            <p className="note">As fotos ficam só neste aparelho. Depois você pode ver, adicionar ou excluir no detalhe da prova.</p>
+            <p className="note">Depois você pode ver, adicionar ou excluir as fotos no detalhe da prova.</p>
           </div>
         </details>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { repeatRace } from '../lib/alerts.js'
+import LinkImport from '../components/LinkImport.jsx'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -129,6 +130,26 @@ export default function RaceForm() {
     setErrors((p) => ({ ...p, otherDistance: undefined }))
   }
 
+  const applyFromLink = (v) => {
+    setF((p) => {
+      const n = { ...p }
+      for (const k of ['name', 'startTime', 'city', 'venueName', 'venueAddress', 'organizer', 'signupUrl']) if (v[k]) n[k] = String(v[k]).slice(0, k === 'name' ? 120 : 300)
+      if (v.state && UFS.includes(v.state)) n.state = v.state
+      if (v.date) {
+        n.date = v.date
+        n.dateTBD = false
+      }
+      if (v.fee != null) n.fee = moneyToInput(v.fee)
+      if (v.distances?.length) {
+        n.availableDistances = [...new Set([...p.availableDistances, ...v.distances])]
+        if (v.distances.length === 1 && !p.distanceKm) n.distanceKm = kmToInput(v.distances[0])
+      }
+      return n
+    })
+    setErrors({})
+    notify('Campos preenchidos — confira antes de salvar')
+  }
+
   const onSubmit = (e) => {
     e.preventDefault()
     const { race, errors: errs } = fromForm(f, base)
@@ -168,7 +189,8 @@ export default function RaceForm() {
     <>
       <TopBar title={existing ? 'Editar corrida' : 'Nova corrida'} back={existing ? `/corridas/${existing.id}` : '/corridas'} />
       <form className="page form" onSubmit={onSubmit} noValidate>
-        <div className="card">
+        {!existing && !source && <LinkImport onApply={applyFromLink} />}
+        <div className="card" style={!existing && !source ? { marginTop: 12 } : undefined}>
           <Field label="Nome da prova" htmlFor="name" error={errors.name}>
             <input id="name" className="input" value={f.name} onChange={set('name')} aria-invalid={inv('name')} placeholder="Ex.: Corrida de São Silvestre" autoComplete="off" maxLength={120} autoFocus={!existing} />
           </Field>

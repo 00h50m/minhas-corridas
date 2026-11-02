@@ -1,0 +1,25 @@
+{
+  "name": "minhas-corridas",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "puppeteer-core": "^25.16.0",
+    "sharp": "^0.35.5",
+    "vite": "^5.4.21",
+    "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.1.9"
+  }
+}

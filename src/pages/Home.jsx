@@ -1,0 +1,111 @@
+import { Link } from 'react-router-dom'
+import { useStore } from '../services/store.js'
+import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
+import { IconPlus, IconStopwatch } from '../components/Icons.jsx'
+import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
+import { formatKm, formatMoney } from '../lib/format.js'
+import { nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Bom dia'
+  if (h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+export default function Home() {
+  const { races } = useStore()
+  const today = todayISO()
+  const year = Number(today.slice(0, 4))
+
+  if (races.length === 0) {
+    return (
+      <>
+        <TopBar title="Minhas Corridas" sub={greeting()} />
+        <div className="page">
+          <EmptyState
+            title="Bora para a primeira?"
+            text="Cadastre uma prova que você quer fazer ou em que já está inscrita. Só o nome é obrigatório — o resto você completa depois."
+            action={<Link to="/corridas/nova" className="btn btn-primary btn-block"><IconPlus /> Cadastrar primeira corrida</Link>}
+          />
+          <p className="note">Seus dados ficam salvos neste aparelho. Veja detalhes e backup em Ajustes.</p>
+        </div>
+      </>
+    )
+  }
+
+  const next = nextConfirmed(races, today)
+  const list = upcoming(races, today, 6).filter((r) => r.id !== next?.id).slice(0, 4)
+  const pending = pendingResults(races, today)
+  const summary = yearSummary(races, year)
+  const sameDates = sameDateGroups(races)
+  const undatedCount = races.filter((r) => !r.date && ['interesse', 'aberta', 'inscrita'].includes(r.status)).length
+
+  return (
+    <>
+      <TopBar title="Minhas Corridas" sub={greeting()} />
+      <div className="page">
+        {pending.length > 0 && (
+          <div className="alert alert-warn" style={{ marginBottom: 12 }}>
+            <IconStopwatch />
+            <div>
+              <b>Como foi?</b> {pending.length === 1 ? `"${pending[0].name}" já aconteceu.` : `${pending.length} provas já aconteceram.`}{' '}
+              <Link to={`/corridas/${pending[0].id}/resultado`}>Registrar resultado</Link>
+            </div>
+          </div>
+        )}
+
+        {next ? (
+          <Link to={`/corridas/${next.id}`} className="hero">
+            <div className="eyebrow">Próxima prova confirmada</div>
+            <div className="count">{countdownLabel(next.date, today)}</div>
+            <div className="name">{next.name}</div>
+            <div className="meta">{[formatDateBR(next.date), next.startTime && `largada ${next.startTime}`, [next.city, next.state].filter(Boolean).join('/')].filter(Boolean).join(' · ')}</div>
+            <div className="chips">
+              {next.distanceKm != null && <span className="chip">{formatKm(next.distanceKm)}</span>}
+              {next.bibNumber && <span className="chip">Peito {next.bibNumber}</span>}
+              {next.kitPickupDate && daysBetween(today, next.kitPickupDate) >= 0 && <span className="chip">Kit: {formatDateBR(next.kitPickupDate)}</span>}
+            </div>
+          </Link>
+        ) : (
+          <div className="card">
+            <b>Nenhuma inscrição confirmada à frente.</b>
+            <div className="muted small" style={{ marginTop: 4 }}>Quando marcar uma prova como “Inscrita”, a contagem regressiva aparece aqui.</div>
+          </div>
+        )}
+
+        <div className="btn-row" style={{ marginTop: 12 }}>
+          <Link to="/corridas/nova" className="btn btn-primary"><IconPlus /> Corrida</Link>
+          <Link to={pending[0] ? `/corridas/${pending[0].id}/resultado` : '/corridas?concluir=1'} className="btn btn-dark"><IconStopwatch /> Resultado</Link>
+        </div>
+
+        <div className="section-title"><h2>Em {year}</h2></div>
+        <div className="stats">
+          <div className="stat"><div className="v">{summary.doneCount}</div><div className="l">{summary.doneCount === 1 ? 'prova concluída' : 'provas concluídas'}</div></div>
+          <div className="stat"><div className="v">{formatKm(summary.km, { unit: false })}</div><div className="l">km em provas</div></div>
+          <div className="stat"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 24 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições</div></div>
+        </div>
+        <p className="note">
+          Quilômetros somam só as provas concluídas registradas aqui — não representam todo o seu volume de treino. Gastos consideram inscrição e taxas das provas em que você está inscrita ou concluiu.
+          {summary.missingCost > 0 && ` ${summary.missingCost} ${summary.missingCost === 1 ? 'prova está' : 'provas estão'} sem valor informado.`}
+        </p>
+
+        <div className="section-title">
+          <h2>Próximas provas</h2>
+          <Link to="/corridas">Ver calendário</Link>
+        </div>
+        {list.length === 0 ? (
+          <div className="card muted small">Nenhuma outra prova com data à frente.{undatedCount > 0 && ` ${undatedCount} com data a confirmar.`}</div>
+        ) : (
+          list.map((r) => (
+            <RaceItem key={r.id} race={r} extra={sameDates.has(r.date) && <span className="flag flag-warn">Mesma data</span>} />
+          ))
+        )}
+        {undatedCount > 0 && list.length > 0 && (
+          <p className="note"><Link to="/corridas?semdata=1">{undatedCount} {undatedCount === 1 ? 'prova' : 'provas'} com data a confirmar</Link></p>
+        )}
+      </div>
+    </>
+  )
+}
+

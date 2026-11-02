@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { repeatRace } from '../lib/alerts.js'
+import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconAlert, IconInfo } from '../components/Icons.jsx'
@@ -77,7 +79,9 @@ export default function RaceForm() {
   const nav = useNavigate()
   const { notify } = useUI()
   const existing = id ? getRace(id) : null
-  const base = existing ?? emptyRace()
+  const [params] = useSearchParams()
+  const source = !existing && params.get('repetir') ? getRace(params.get('repetir')) : null
+  const [base] = useState(() => existing ?? (source ? { ...emptyRace(), ...repeatRace(source) } : emptyRace()))
   const [f, setF] = useState(() => toForm(base))
   const [errors, setErrors] = useState({})
   const [saveError, setSaveError] = useState(null)
@@ -169,6 +173,14 @@ export default function RaceForm() {
             <input id="name" className="input" value={f.name} onChange={set('name')} aria-invalid={inv('name')} placeholder="Ex.: Corrida de São Silvestre" autoComplete="off" maxLength={120} autoFocus={!existing} />
           </Field>
 
+          {source && (
+            <div className="alert alert-info small" style={{ marginBottom: 14 }}>
+              <IconInfo />
+              <div>
+                Copiado de <b>{source.name}</b>. Na edição anterior foi em {formatDateBR(source.date)} ({weekdayShort(source.date)}). Confira a nova data, os valores e o kit — eles mudam de um ano para o outro.
+              </div>
+            </div>
+          )}
           <Field label="Data" htmlFor="date" error={errors.date}>
             {!f.dateTBD && <input id="date" type="date" className="input" value={f.date} onChange={set('date')} aria-invalid={inv('date')} min="1900-01-01" max="2200-12-31" />}
             <label className="check">

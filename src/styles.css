@@ -475,3 +475,25 @@ details.section .body { padding: 0 16px 6px; }
 .account-card > span:last-child { font-size: 24px; color: var(--ink-3); }
 .dialog .btn-block + .btn-block { margin-top: 8px; }
 .file-pending { font-size: 11px; font-weight: 700; color: var(--ink-3); display: grid; place-items: center; width: 100%; height: 100%; text-align: center; padding: 4px; }
+
+/* ---------- Rodada 1 ---------- */
+.alerts-card { padding: 6px 16px; }
+.alerts-card ul { list-style: none; margin: 0; padding: 0; }
+.alerts-card li + li { border-top: 1px solid var(--line); }
+.alerts-card a { display: flex; gap: 12px; align-items: center; padding: 10px 0; text-decoration: none; color: inherit; min-height: 52px; }
+.alerts-card .when { flex: none; min-width: 74px; font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: var(--ink-3); }
+.alerts-card .soon .when { color: var(--brand-ink); }
+.alerts-card .what { display: flex; flex-direction: column; min-width: 0; }
+.alerts-card .what b { font-size: 15px; }
+.alerts-card .what span { font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alerts-card .al-prova .what b::before { content: '⚑ '; color: var(--st-inscrita); }
+.alerts-card .al-kit .what b::before { content: '▣ '; color: var(--st-aberta); }
+.alerts-card .al-inscricao .what b::before, .alerts-card .al-lote .what b::before { content: '◷ '; color: var(--st-interesse); }
+.update-bar {
+  position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 10px); z-index: 80;
+  width: calc(100% - 24px); max-width: 520px; display: flex; align-items: center; gap: 10px;
+  background: var(--ink); color: var(--bg); border-radius: 16px; padding: 8px 8px 8px 16px; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-weight: 700; font-size: 14.5px;
+}
+.update-bar span { flex: 1; }
+.update-bar .btn { min-height: 40px; padding: 0 14px; font-size: 14.5px; }
+.update-bar .mini-btn { color: var(--bg); }

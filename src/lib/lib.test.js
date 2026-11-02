@@ -198,3 +198,44 @@ describe('objetivos', () => {
     expect(validateGoal(goal({ type: 'manual', targetValue: 3 }))).toEqual({})
   })
 })
+
+import { upcomingAlerts, repeatRace } from './alerts.js'
+describe('rodada 1: avisos, agenda e repetir prova', () => {
+  const t = '2026-11-02'
+  const list = [
+    race({ name: 'Inscrita', status: 'inscrita', date: '2026-11-08', startTime: '07:00', kitPickupDate: '2026-11-06', kitPickupTime: '10:00' }),
+    race({ name: 'Kit já retirado', status: 'inscrita', date: '2026-11-20', kitPickupDate: '2026-11-03', checklist: [{ id: 'a', text: 'Kit retirado', done: true }] }),
+    race({ name: 'Interesse', status: 'interesse', date: '2026-12-10', signupDeadline: '2026-11-02', lotChangeDate: '2026-11-04' }),
+    race({ name: 'Longe', status: 'aberta', date: '2027-01-10', signupDeadline: '2026-11-30' }),
+    race({ name: 'Passou', status: 'inscrita', date: '2026-11-01' })
+  ]
+  it('lista prazos dos próximos 7 dias em ordem, sem o kit já retirado', () => {
+    const a = upcomingAlerts(list, t)
+    expect(a.map((x) => `${x.race.name}/${x.type}/${x.daysLeft}`)).toEqual(['Interesse/inscricao/0', 'Inscrita/kit/4', 'Inscrita/prova/6'])
+  })
+  it('lote só aparece se mudar antes do fim da inscrição', () => {
+    const a = upcomingAlerts([race({ status: 'aberta', date: '2026-12-01', lotChangeDate: '2026-11-04' })], t)
+    expect(a.map((x) => x.type)).toEqual(['lote'])
+  })
+  it('.ics com lembrete na véspera e eventos de kit e inscrição', () => {
+    const { text, count, extra } = buildICS(list)
+    expect(count).toBe(5)
+    // kit das duas inscritas, inscrição da Interesse e da Longe (o lote da Interesse muda depois do fim da inscrição)
+    expect(extra).toBe(4)
+    expect(text).toContain('UID:' + list[0].id + '-kit@minhas-corridas')
+    expect(text).toContain('DTSTART:20261106T100000')
+    expect(text).toContain('TRIGGER:-P1D')
+    expect(text).toContain('Último dia de inscrição – Interesse')
+    expect(text.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 75)).toBe(true)
+  })
+  it('repetir prova copia o evento, sem data, valores nem resultado', () => {
+    const src = race({ name: 'São Silvestre', city: 'São Paulo', date: '2025-12-31', fee: 200, distanceKm: 15, availableDistances: [15], result: { netTime: 5000 } })
+    const c = repeatRace(src)
+    expect(c).toMatchObject({ name: 'São Silvestre', city: 'São Paulo', distanceKm: 15 })
+    expect(c.date).toBeUndefined()
+    expect(c.fee).toBeUndefined()
+    expect(c.result).toBeUndefined()
+    c.availableDistances.push(5)
+    expect(src.availableDistances).toEqual([15])
+  })
+})

@@ -14,6 +14,7 @@ import GoalForm from './pages/GoalForm.jsx'
 import GoalDetail from './pages/GoalDetail.jsx'
 import Account from './pages/Account.jsx'
 import ImportPrompt from './components/ImportPrompt.jsx'
+import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -63,6 +64,7 @@ export default function App() {
       </div>
       <BottomNav />
       <ImportPrompt />
+      <UpdatePrompt />
     </UIProvider>
   )
 }

@@ -6,6 +6,7 @@ import SyncBadge from '../components/SyncBadge.jsx'
 import { GoalCard } from './Goals.jsx'
 import { memo as historyMemo } from './History.jsx'
 import { activeGoals, goalProgress } from '../lib/goals.js'
+import { upcomingAlerts, whenLabel } from '../lib/alerts.js'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatKm, formatMoney } from '../lib/format.js'
 import { nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
@@ -50,6 +51,7 @@ export default function Home() {
   const summary = yearSummary(races, year)
   const sameDates = sameDateGroups(races)
   // Objetivos já atingidos (aguardando confirmação) aparecem primeiro.
+  const alerts = upcomingAlerts(races, today, 7)
   const active = activeGoals(goals)
     .map((g, i) => ({ g, i, hit: goalProgress(g, races, today).achieved }))
     .sort((a, b) => (a.hit === b.hit ? a.i - b.i : a.hit ? -1 : 1))
@@ -94,6 +96,27 @@ export default function Home() {
           <Link to="/corridas/nova" className="btn btn-primary"><IconPlus /> Corrida</Link>
           <Link to={pending[0] ? `/corridas/${pending[0].id}/resultado` : '/corridas?concluir=1'} className="btn btn-dark"><IconStopwatch /> Resultado</Link>
         </div>
+
+        {alerts.length > 0 && (
+          <>
+            <div className="section-title"><h2>Próximos 7 dias</h2></div>
+            <div className="card alerts-card">
+              <ul>
+                {alerts.map((a) => (
+                  <li key={a.key} className={`al-${a.type}${a.daysLeft <= 1 ? ' soon' : ''}`}>
+                    <Link to={`/corridas/${a.race.id}`}>
+                      <span className="when">{whenLabel(a.daysLeft)}</span>
+                      <span className="what">
+                        <b>{a.label}</b>
+                        <span>{a.race.name} · {formatDateBR(a.date)}{a.time ? ` · ${a.time}` : ''}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
 
         <div className="section-title"><h2>Em {year}</h2></div>
         <div className="stats">

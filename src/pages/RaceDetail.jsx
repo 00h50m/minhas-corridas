@@ -1,7 +1,7 @@
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteRace, getRace, saveRace, useStore } from '../services/store.js'
 import { StatusBadge, TopBar, useUI } from '../components/ui.jsx'
-import { IconCalendar, IconEdit, IconExternal, IconStopwatch, IconTrash, IconAlert, IconInfo } from '../components/Icons.jsx'
+import { IconRepeat, IconCalendar, IconEdit, IconExternal, IconStopwatch, IconTrash, IconAlert, IconInfo } from '../components/Icons.jsx'
 import { STATUSES } from '../lib/model.js'
 import { countdownLabel, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
@@ -201,7 +201,13 @@ export default function RaceDetail() {
         <div className="section-title"><h2>Anexos</h2></div>
         <Attachments raceId={r.id} mode="docs" />
 
-        <div className="btn-row" style={{ marginTop: 16 }}>
+        {r.date && (
+          <Link to={`/corridas/nova?repetir=${r.id}`} className="btn btn-block" style={{ marginTop: 16 }}>
+            <IconRepeat /> Repetir em {Number(r.date.slice(0, 4)) + 1}
+          </Link>
+        )}
+
+        <div className="btn-row" style={{ marginTop: 12 }}>
           <button className="btn" onClick={exportIcs} disabled={!r.date} title={r.date ? '' : 'Defina a data para exportar'}><IconCalendar /> Agenda (.ics)</button>
           <button className="btn btn-danger" onClick={onDelete}><IconTrash /> Excluir</button>
         </div>

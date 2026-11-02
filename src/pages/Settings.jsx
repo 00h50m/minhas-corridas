@@ -5,11 +5,17 @@ import { allFiles, clearFiles, filesUsage, formatBytes, pruneFiles, replaceFiles
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconInfo, IconTrash, IconUpload } from '../components/Icons.jsx'
 import { formatDateBR } from '../lib/dates.js'
+import { Link } from 'react-router-dom'
+import { IconCloud } from '../components/Icons.jsx'
+import { useSync } from '../services/sync.js'
+import { syncLabel } from './Account.jsx'
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 
 export default function Settings() {
   const store = useStore()
+  const sync = useSync()
+  const cloud = !!sync.user
   const { confirm, notify } = useUI()
   const fileRef = useRef()
   const [importError, setImportError] = useState(null)
@@ -54,6 +60,7 @@ export default function Settings() {
           `O backup${when} tem ${plural(races.length, 'corrida', 'corridas')}, ${plural(goals.length, 'objetivo', 'objetivos')}` +
           (files ? ` e ${plural(files.length, 'anexo', 'anexos')}` : ' e não inclui anexos') +
           `. Os dados atuais deste aparelho serão substituídos.` +
+          (cloud ? ' Com a conta conectada, isso vale também para a nuvem e os outros aparelhos.' : '') +
           (files ? '' : ' Anexos já guardados aqui continuam, se a corrida existir no backup.'),
         confirmLabel: 'Restaurar',
         danger: cur > 0
@@ -73,7 +80,14 @@ export default function Settings() {
   }
 
   const onClear = async () => {
-    const ok = await confirm({ title: 'Apagar todos os dados?', message: 'Todas as corridas, objetivos, resultados, anexos e fotos deste aparelho serão apagados. Recomendo baixar um backup antes.', confirmLabel: 'Apagar tudo', danger: true })
+    const ok = await confirm({
+      title: cloud ? 'Apagar todos os dados, inclusive da conta?' : 'Apagar todos os dados?',
+      message: cloud
+        ? 'Todas as corridas, objetivos, resultados, anexos e fotos serão apagados deste aparelho, da sua conta e dos outros aparelhos conectados. Recomendo baixar um backup antes. Para só tirar os dados deste aparelho, use “Sair da conta”.'
+        : 'Todas as corridas, objetivos, resultados, anexos e fotos deste aparelho serão apagados. Recomendo baixar um backup antes.',
+      confirmLabel: 'Apagar tudo',
+      danger: true
+    })
     if (!ok) return
     clearAll()
     await clearFiles().catch(() => {})
@@ -87,12 +101,32 @@ export default function Settings() {
     <>
       <TopBar title="Ajustes" back="/" />
       <div className="page">
-        <div className="alert alert-info">
-          <IconInfo />
-          <div>
-            <b>Seus dados ficam só neste aparelho</b>, no armazenamento do navegador. Não há conta nem sincronização: outro celular ou navegador não vê estas corridas, e limpar os dados do site apaga tudo, inclusive anexos e fotos. Faça backup de vez em quando.
+        {sync.configured && (
+          <Link to="/conta" className="card account-card">
+            <IconCloud />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              {cloud ? (
+                <><b>Sincronização ativa</b><br /><span className="small muted" style={{ overflowWrap: 'anywhere' }}>{sync.user.email} · {syncLabel(sync)}</span></>
+              ) : (
+                <><b>Entrar ou criar conta</b><br /><span className="small muted">Para ver suas corridas no celular e no computador.</span></>
+              )}
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
+        )}
+        {cloud ? (
+          <div className="alert alert-ok" style={{ marginTop: 12 }}>
+            <IconInfo />
+            <div>Seus dados ficam neste aparelho <b>e na sua conta</b>, sincronizados entre os aparelhos em que você entrar. O backup em arquivo continua disponível como cópia extra.</div>
           </div>
-        </div>
+        ) : (
+          <div className="alert alert-info" style={{ marginTop: sync.configured ? 12 : 0 }}>
+            <IconInfo />
+            <div>
+              <b>Seus dados ficam só neste aparelho</b>, no armazenamento do navegador. Sem conta, outro celular ou navegador não vê estas corridas, e limpar os dados do site apaga tudo, inclusive anexos e fotos. Faça backup de vez em quando.
+            </div>
+          </div>
+        )}
 
         <div className="section-title"><h2>Backup</h2></div>
         <div className="card">
@@ -125,7 +159,7 @@ export default function Settings() {
         <div className="section-title"><h2>Zona de cuidado</h2></div>
         <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>
 
-        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.2</p>
+        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.3</p>
       </div>
     </>
   )

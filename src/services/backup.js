@@ -12,6 +12,7 @@ export async function buildBackup(races, goals = [], files = null) {
   if (files) {
     data.files = []
     for (const f of files) {
+      if (!f.blob) continue // ainda não baixado da nuvem
       data.files.push({ id: f.id, raceId: f.raceId, kind: f.kind, name: f.name, type: f.type, size: f.size, createdAt: f.createdAt, data: await blobToBase64(f.blob) })
     }
   }

@@ -31,6 +31,8 @@ export const IconCheck = () => (<svg {...base} strokeWidth={2.6}><path d="m5 12.
 export const IconWallet = () => (<svg {...base}><path d="M4 7.5h15.5v12H4z" /><path d="M4 7.5 15 4v3.5M15.5 13.5h4" /></svg>)
 export const IconCamera = () => (<svg {...base}><path d="M4 8h3.5L9 5.5h6L16.5 8H20v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>)
 
+export const IconCloud = () => (<svg {...base}><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.4 4.6 4.6 0 0 0 7 18.5Z" /></svg>)
+
 export const RunnerArt = () => (
   <svg viewBox="0 0 120 90" aria-hidden="true">
     <path d="M6 76 C 30 76, 40 30, 66 30 S 96 60, 114 50" fill="none" stroke="var(--brand)" strokeWidth="8" strokeLinecap="round" />

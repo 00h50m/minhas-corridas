@@ -1,6 +1,7 @@
 // Anexos e fotos no IndexedDB do navegador (arquivos não cabem no localStorage).
 import { useEffect, useState } from 'react'
 import { newId } from '../lib/model.js'
+import { noteDeleted, noteSaved } from './syncMeta.js'
 
 const DB_NAME = 'minhas-corridas-arquivos'
 const STORE = 'files'
@@ -90,8 +91,10 @@ export async function addFile(raceId, kind, file) {
   const problem = checkFile(file)
   if (problem) throw new Error(problem)
   const f = await shrinkImage(file)
-  const rec = { id: newId(), raceId, kind, name: f.name || 'arquivo', type: f.type, size: f.size, createdAt: new Date().toISOString(), blob: f }
+  const now = new Date().toISOString()
+  const rec = { id: newId(), raceId, kind, name: f.name || 'arquivo', type: f.type, size: f.size, createdAt: now, updatedAt: now, blob: f }
   await tx('readwrite', (os) => os.put(rec))
+  noteSaved('file', rec.id)
   // Pede ao navegador para não apagar os dados sob pressão de espaço.
   navigator.storage?.persist?.().catch(() => {})
   changed()
@@ -105,6 +108,7 @@ export async function listFiles(raceId) {
 
 export async function deleteFile(id) {
   await tx('readwrite', (os) => os.delete(id))
+  noteDeleted('file', id)
   changed()
 }
 
@@ -113,6 +117,46 @@ export async function deleteFilesOfRace(raceId) {
   const list = await listFiles(raceId)
   if (!list.length) return
   await tx('readwrite', (os) => list.forEach((f) => os.delete(f.id)))
+  list.forEach((f) => noteDeleted('file', f.id))
+  changed()
+}
+
+export async function getFileRecord(id) {
+  if (!globalThis.indexedDB) return null
+  return (await tx('readonly', async (os, set) => set(await req2p(os.get(id))))) ?? null
+}
+
+/** Arquivo já existe em outro aparelho e ainda não foi baixado aqui. */
+export async function filesMissingBlob() {
+  return (await allFiles()).filter((f) => !f.blob)
+}
+
+export async function setFileBlob(id, blob) {
+  const rec = await getFileRecord(id)
+  if (!rec) return
+  await tx('readwrite', (os) => os.put({ ...rec, blob, size: blob.size }))
+  changed()
+}
+
+/** Aplica metadados vindos da nuvem (sem marcar pendência). Mantém o arquivo se já estiver aqui. */
+export async function applyRemoteFiles({ upserts = [], deletes = [] }) {
+  if (!upserts.length && !deletes.length) return
+  const existing = new Map((await allFiles()).map((f) => [f.id, f]))
+  await tx('readwrite', (os) => {
+    for (const u of upserts) {
+      const old = existing.get(u.id)
+      const { blob: _ignored, ...meta } = u.data
+      os.put({ ...meta, id: u.id, blob: old?.blob ?? null })
+    }
+    for (const d of deletes) os.delete(d.id)
+  })
+  changed()
+}
+
+/** Limpa os arquivos deste aparelho sem gerar exclusões na nuvem (ao sair da conta). */
+export async function wipeLocalFiles() {
+  if (!globalThis.indexedDB) return
+  await tx('readwrite', (os) => os.clear())
   changed()
 }
 
@@ -123,16 +167,23 @@ export async function allFiles() {
 
 export async function clearFiles() {
   if (!globalThis.indexedDB) return
+  const all = await allFiles()
   await tx('readwrite', (os) => os.clear())
+  all.forEach((f) => noteDeleted('file', f.id))
   changed()
 }
 
 /** Substitui todos os arquivos (restauração de backup com anexos). */
 export async function replaceFiles(records) {
+  const before = await allFiles()
+  const now = new Date().toISOString()
+  const keep = new Set(records.map((r) => r.id))
   await tx('readwrite', (os) => {
     os.clear()
-    records.forEach((r) => os.put(r))
+    records.forEach((r) => os.put({ ...r, updatedAt: now }))
   })
+  before.filter((f) => !keep.has(f.id)).forEach((f) => noteDeleted('file', f.id))
+  records.forEach((r) => noteSaved('file', r.id))
   changed()
 }
 
@@ -143,13 +194,14 @@ export async function pruneFiles(raceIds) {
   const gone = all.filter((f) => !keep.has(f.raceId))
   if (!gone.length) return 0
   await tx('readwrite', (os) => gone.forEach((f) => os.delete(f.id)))
+  gone.forEach((f) => noteDeleted('file', f.id))
   changed()
   return gone.length
 }
 
 export async function filesUsage() {
   const all = await allFiles()
-  return { count: all.length, bytes: all.reduce((s, f) => s + (f.size || 0), 0) }
+  return { count: all.length, bytes: all.reduce((s, f) => s + (f.size || 0), 0), missing: all.filter((f) => !f.blob).length }
 }
 
 /** Lista de arquivos de uma corrida, com recarga automática. */

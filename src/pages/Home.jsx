@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
 import { IconPlus, IconSettings, IconStopwatch, IconTarget } from '../components/Icons.jsx'
+import SyncBadge from '../components/SyncBadge.jsx'
 import { GoalCard } from './Goals.jsx'
 import { memo as historyMemo } from './History.jsx'
 import { activeGoals, goalProgress } from '../lib/goals.js'
@@ -18,7 +19,12 @@ function greeting() {
 
 export default function Home() {
   const { races, goals } = useStore()
-  const settings = <Link to="/ajustes" className="icon-btn" aria-label="Ajustes e backup"><IconSettings /></Link>
+  const settings = (
+    <>
+      <SyncBadge />
+      <Link to="/ajustes" className="icon-btn" aria-label="Ajustes e backup"><IconSettings /></Link>
+    </>
+  )
   const today = todayISO()
   const year = Number(today.slice(0, 4))
 
@@ -32,7 +38,7 @@ export default function Home() {
             text="Cadastre uma prova que você quer fazer ou em que já está inscrita. Só o nome é obrigatório — o resto você completa depois."
             action={<Link to="/corridas/nova" className="btn btn-primary btn-block"><IconPlus /> Cadastrar primeira corrida</Link>}
           />
-          <p className="note">Seus dados ficam salvos neste aparelho. Veja detalhes e backup em Ajustes.</p>
+          <p className="note">Já usa o app em outro aparelho? <Link to="/conta">Entre na sua conta</Link> para trazer suas corridas.</p>
         </div>
       </>
     )

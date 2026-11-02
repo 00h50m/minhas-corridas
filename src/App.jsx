@@ -12,6 +12,8 @@ import Settings from './pages/Settings.jsx'
 import Goals from './pages/Goals.jsx'
 import GoalForm from './pages/GoalForm.jsx'
 import GoalDetail from './pages/GoalDetail.jsx'
+import Account from './pages/Account.jsx'
+import ImportPrompt from './components/ImportPrompt.jsx'
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -54,11 +56,13 @@ export default function App() {
               </>
             )}
             <Route path="/ajustes" element={<Settings />} />
+            <Route path="/conta" element={<Account />} />
             <Route path="*" element={store.status === 'ready' ? <NotFound /> : null} />
           </Routes>
         )}
       </div>
       <BottomNav />
+      <ImportPrompt />
     </UIProvider>
   )
 }

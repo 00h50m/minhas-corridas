@@ -74,11 +74,11 @@ export default function Attachments({ raceId, mode = 'docs' }) {
           <ul className="file-list">
             {list.map((f) => (
               <li key={f.id}>
-                <button type="button" className="file-open" onClick={() => setViewing(f)}>
-                  {f.type.startsWith('image/') ? <Thumb file={f} small /> : <span className="file-ic"><IconFile /></span>}
+                <button type="button" className="file-open" onClick={() => setViewing(f)} disabled={!f.blob}>
+                  {f.type.startsWith('image/') && f.blob ? <Thumb file={f} small /> : <span className="file-ic"><IconFile /></span>}
                   <span className="file-meta">
                     <b>{f.name}</b>
-                    <span>{FILE_KIND_LABEL[f.kind]} · {formatBytes(f.size)}</span>
+                    <span>{FILE_KIND_LABEL[f.kind]} · {f.blob ? formatBytes(f.size) : 'baixando da nuvem…'}</span>
                   </span>
                 </button>
                 <button type="button" className="mini-btn" onClick={() => onDelete(f)} aria-label={`Excluir ${f.name}`}><IconTrash /></button>
@@ -120,6 +120,7 @@ export default function Attachments({ raceId, mode = 'docs' }) {
 function Thumb({ file, onOpen, small }) {
   const url = useObjectURL(file.blob)
   if (small) return <span className="file-thumb">{url && <img src={url} alt="" />}</span>
+  if (!file.blob) return <div className="photo"><span className="file-pending">baixando…</span></div>
   return (
     <button type="button" className="photo" onClick={onOpen} aria-label={`Ver foto ${file.name}`}>
       {url && <img src={url} alt="" loading="lazy" />}

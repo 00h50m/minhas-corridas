@@ -1,4 +1,4 @@
-# Minhas Corridas — fases 1 e 2
+# Minhas Corridas
 
 App pessoal (PWA) para organizar provas de corrida de rua: calendário, inscrições, kit, custos (estimado x pago), checklist, anexos e fotos, resultados, histórico e objetivos pessoais.
 
@@ -6,7 +6,7 @@ App pessoal (PWA) para organizar provas de corrida de rua: calendário, inscriç
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # testes das regras (datas, tempos, pace, filtros, .ics, backup)
+npm test           # testes das regras e do motor de sincronização
 ```
 
 ## Publicar no Vercel
@@ -35,10 +35,25 @@ node scripts/e2e.mjs   # precisa do Google Chrome em /usr/bin/google-chrome
 - `src/components` — UI compartilhada (navegação, cards, diálogos)
 - `src/pages` — Início, Corridas (lista/mês/filtros), Cadastro, Detalhe, Resultado, Histórico, Ajustes
 
+## Conta e sincronização (fase 3, opcional)
+Sem configuração, o app funciona só no aparelho. Para login e sincronização entre aparelhos:
+
+1. Crie um projeto no [Supabase](https://supabase.com).
+2. **SQL Editor → New query**: cole e rode `supabase/schema.sql` (tabela `records` com RLS por usuário e bucket privado `anexos`).
+3. **Authentication → URL Configuration**: em *Site URL* coloque o endereço do app no Vercel (ex.: `https://minhas-corridas.vercel.app`) e adicione o mesmo em *Redirect URLs*. É para onde vão os links de confirmação de e-mail e de nova senha.
+4. **Vercel → Settings → Environment Variables**: `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (Supabase → Settings → API, chave *anon/public*). Depois, faça um novo deploy.
+
+Como funciona:
+- Login com e-mail e senha. Cada usuário só acessa as próprias linhas (RLS) e a própria pasta de anexos.
+- O aparelho continua sendo a fonte da tela e funciona offline; alterações ficam pendentes e sobem quando houver conexão (ao abrir o app, ao voltar a internet, a cada minuto e logo após cada alteração).
+- Conflitos: vale a alteração mais recente (o banco recusa gravações mais antigas).
+- Primeiro login num aparelho com dados: o app pergunta se envia esses dados para a conta.
+- Sair da conta apaga os dados deste aparelho; eles continuam na conta.
+
 ## Regras de custos
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).
 - Em cada categoria (inscrição, transporte, hospedagem, outros) vale o pago; sem pago, o estimado.
 - Inscrita/Concluída entram no gasto; Desisti/Cancelada só com valor pago; Interesse/Inscrição aberta aparecem como previsão.
 
 ## Fora do escopo
-GPS, prescrição de treinos, rede social, integrações (Garmin/Strava), busca automática de provas, login e sincronização.
+GPS, prescrição de treinos, rede social, integrações (Garmin/Strava), busca automática de provas.

@@ -50,7 +50,7 @@ describe('arquivo do relógio', () => {
     expect(a.maxHr).toBe(160)
   })
   it('explica quando o formato não é aceito', () => {
-    expect(() => parseActivity('xx', 'atividade.fit')).toThrow(/Exportar para TCX/)
+    expect(() => parseActivity('xx', 'atividade.fit')).toThrow(/readActivityFile/)
     expect(() => parseActivity('<html></html>', 'a.txt')).toThrow(/Não reconheci/)
     expect(() => parseActivity('<gpx></gpx>', 'vazio.gpx')).toThrow(/suficientes/)
   })

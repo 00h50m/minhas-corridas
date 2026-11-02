@@ -4,6 +4,8 @@ import puppeteer from 'puppeteer-core'
 import fs from 'node:fs'
 import path from 'node:path'
 import { parseRacePage } from '../src/lib/pageParse.js'
+import { Encoder, Profile } from '@garmin/fitsdk'
+import { deflateRawSync } from 'node:zlib'
 
 const BASE = process.env.BASE || 'http://localhost:4173'
 const SHOTS = process.env.SHOTS || 'shots'
@@ -613,7 +615,7 @@ const tfUrl = new URL(page2.url()).pathname
 await page2.goto(BASE + tfUrl + '/resultado', { waitUntil: 'networkidle0' })
 const watchInput = await page2.$('input[data-testid=watch-input]')
 await watchInput.uploadFile(fitPath)
-await page2.waitForFunction(() => document.body.innerText.includes('Exportar para TCX'))
+await page2.waitForFunction(() => document.body.innerText.includes('não é um FIT'))
 await watchInput.uploadFile(tcxPath)
 await page2.waitForFunction(() => document.body.innerText.includes('Arquivo lido'))
 t3 = await page2.evaluate(() => document.body.innerText)
@@ -628,7 +630,35 @@ if (!t3.includes('29:40') || !t3.includes('5:56')) throw new Error('Pace oficial
 await page2.reload({ waitUntil: 'networkidle0' })
 if (!(await page2.evaluate(() => document.body.innerText)).includes('Frequência cardíaca')) throw new Error('Resumo do relógio não persistiu')
 await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-detalhe-relogio.png`, fullPage: true })
-ok('2b. Arquivo do relógio: .FIT recusado com instrução, TCX lido (parciais, FC, diferença p/ oficial), tempo oficial preservado')
+ok('2b. Arquivo do relógio: .FIT inválido recusado, TCX lido (parciais, FC, diferença p/ oficial), tempo oficial preservado')
+
+// .ZIP do "Exportar original" do Garmin (FIT gerado com o codificador oficial)
+{
+  const enc = new Encoder()
+  const st = new Date(iso(-20) + 'T09:00:00Z')
+  enc.onMesg(Profile.MesgNum.FILE_ID, { manufacturer: 'development', product: 1, timeCreated: st, type: 'activity' })
+  let tt = st.getTime()
+  for (let d = 0; d <= 5030; d += 10) { enc.onMesg(Profile.MesgNum.RECORD, { timestamp: new Date(tt), distance: d, heartRate: 158 }); tt += 3540 }
+  const end = new Date(tt - 3540)
+  const tot = (end - st) / 1000
+  enc.onMesg(Profile.MesgNum.SESSION, { timestamp: end, startTime: st, sport: 'running', totalElapsedTime: tot, totalTimerTime: tot, totalDistance: 5030, avgHeartRate: 158, maxHeartRate: 171, totalAscent: 12 })
+  const fit = Buffer.from(enc.close())
+  const comp = deflateRawSync(fit), nm = Buffer.from('987654_ACTIVITY.fit')
+  const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(8, 8); lh.writeUInt32LE(comp.length, 18); lh.writeUInt32LE(fit.length, 22); lh.writeUInt16LE(nm.length, 26)
+  const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(8, 10); ch.writeUInt32LE(comp.length, 20); ch.writeUInt32LE(fit.length, 24); ch.writeUInt16LE(nm.length, 28)
+  const eo = Buffer.alloc(22); eo.writeUInt32LE(0x06054b50, 0); eo.writeUInt16LE(1, 8); eo.writeUInt16LE(1, 10); eo.writeUInt32LE(46 + nm.length, 12); eo.writeUInt32LE(30 + nm.length + comp.length, 16)
+  const zipPath = path.join(DL, 'atividade_garmin.zip')
+  fs.writeFileSync(zipPath, Buffer.concat([lh, nm, comp, ch, nm, eo]))
+  await page2.goto(BASE + tfUrl + '/resultado', { waitUntil: 'networkidle0' })
+  await (await page2.$('input[data-testid=watch-input]')).uploadFile(zipPath)
+  await page2.waitForFunction(() => document.body.innerText.includes('Arquivo lido'))
+  const tz = await page2.evaluate(() => document.body.innerText)
+  if (!tz.includes('5,03 km') || !tz.includes('máx. 171 bpm') || !tz.includes('12 m')) throw new Error('ZIP/FIT não lido\n' + tz.slice(0, 1200))
+  await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar resultado')).click())
+  await page2.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+  if (!(await page2.evaluate(() => document.body.innerText)).includes('(FIT)')) throw new Error('Resumo FIT não salvo')
+  ok('2c. .ZIP do Garmin (“Exportar original”) com .FIT lido e salvo')
+}
 
 await browser.close()
 if (errors.length) {

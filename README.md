@@ -56,7 +56,10 @@ Como funciona:
 - **Aviso de nova versão** com botão "Atualizar".
 - **Repetir prova** no ano seguinte (copia o evento, sem data, valores ou resultado).
 - **Preencher pelo link da inscrição**: a função `api/preview.js` (Vercel) lê só a página indicada e devolve campos sugeridos (prioriza dados estruturados schema.org; senão, título e texto). Bloqueia endereços internos, limita tempo e tamanho e nunca devolve o HTML. Só funciona no app publicado. Se a página não trouxer os dados (sites montados no navegador), usa o próprio link: nome a partir do endereço e cidade/UF pela lista de municípios do IBGE (`src/data/municipios.json`, extraída do pacote npm `municipios-brasil`, licença MIT).
-- **Arquivo do relógio** (GPX/TCX exportado do Garmin Connect) no resultado: distância e tempo do relógio, FC, subida e parciais por km. Guarda só o resumo. Arquivos .FIT ainda não são aceitos.
+- **Arquivo do relógio** no resultado: .FIT, .ZIP do Garmin ("Exportar original"), .TCX ou .GPX. Distância e tempo do relógio, FC, subida e parciais por km. Guarda só o resumo. O leitor de FIT (`src/lib/fit.js`) é próprio, escrito a partir da especificação do protocolo; o SDK oficial do Garmin (`@garmin/fitsdk`) é usado só nos testes, para gerar arquivos de verdade, e não vai para o app publicado.
+- **Análise da prova**: meta x resultado, ritmo pelas parciais (saída forte, quebra, split negativo), esforço, distância do relógio e comparação com provas anteriores.
+- **Plano de prova / do objetivo**: pace e passagens para a meta, quanto falta para o objetivo de tempo, degrau intermediário e próximas provas candidatas. É plano de ritmo, não de treino.
+- **Evolução**: este ano x anterior (até a mesma data), provas por mês e pace por distância.
 
 ## Regras de custos
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).

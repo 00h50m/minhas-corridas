@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { addFile, checkFile } from '../services/files.js'
-import { parseActivity } from '../lib/activityFile.js'
+import { readActivityFile } from '../lib/activityFile.js'
 import { toISODate } from '../lib/dates.js'
 import WatchSummary from '../components/WatchSummary.jsx'
 import TimeInput from '../components/TimeInput.jsx'
@@ -126,7 +126,7 @@ export default function ResultForm() {
     setWatchMsg(null)
     try {
       if (file.size > 30 * 1024 * 1024) throw new Error('Arquivo grande demais (máx. 30 MB).')
-      const w = parseActivity(/\.(fit|zip)$/i.test(file.name) ? '' : await file.text(), file.name)
+      const w = await readActivityFile(file)
       setWatch(w)
       const notes = []
       setF((p) => {
@@ -231,9 +231,9 @@ export default function ResultForm() {
         </details>
 
         <details className="section" open={!!watch || !!watchMsg}>
-          <summary>Arquivo do relógio<span className="sum">{watch ? `${watch.source.toUpperCase()} · ${formatKm(watch.distanceKm)}` : 'GPX ou TCX'}</span></summary>
+          <summary>Arquivo do relógio<span className="sum">{watch ? `${watch.source.toUpperCase()} · ${formatKm(watch.distanceKm)}` : 'FIT, TCX ou GPX'}</span></summary>
           <div className="body" style={{ paddingBottom: 16 }}>
-            {watch ? <WatchSummary watch={watch} officialKm={off} /> : <p className="hint" style={{ marginTop: 0 }}>No Garmin Connect: abra a atividade → ⚙ → “Exportar para TCX” (ou GPX). O app guarda só o resumo: distância, tempo, frequência cardíaca, subida e parciais por km.</p>}
+            {watch ? <WatchSummary watch={watch} officialKm={off} /> : <p className="hint" style={{ marginTop: 0 }}>No Garmin Connect: abra a atividade → ⚙ → “Exportar original” (.ZIP com o .FIT) ou “Exportar para TCX”. Também aceita .FIT e .GPX. O app guarda só o resumo: distância, tempo, frequência cardíaca, subida e parciais por km.</p>}
             {watchMsg && <div className={`alert small ${watchMsg.ok ? 'alert-ok' : 'alert-error'}`} role={watchMsg.ok ? 'status' : 'alert'} style={{ margin: '10px 0' }}><div>{watchMsg.text}</div></div>}
             <div className="btn-row" style={{ marginTop: 10, gridTemplateColumns: watch ? '1fr 1fr' : '1fr' }}>
               <button type="button" className="btn" onClick={() => watchRef.current?.click()}>{watch ? 'Trocar arquivo' : 'Escolher arquivo'}</button>

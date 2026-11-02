@@ -3,6 +3,7 @@ import { addFile, checkFile } from '../services/files.js'
 import { parseActivity } from '../lib/activityFile.js'
 import { toISODate } from '../lib/dates.js'
 import WatchSummary from '../components/WatchSummary.jsx'
+import TimeInput from '../components/TimeInput.jsx'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { getRace, saveRace } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -76,14 +77,14 @@ export default function ResultForm() {
       watch
     }
     if (f.officialDistanceKm && off == null) errs.officialDistanceKm = 'Use km, ex.: 5 ou 21,1.'
-    if (f.netTime && net == null) errs.netTime = 'Use mm:ss ou h:mm:ss, ex.: 28:45 ou 1:05:30.'
+    if (f.netTime && net == null) errs.netTime = 'Tempo inválido. Digite só números: 2845 = 28:45 · 10530 = 1:05:30.'
     if (f.watchDistanceKm) {
       res.watchDistanceKm = parseKm(f.watchDistanceKm)
       if (res.watchDistanceKm == null) errs.watchDistanceKm = 'Use km, ex.: 5,08.'
     }
     if (f.grossTime) {
       res.grossTime = parseDuration(f.grossTime)
-      if (res.grossTime == null) errs.grossTime = 'Use mm:ss ou h:mm:ss.'
+      if (res.grossTime == null) errs.grossTime = 'Tempo inválido. Digite só números: 2845 = 28:45.'
     }
     for (const k of ['overallPlace', 'categoryPlace']) {
       const n = toInt(f[k])
@@ -168,11 +169,11 @@ export default function ResultForm() {
 
         <div className="card">
           <div className="grid-2">
-            <Field label="Tempo líquido" htmlFor="netTime" error={errors.netTime} hint="Chip: da largada à chegada.">
-              <input id="netTime" className="input" inputMode="numeric" value={f.netTime} onChange={set('netTime')} aria-invalid={inv('netTime')} placeholder="mm:ss" autoFocus />
+            <Field label="Tempo líquido" htmlFor="netTime" error={errors.netTime} hint="Chip, da largada à chegada. Só números: 2845 = 28:45.">
+              <TimeInput id="netTime" value={f.netTime} onChange={set('netTime')} invalid={!!errors.netTime} autoFocus />
             </Field>
             <Field label="Tempo bruto" optional htmlFor="grossTime" error={errors.grossTime} hint="Desde o tiro de largada.">
-              <input id="grossTime" className="input" inputMode="numeric" value={f.grossTime} onChange={set('grossTime')} aria-invalid={inv('grossTime')} placeholder="mm:ss" />
+              <TimeInput id="grossTime" value={f.grossTime} onChange={set('grossTime')} invalid={!!errors.grossTime} />
             </Field>
           </div>
           <div className="grid-2">

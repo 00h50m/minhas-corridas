@@ -1,19 +1,46 @@
 // Tempos, pace, distâncias e valores em reais.
 
-/** Aceita "mm:ss", "h:mm:ss" ou "hh:mm:ss". Retorna segundos ou null. */
+/**
+ * Lê tempos digitados de vários jeitos (o teclado numérico do celular não tem ":"):
+ * - "28:45", "1:05:30", "28.45", "1,05,30", "28 45"
+ * - só números, preenchendo da direita como num micro-ondas: "35" = 35:00, "2845" = 28:45, "10530" = 1:05:30
+ * - com "h": "1h55", "1h55m30"
+ * Retorna segundos ou null.
+ */
 export function parseDuration(input) {
   if (input == null) return null
-  const s = String(input).trim()
+  const s = String(input).trim().toLowerCase()
   if (!s) return null
-  const parts = s.split(':')
-  if (parts.length < 2 || parts.length > 3) return null
-  if (!parts.every((p) => /^\d{1,3}$/.test(p))) return null
-  const nums = parts.map(Number)
-  let h = 0, m, sec
-  if (nums.length === 3) [h, m, sec] = nums
-  else [m, sec] = nums
+  let h = 0
+  let m = 0
+  let sec = 0
+  let strictMinutes = false
+  const withH = s.match(/^(\d{1,2})\s*h\s*(?:(\d{1,2})\s*(?:min|m)?\s*(?:(\d{1,2})\s*s?)?)?$/)
+  if (withH) {
+    h = Number(withH[1])
+    m = Number(withH[2] ?? 0)
+    sec = Number(withH[3] ?? 0)
+    strictMinutes = true
+  } else if (/^\d+$/.test(s)) {
+    if (s.length <= 2) m = Number(s)
+    else if (s.length <= 6) {
+      sec = Number(s.slice(-2))
+      m = Number(s.slice(-4, -2))
+      h = s.length > 4 ? Number(s.slice(0, -4)) : 0
+      strictMinutes = s.length > 4
+    } else return null
+  } else {
+    const parts = s.split(/\s*[:.,;'\s]\s*/)
+    if (parts.length < 2 || parts.length > 3) return null
+    if (!parts.every((p) => /^\d{1,3}$/.test(p))) return null
+    const nums = parts.map(Number)
+    if (nums.length === 3) {
+      ;[h, m, sec] = nums
+      strictMinutes = true
+    } else [m, sec] = nums
+  }
   if (sec > 59) return null
-  if (nums.length === 3 && m > 59) return null
+  if (strictMinutes && m > 59) return null
   const total = h * 3600 + m * 60 + sec
   if (total <= 0 || total > 48 * 3600) return null
   return total

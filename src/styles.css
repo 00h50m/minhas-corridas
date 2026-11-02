@@ -519,3 +519,4 @@ details.link-import { margin-top: 0; }
 .split-tag { font-size: 12px; color: var(--ink-3); font-weight: 700; }
 .splits tr.fast .split-tag { color: var(--ok); }
 .splits tr.slow .split-tag { color: var(--warn); }
+.time-preview { margin-top: 5px; font-size: 14px; font-weight: 800; color: var(--ok); }

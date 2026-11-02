@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { repeatRace } from '../lib/alerts.js'
 import LinkImport from '../components/LinkImport.jsx'
+import TimeInput from '../components/TimeInput.jsx'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -64,7 +65,7 @@ function fromForm(f, base) {
   r.targetTime = null
   if (f.targetTime) {
     r.targetTime = parseDuration(f.targetTime)
-    if (r.targetTime == null) errors.targetTime = 'Use mm:ss ou h:mm:ss, ex.: 29:59 ou 1:55:00.'
+    if (r.targetTime == null) errors.targetTime = 'Tempo inválido. Digite só números: 2959 = 29:59 · 15500 = 1:55:00.'
   }
   if (!r.checklist) r.checklist = defaultChecklist(r.status)
   return { race: r, errors: { ...validateRace(r), ...errors } }
@@ -366,8 +367,8 @@ export default function RaceForm() {
         <details className="section">
           <summary>Meta e observações<span className="sum">{f.targetTime && `meta ${f.targetTime}`}</span></summary>
           <div className="body">
-            <Field label="Meta de tempo para esta prova" htmlFor="targetTime" error={errors.targetTime} hint="Usada para comparar com o resultado. Ex.: 29:59 ou 1:55:00.">
-              <input id="targetTime" className="input" inputMode="numeric" value={f.targetTime} onChange={set('targetTime')} aria-invalid={inv('targetTime')} placeholder="h:mm:ss" />
+            <Field label="Meta de tempo para esta prova" htmlFor="targetTime" error={errors.targetTime} hint="Usada para comparar com o resultado. Digite só números: 3500 = 35:00 · 15500 = 1:55:00.">
+              <TimeInput id="targetTime" value={f.targetTime} onChange={set('targetTime')} invalid={!!errors.targetTime} />
             </Field>
             <Field label="Observações" htmlFor="notes"><textarea id="notes" className="input" value={f.notes} onChange={set('notes')} /></Field>
           </div>

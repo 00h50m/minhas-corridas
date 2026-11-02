@@ -4,6 +4,7 @@ import { getGoal, saveGoal } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { COMMON_DISTANCES, GOAL_STATUSES, GOAL_TYPES, GOAL_TYPE_BY_ID, emptyGoal, validateGoal } from '../lib/model.js'
 import { suggestGoalTitle } from '../lib/goals.js'
+import TimeInput from '../components/TimeInput.jsx'
 import { todayISO } from '../lib/dates.js'
 import { durationToInput, formatKm, kmToInput, moneyToInput, parseDuration, parseKm, parseMoney, parseNumber } from '../lib/format.js'
 
@@ -33,7 +34,7 @@ function fromForm(f, base) {
   }
   if (f.type === 'tempo') {
     g.targetValue = parseDuration(f.target)
-    if (f.target && g.targetValue == null) errors.targetValue = 'Use mm:ss ou h:mm:ss, ex.: 29:59 ou 1:55:00.'
+    if (f.target && g.targetValue == null) errors.targetValue = 'Tempo inválido. Digite só números: 3000 = 30:00 · 15959 = 1:59:59.'
   } else if (f.type === 'orcamento') {
     g.targetValue = parseMoney(f.target)
     if (f.target && g.targetValue == null) errors.targetValue = 'Valor inválido. Ex.: 1.500,00'
@@ -146,8 +147,8 @@ export default function GoalForm() {
           )}
 
           {t === 'tempo' && (
-            <Field label="Abaixo de" htmlFor="g-target" error={errors.targetValue} hint="Tempo líquido. Ex.: 30:00 ou 1:59:59.">
-              <input id="g-target" className="input" inputMode="numeric" value={f.target} onChange={set('target')} aria-invalid={inv('targetValue')} placeholder="mm:ss ou h:mm:ss" />
+            <Field label="Abaixo de" htmlFor="g-target" error={errors.targetValue} hint="Tempo líquido. Digite só números: 3500 = 35:00 · 15500 = 1:55:00.">
+              <TimeInput id="g-target" value={f.target} onChange={set('target')} invalid={!!errors.targetValue} />
             </Field>
           )}
           {t === 'quantidade' && (

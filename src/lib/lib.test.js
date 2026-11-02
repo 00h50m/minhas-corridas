@@ -33,6 +33,17 @@ describe('tempos e valores', () => {
     expect(parseDuration('1:75:00')).toBe(null)
     expect(parseDuration('abc')).toBe(null)
     expect(formatDuration(3930)).toBe('1:05:30')
+  })
+  it('aceita tempos digitados só com números (teclado do celular)', () => {
+    expect(parseDuration('35')).toBe(2100)
+    expect(parseDuration('3530')).toBe(2130)
+    expect(parseDuration('15500')).toBe(6900)
+    expect(parseDuration('35.30')).toBe(2130)
+    expect(parseDuration('1,55,00')).toBe(6900)
+    expect(parseDuration('1h55')).toBe(6900)
+    expect(parseDuration('9999')).toBe(null)
+    expect(parseDuration('16000')).toBe(null) // 1h60min não existe
+    expect(parseDuration('1234567')).toBe(null)
     expect(formatDuration(1725)).toBe('28:45')
   })
   it('calcula pace min/km', () => {

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconCloud, IconInfo } from '../components/Icons.jsx'
-import { authMessage, supabase } from '../services/supabase.js'
-import { endRecovery, signOut, syncNow, useSync } from '../services/sync.js'
+import { authMessage, enabledProviders, supabase } from '../services/supabase.js'
+import { deleteAccount, endRecovery, signOut, syncNow, useSync } from '../services/sync.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -79,7 +79,77 @@ function SignedIn({ s }) {
           Corridas, objetivos, resultados, checklists, anexos e fotos ficam na sua conta e aparecem em todos os aparelhos em que você entrar. O app continua funcionando sem internet e envia as alterações quando a conexão voltar. Se a mesma corrida for editada em dois aparelhos, vale a alteração mais recente.
         </p>
         <button className="btn btn-block" style={{ marginTop: 18 }} onClick={onSignOut}>Sair da conta</button>
+
+        <div className="section-title"><h2>Zona de cuidado</h2></div>
+        <DeleteAccount email={s.user.email} />
       </div>
+    </>
+  )
+}
+
+function DeleteAccount({ email }) {
+  const { notify } = useUI()
+  const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const ready = typed.trim().toUpperCase() === 'EXCLUIR'
+
+  const run = async () => {
+    setBusy(true)
+    setErr(null)
+    try {
+      await deleteAccount()
+      notify('Conta excluída')
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) return <button className="btn btn-danger btn-block" onClick={() => setOpen(true)}>Excluir minha conta</button>
+  return (
+    <div className="card danger-card">
+      <b>Excluir a conta {email}?</b>
+      <p className="small" style={{ margin: '6px 0 10px' }}>
+        Apaga <b>para sempre</b> todas as corridas, objetivos, resultados, anexos e fotos da nuvem e deste aparelho, e a própria conta. Outros aparelhos conectados também perdem os dados. Não dá para desfazer.
+      </p>
+      <p className="small" style={{ margin: '0 0 10px' }}>Se quiser guardar uma cópia, antes <Link to="/ajustes">baixe um backup com anexos</Link>.</p>
+      <div className="field" style={{ marginBottom: 10 }}>
+        <label htmlFor="confirm-delete">Para confirmar, digite EXCLUIR</label>
+        <input id="confirm-delete" className="input" autoComplete="off" autoCapitalize="characters" value={typed} onChange={(e) => setTyped(e.target.value)} />
+      </div>
+      {err && <div className="alert alert-error small" role="alert" style={{ marginBottom: 10 }}><div>{err}</div></div>}
+      <div className="btn-row">
+        <button className="btn" disabled={busy} onClick={() => { setOpen(false); setTyped(''); setErr(null) }}>Cancelar</button>
+        <button className="btn btn-danger" disabled={!ready || busy} onClick={run}>{busy ? 'Excluindo…' : 'Excluir tudo'}</button>
+      </div>
+    </div>
+  )
+}
+
+function GoogleButton({ onError }) {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    let alive = true
+    enabledProviders().then((p) => alive && setEnabled(!!p.google))
+    return () => {
+      alive = false
+    }
+  }, [])
+  if (!enabled) return null
+  const go = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/conta` } })
+    if (error) onError(authMessage(error))
+  }
+  return (
+    <>
+      <button type="button" className="btn btn-block google-btn" onClick={go}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.3H12v4.3h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8Z" /><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23Z" /><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8l3.6-2.8Z" /><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.3 9.1 5.4 12 5.4Z" /></svg>
+        Entrar com Google
+      </button>
+      <div className="or-sep"><span>ou com e-mail</span></div>
     </>
   )
 }
@@ -146,6 +216,7 @@ function SignIn() {
           </div>
         )}
         <div className="card">
+          {mode !== 'recuperar' && <GoogleButton onError={(text) => setMsg({ ok: false, text })} />}
           {mode === 'recuperar' && <p style={{ marginTop: 0 }}><b>Esqueceu a senha?</b> Enviaremos um link para você criar outra.</p>}
           <Field label="E-mail" htmlFor="email" error={errors.email}>
             <input id="email" type="email" className="input" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={errors.email ? 'true' : 'false'} />

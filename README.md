@@ -36,7 +36,7 @@ node scripts/e2e.mjs   # precisa do Google Chrome em /usr/bin/google-chrome
 - `src/pages` — Início, Corridas (lista/mês/filtros), Cadastro, Detalhe, Resultado, Histórico, Ajustes
 
 ## Conta e sincronização (fase 3, opcional)
-Sem configuração, o app funciona só no aparelho. Para login e sincronização entre aparelhos:
+Sem configuração, o app funciona só no aparelho. Testes das telas de conta com o Supabase simulado: `node scripts/e2e-conta.mjs`. Para login e sincronização entre aparelhos:
 
 1. Crie um projeto no [Supabase](https://supabase.com).
 2. **SQL Editor → New query**: cole e rode `supabase/schema.sql` (tabela `records` com RLS por usuário e bucket privado `anexos`).
@@ -49,6 +49,8 @@ Como funciona:
 - Conflitos: vale a alteração mais recente (o banco recusa gravações mais antigas).
 - Primeiro login num aparelho com dados: o app pergunta se envia esses dados para a conta.
 - Sair da conta apaga os dados deste aparelho; eles continuam na conta.
+- **Excluir minha conta** (Conta → Zona de cuidado, digitando EXCLUIR): confere a função `delete_my_account` no banco, apaga os anexos do bucket, os registros e o usuário. Precisa do trecho 5 do `schema.sql`.
+- **Entrar com Google**: o botão só aparece quando o provedor Google está ativo no Supabase (Authentication → Sign In / Providers → Google, com Client ID e Secret do Google Cloud).
 
 ## Recursos extras
 - **Avisos dos próximos 7 dias** no Início (fim da inscrição, mudança de lote, retirada do kit, dia da prova).

@@ -74,3 +74,30 @@ create policy "anexos: dono altera" on storage.objects
   for update to authenticated using (bucket_id = 'anexos' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "anexos: dono apaga" on storage.objects
   for delete to authenticated using (bucket_id = 'anexos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- 5) Excluir a própria conta (Ajustes → Conta → Excluir minha conta).
+--    O app apaga antes os anexos do bucket; esta função apaga os registros e o usuário.
+-- dry_run = true só confirma que a função existe (o app checa antes de apagar os anexos).
+drop function if exists public.delete_my_account();
+create or replace function public.delete_my_account(dry_run boolean default false)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'não autenticado';
+  end if;
+  if dry_run then
+    return;
+  end if;
+  delete from public.records where user_id = uid;
+  delete from auth.users where id = uid;
+end;
+$$;
+
+revoke all on function public.delete_my_account(boolean) from public, anon;
+grant execute on function public.delete_my_account(boolean) to authenticated;

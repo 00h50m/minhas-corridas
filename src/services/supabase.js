@@ -13,6 +13,8 @@ const url = (import.meta.env.VITE_SUPABASE_URL || DEFAULT_URL).replace(/\/rest\/
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY
 
 export const isConfigured = Boolean(url && anonKey)
+export const supabaseUrl = url
+export const supabaseAnonKey = anonKey
 
 export const supabase = isConfigured
   ? createClient(url, anonKey, {
@@ -82,6 +84,42 @@ export function supabaseRemote(userId) {
   }
 }
 
+/** Apaga anexos do bucket, registros e o próprio usuário. */
+export async function deleteAccountRemote(userId) {
+  const missing = (error) => error && (error.code === 'PGRST202' || /delete_my_account/.test(error.message || ''))
+  const notReady = () => new Error('A exclusão de conta ainda não foi ativada no banco: rode o trecho “Excluir a própria conta” do arquivo supabase/schema.sql no SQL Editor do Supabase. Nada foi apagado.')
+  // 0) Confere que a função existe ANTES de apagar qualquer coisa.
+  const check = await supabase.rpc('delete_my_account', { dry_run: true })
+  if (check.error) {
+    if (missing(check.error)) throw notReady()
+    fail(check.error)
+  }
+  // 1) Arquivos da pasta do usuário (em lotes).
+  for (;;) {
+    const { data, error } = await supabase.storage.from(BUCKET).list(userId, { limit: 1000 })
+    if (error) fail(error)
+    if (!data?.length) break
+    const { error: e2 } = await supabase.storage.from(BUCKET).remove(data.map((f) => `${userId}/${f.name}`))
+    if (e2) fail(e2)
+    if (data.length < 1000) break
+  }
+  // 2) Registros e usuário (função no banco).
+  const { error } = await supabase.rpc('delete_my_account', { dry_run: false })
+  if (error) fail(error)
+}
+
+/** Provedores de login ativos no projeto (endpoint público do Supabase Auth). */
+export async function enabledProviders() {
+  if (!isConfigured) return {}
+  try {
+    const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: anonKey } })
+    if (!res.ok) return {}
+    return (await res.json()).external ?? {}
+  } catch {
+    return {}
+  }
+}
+
 /** Mensagens de erro de login em português. */
 export function authMessage(error) {
   const m = error?.message || ''
@@ -93,5 +131,6 @@ export function authMessage(error) {
   if (/unable to validate email|invalid email|email address .* is invalid/i.test(m)) return 'E-mail inválido.'
   if (/failed to fetch|network/i.test(m)) return 'Sem conexão. Verifique a internet e tente de novo.'
   if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da anterior.'
+  if (/provider is not enabled|unsupported provider/i.test(m)) return 'O login com Google ainda não foi ativado no Supabase.'
   return m || 'Algo deu errado. Tente de novo.'
 }

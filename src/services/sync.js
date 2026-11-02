@@ -1,6 +1,6 @@
 // Controlador da conta e da sincronização para a interface.
 import { useSyncExternalStore } from 'react'
-import { isConfigured, supabase, supabaseRemote } from './supabase.js'
+import { deleteAccountRemote, isConfigured, supabase, supabaseRemote } from './supabase.js'
 import { getMeta, onLocalChange, pending, resetMeta, saveMeta } from './syncMeta.js'
 import { markAllLocal, syncOnce } from '../lib/syncEngine.js'
 import { applyRemote, getGoal, getRace, getState as getStore, wipeLocal } from './store.js'
@@ -156,6 +156,16 @@ export async function resolveImport(send) {
 /** Sai da conta e limpa este aparelho (os dados continuam na nuvem). */
 export async function signOut() {
   if (!supabase) return
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+  await wipeDevice(null)
+  set({ user: null, phase: 'signed-out', lastSyncAt: null, error: null, pending: 0 })
+}
+
+/** Exclui a conta (anexos, registros e usuário) e limpa este aparelho. */
+export async function deleteAccount() {
+  if (!supabase || !state.user) return
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Sem internet. Para excluir a conta, conecte-se.')
+  await deleteAccountRemote(state.user.id)
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
   await wipeDevice(null)
   set({ user: null, phase: 'signed-out', lastSyncAt: null, error: null, pending: 0 })

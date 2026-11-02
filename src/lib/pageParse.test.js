@@ -86,3 +86,31 @@ describe('nome pelo link (páginas montadas no navegador)', () => {
     expect(parseRacePage(page, 'https://www.ravelisports.com.br/evento/xyz-abc').fields.name).toBe('Corrida Encantada de Itupeva')
   })
 })
+
+import { cityFromWords, urlWords } from './cities.js'
+describe('cidade pelo link', () => {
+  const city = (u) => cityFromWords(urlWords(u))
+  it('acha o município (com acento e UF oficiais)', () => {
+    expect(city('https://www.ravelisports.com.br/evento/corrida-encantada-itupeva-2026')).toMatchObject({ city: 'Itupeva', state: 'SP' })
+    expect(city('https://x.com/e/meia-maratona-de-sao-paulo-2027')).toMatchObject({ city: 'São Paulo', state: 'SP' })
+    expect(city('https://x.com/corrida-rio-de-janeiro')).toMatchObject({ city: 'Rio de Janeiro', state: 'RJ' })
+  })
+  it('não confunde palavras comuns em nomes de prova com cidades', () => {
+    expect(city('https://x.com/e/corrida-de-natal-2026')).toBe(null)
+    expect(city('https://x.com/e/maratona-do-rio-2027')).toBe(null)
+    expect(city('https://x.com/e/corrida-da-vitoria-10k')).toBe(null)
+  })
+  it('nome repetido em vários estados: sugere a cidade e deixa a UF para escolher', () => {
+    expect(city('https://x.com/e/night-run-bom-jesus')).toMatchObject({ city: 'Bom Jesus', state: '' })
+  })
+  it('entra na leitura da página quando ela não traz a cidade', () => {
+    const shell = '<html><head><title>Raveli Sports</title></head><body><div id="root"></div></body></html>'
+    const { fields, sources } = parseRacePage(shell, 'https://www.ravelisports.com.br/evento/corrida-encantada-itupeva-2026')
+    expect(fields).toMatchObject({ name: 'Corrida Encantada Itupeva 2026', city: 'Itupeva', state: 'SP' })
+    expect(sources.city).toBe('link')
+  })
+  it('a cidade da própria página tem prioridade sobre a do link', () => {
+    const page = '<html><head><meta property="og:description" content="Dia 10/05/2027 em Jundiaí - SP"></head></html>'
+    expect(parseRacePage(page, 'https://x.com/e/corrida-itupeva').fields.city).toBe('Jundiaí')
+  })
+})

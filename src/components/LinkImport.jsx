@@ -87,6 +87,7 @@ export default function LinkImport({ onApply }) {
                     <span>
                       <span className="k">{LABELS[k]}</span>
                       <b>{show(k, state.fields[k])}</b>
+                      {k === 'city' && state.fields.stateOptions?.length > 1 && <span className="muted small">existe em {state.fields.stateOptions.join(', ')} — escolha a UF no formulário</span>}
                       {(state.sources[k] === 'texto' || state.sources[k] === 'link') && <span className="flag flag-warn">{state.sources[k] === 'link' ? 'tirado do link · confira' : 'confira'}</span>}
                     </span>
                   </label>

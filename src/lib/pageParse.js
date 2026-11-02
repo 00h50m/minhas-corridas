@@ -1,6 +1,7 @@
 // Extrai sugestões de cadastro de uma página de inscrição (HTML).
 // Ordem de confiança: dados estruturados (JSON-LD schema.org Event) > metatags (Open Graph) > texto.
 // Sem DOM: funciona no servidor (função do Vercel) e nos testes.
+import { cityFromWords, urlWords } from './cities.js'
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
 const UF_NAMES = {
@@ -244,6 +245,15 @@ export function parseRacePage(html, pageUrl = '') {
 
   // Página montada só no navegador (sem conteúdo no HTML): aproveita o próprio link.
   if (pageUrl) set('name', nameFromUrl(pageUrl), 'link')
+  // Cidade pelas palavras do link, quando a página não trouxe.
+  if (pageUrl && f.city == null) {
+    const c = cityFromWords(urlWords(pageUrl))
+    if (c) {
+      set('city', c.city, 'link')
+      if (c.state) set('state', c.state, 'link')
+      else if (c.states.length > 1) f.stateOptions = c.states
+    }
+  }
   // Título genérico do site (ex.: só "Raveli Sports") não serve como nome da prova.
   if (src.name === 'metatag' && pageUrl && isGenericTitle(f.name, pageUrl)) {
     const fromUrl = nameFromUrl(pageUrl)

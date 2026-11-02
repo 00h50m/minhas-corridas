@@ -8,6 +8,7 @@ import { formatGoalTarget, goalProgress } from '../lib/goals.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, kmToInput, parseNumber } from '../lib/format.js'
 import { inscriptionSpent } from '../lib/costs.js'
+import { GoalPlan } from '../components/Analysis.jsx'
 import { formatMoney } from '../lib/format.js'
 
 export default function GoalDetail() {
@@ -88,6 +89,13 @@ export default function GoalDetail() {
         )}
         {p.achieved && g.status === 'andamento' && (
           <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={() => setStatus('concluido')}><IconCheck /> Marcar como concluído</button>
+        )}
+
+        {g.type === 'tempo' && g.status !== 'concluido' && (
+          <>
+            <div className="section-title"><h2>Plano</h2></div>
+            <GoalPlan goal={g} races={races} />
+          </>
         )}
 
         {g.type === 'manual' && (

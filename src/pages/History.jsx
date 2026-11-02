@@ -6,6 +6,7 @@ import { IconStopwatch } from '../components/Icons.jsx'
 import { addDaysISO, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
 import { periodCosts } from '../lib/costs.js'
+import { compareYears, monthly, paceSeries } from '../lib/evolution.js'
 import { distanceLabel, history, recordsByDistance } from '../lib/stats.js'
 
 export const memo = { tab: 'provas', period: null }
@@ -33,11 +34,14 @@ export default function History() {
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'provas'} onClick={() => setTab('provas')}>Provas</button>
           <button role="tab" aria-selected={tab === 'recordes'} onClick={() => setTab('recordes')}>Recordes</button>
+          <button role="tab" aria-selected={tab === 'evolucao'} onClick={() => setTab('evolucao')}>Evolução</button>
           <button role="tab" aria-selected={tab === 'gastos'} onClick={() => setTab('gastos')}>Gastos</button>
         </div>
 
         {tab === 'gastos' ? (
           <Costs races={races} />
+        ) : tab === 'evolucao' ? (
+          <EvolutionTab races={races} />
         ) : list.length === 0 ? (
           <div style={{ marginTop: 12 }}>{noResults}</div>
         ) : tab === 'provas' ? (
@@ -74,6 +78,123 @@ export default function History() {
         )}
       </div>
     </>
+  )
+}
+
+const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
+function Delta({ cur, prev, fmt, lowerIsBetter }) {
+  if (prev == null || cur == null) return <span className="muted">—</span>
+  const d = cur - prev
+  if (Math.abs(d) < 1e-9) return <span className="muted">igual</span>
+  const good = lowerIsBetter ? d < 0 : d > 0
+  return <span className={good ? 'delta-good' : 'delta-bad'}>{d > 0 ? '▲' : '▼'} {fmt(Math.abs(d))}</span>
+}
+
+function EvolutionTab({ races }) {
+  const today = todayISO()
+  const { cur, prevSame, prevFull, keys } = compareYears(races, today)
+  const months = monthly(races, cur.year)
+  const maxM = Math.max(1, ...months.map((m) => m.done + m.planned))
+  const series = paceSeries(races)
+  const dayMonth = formatDateBR(today).slice(0, 5)
+  const money = (n) => formatMoney(n).replace(',00', '')
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div className="card">
+        <div className="list-group-title" style={{ marginTop: 0 }}>{cur.year} x {cur.year - 1} (até {dayMonth})</div>
+        <table className="cmp-table">
+          <thead><tr><th scope="col"></th><th scope="col">{cur.year}</th><th scope="col">{cur.year - 1}</th><th scope="col">Diferença</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Provas</th><td>{cur.count}</td><td>{prevSame.count}</td><td><Delta cur={cur.count} prev={prevSame.count} fmt={(n) => n} /></td></tr>
+            <tr><th scope="row">Km em provas</th><td>{formatKm(cur.km, { unit: false })}</td><td>{formatKm(prevSame.km, { unit: false })}</td><td><Delta cur={cur.km} prev={prevSame.km} fmt={(n) => formatKm(Math.round(n * 10) / 10, { unit: false })} /></td></tr>
+            <tr><th scope="row">Gastos</th><td>{money(cur.spent)}</td><td>{money(prevSame.spent)}</td><td><Delta cur={cur.spent} prev={prevSame.spent} fmt={money} lowerIsBetter /></td></tr>
+          </tbody>
+        </table>
+        <p className="note">Para comparar de forma justa, {cur.year - 1} conta só até {dayMonth}. No ano inteiro de {cur.year - 1}: {prevFull.count} {prevFull.count === 1 ? 'prova' : 'provas'}, {formatKm(prevFull.km)}, {money(prevFull.spent)}.</p>
+        {keys.length > 0 && (
+          <>
+            <div className="list-group-title">Melhor tempo oficial no ano</div>
+            <table className="cmp-table">
+              <thead><tr><th scope="col"></th><th scope="col">{cur.year}</th><th scope="col">{cur.year - 1}</th><th scope="col">Diferença</th></tr></thead>
+              <tbody>
+                {keys.map((k) => (
+                  <tr key={k}>
+                    <th scope="row">{formatKm(Number(k))}</th>
+                    <td>{cur.bests[k] ? formatDuration(cur.bests[k]) : '—'}</td>
+                    <td>{prevFull.bests[k] ? formatDuration(prevFull.bests[k]) : '—'}</td>
+                    <td><Delta cur={cur.bests[k]} prev={prevFull.bests[k]} fmt={formatDuration} lowerIsBetter /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="note">Mesma distância oficial e tempo líquido; registros pessoais ficam de fora.</p>
+          </>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="list-group-title" style={{ marginTop: 0 }}>Provas por mês em {cur.year}</div>
+        <div className="months" role="img" aria-label={months.map((m) => `${MONTH_NAMES[m.month]}: ${m.done} concluídas, ${m.planned} inscritas`).join('; ')}>
+          {months.map((m) => (
+            <div key={m.month} className="mcol">
+              <div className="mbar">
+                <span className="planned" style={{ height: `${(m.planned / maxM) * 100}%` }} />
+                <span className="done" style={{ height: `${(m.done / maxM) * 100}%` }} />
+              </div>
+              <span className="mnum">{m.done + m.planned || ''}</span>
+              <span className="mlbl">{MONTHS[m.month]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="legend"><span><span className="sw paid" /> Concluídas</span><span><span className="sw est" /> Inscritas (à frente)</span></div>
+      </div>
+
+      <div className="list-group-title">Pace por distância</div>
+      {series.length === 0 ? (
+        <div className="card muted small">Quando você tiver 2 ou mais resultados na mesma distância, o gráfico de pace aparece aqui.</div>
+      ) : (
+        series.map((s) => (
+          <div key={s.key} className="card" style={{ marginTop: 10 }}>
+            <b>{distanceLabel(s.key)}</b>
+            <PaceChart points={s.points} />
+          </div>
+        ))
+      )}
+      <p className="note">Pace = tempo líquido ÷ distância oficial. Cada distância tem o próprio gráfico: tempos de distâncias diferentes não são comparados.</p>
+    </div>
+  )
+}
+
+function PaceChart({ points }) {
+  const W = 320, H = 130, P = { l: 40, r: 10, t: 12, b: 22 }
+  const paces = points.map((p) => p.pace)
+  const min = Math.min(...paces), max = Math.max(...paces)
+  const span = Math.max(max - min, 10)
+  const x = (i) => P.l + (i * (W - P.l - P.r)) / Math.max(points.length - 1, 1)
+  const y = (v) => P.t + ((v - min) / span) * (H - P.t - P.b) // pace menor = mais alto
+  const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.pace).toFixed(1)}`).join(' ')
+  const first = points[0], last = points[points.length - 1]
+  const d = last.pace - first.pace
+  return (
+    <div>
+      <svg className="spark" style={{ height: 130 }} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Pace de ${formatPace(first.pace)} para ${formatPace(last.pace)}`}>
+        <text x={P.l - 6} y={y(min) + 4} fontSize="10.5" fill="var(--ink-3)" textAnchor="end">{formatPace(min).replace(' /km', '')}</text>
+        <text x={P.l - 6} y={y(max) + 4} fontSize="10.5" fill="var(--ink-3)" textAnchor="end">{formatPace(max).replace(' /km', '')}</text>
+        <path d={path} fill="none" stroke="var(--brand)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {points.map((p, i) => (
+          <circle key={p.id} cx={x(i)} cy={y(p.pace)} r="5" fill={p.isOfficial ? 'var(--brand)' : 'var(--surface)'} stroke="var(--brand)" strokeWidth="2.5">
+            <title>{`${p.name} · ${formatDateBR(p.date)} · ${formatPace(p.pace)}${p.isOfficial ? '' : ' (registro pessoal)'}`}</title>
+          </circle>
+        ))}
+        <text x={P.l} y={H - 4} fontSize="11" fill="var(--ink-3)">{formatDateBR(first.date)}</text>
+        <text x={W - P.r} y={H - 4} fontSize="11" fill="var(--ink-3)" textAnchor="end">{formatDateBR(last.date)}</text>
+      </svg>
+      <div className="small muted">
+        {points.length} provas · {d < 0 ? `${formatPace(-d).replace(' /km', '')}/km mais rápida que a primeira` : d > 0 ? `${formatPace(d).replace(' /km', '')}/km mais lenta que a primeira` : 'mesmo pace da primeira'}. Mais alto = mais rápido. Ponto vazado = registro pessoal.
+      </div>
+    </div>
   )
 }
 

@@ -10,6 +10,7 @@ import { raceCosts } from '../lib/costs.js'
 import Checklist from '../components/Checklist.jsx'
 import Attachments from '../components/Attachments.jsx'
 import WatchSummary from '../components/WatchSummary.jsx'
+import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
 
@@ -24,7 +25,7 @@ function slug(s) {
 
 export default function RaceDetail() {
   const { id } = useParams()
-  const { races } = useStore()
+  const { races, goals } = useStore()
   const nav = useNavigate()
   const { confirm, notify } = useUI()
   const r = getRace(id)
@@ -153,6 +154,20 @@ export default function RaceDetail() {
             <Link to={`/corridas/${r.id}/resultado`} className="btn btn-primary btn-block" style={{ marginTop: 12 }}>
               <IconStopwatch /> Registrar resultado
             </Link>
+          )
+        )}
+
+        {res ? (
+          <>
+            <div className="section-title"><h2>Como foi a prova</h2></div>
+            <RaceAnalysis race={r} races={races} goals={goals} />
+          </>
+        ) : (
+          r.targetTime && r.distanceKm && !['cancelada', 'desisti'].includes(r.status) && (
+            <>
+              <div className="section-title"><h2>Plano de prova</h2><Link to={`/corridas/${r.id}/editar`}>Mudar meta</Link></div>
+              <RacePlan race={r} />
+            </>
           )
         )}
 

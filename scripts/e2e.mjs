@@ -398,6 +398,28 @@ await expectText('Concluídos')
 await shot('objetivos')
 ok('6b. Progresso automático: tempo (só oficial), quantidade, km e orçamento')
 
+// Análise da prova, plano de prova e plano do objetivo
+await go(raceUrl)
+await expectText('Plano de prova')
+await expectText('5:55 /km') // meta 2:05:00 em 21,1 km
+await expectText('Metade (10,55 km)')
+await go('/historico')
+await clickText('a', 'Track & Field 5K')
+await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await expectText('Como foi a prova')
+await expectText('Em relação às suas provas')
+await expectText('Novo recorde pessoal')
+await shot('analise-prova')
+ok('Análise da prova (comparação e recorde) e plano de prova com passagens')
+
+await go('/historico')
+await clickText('[role=tab]', 'Evolução')
+await expectText('Provas por mês')
+await expectText('Pace por distância')
+await expectText('Melhor tempo oficial no ano')
+await shot('evolucao')
+ok('Aba Evolução: ano x anterior, provas por mês e pace por distância')
+
 await go('/historico')
 await clickText('[role=tab]', 'Gastos')
 await expectText('R$ 470,00')

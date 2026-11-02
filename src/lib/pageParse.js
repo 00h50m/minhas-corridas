@@ -127,6 +127,40 @@ function cityUf(text) {
   return m ? { city: m[1].trim(), state: m[2] } : null
 }
 
+const SMALL = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'a', 'o'])
+
+/** ".../evento/corrida-encantada-itupeva-2026" → "Corrida Encantada Itupeva 2026". */
+export function nameFromUrl(pageUrl) {
+  let u
+  try {
+    u = new URL(pageUrl)
+  } catch {
+    return null
+  }
+  const segs = u.pathname.split('/').filter(Boolean).map((s) => decodeURIComponent(s).replace(/\.(html?|php|aspx?)$/i, ''))
+  const slug = [...segs].reverse().find((s) => /[a-zà-ú]{3,}[-_][a-zà-ú0-9]/i.test(s) && !/^\d+$/.test(s))
+  if (!slug) return null
+  const words = slug.split(/[-_+]+/).filter(Boolean)
+  if (words.length < 2) return null
+  // Remove identificadores longos (ex.: ids numéricos ou hashes no fim).
+  const kept = words.filter((w) => !/^[0-9a-f]{8,}$/i.test(w) && !(/^\d+$/.test(w) && w.length > 4))
+  const title = kept
+    .map((w, i) => (i > 0 && SMALL.has(w.toLowerCase()) ? w.toLowerCase() : /^\d+k$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(' ')
+  return title.length >= 6 ? title.slice(0, 120) : null
+}
+
+function isGenericTitle(name, pageUrl) {
+  if (!name) return true
+  try {
+    const host = new URL(pageUrl).hostname.replace(/^www\./, '').split('.')[0].toLowerCase()
+    const n = name.toLowerCase().replace(/\s+/g, '')
+    return n.length < 6 || n.includes(host) || host.includes(n)
+  } catch {
+    return false
+  }
+}
+
 /** "Largada às 7h", "largada: 07:30" → "07:00", "07:30". */
 export function largadaTime(text) {
   const m = text.match(/largada[^0-9]{0,30}(\d{1,2})\s?(?:h|:)\s?(\d{2})?/i)
@@ -207,6 +241,17 @@ export function parseRacePage(html, pageUrl = '') {
   const dates = textDates(`${desc}\n${text}`)
   set('date', dates[0], 'texto')
   set('startTime', largadaTime(text), 'texto')
+
+  // Página montada só no navegador (sem conteúdo no HTML): aproveita o próprio link.
+  if (pageUrl) set('name', nameFromUrl(pageUrl), 'link')
+  // Título genérico do site (ex.: só "Raveli Sports") não serve como nome da prova.
+  if (src.name === 'metatag' && pageUrl && isGenericTitle(f.name, pageUrl)) {
+    const fromUrl = nameFromUrl(pageUrl)
+    if (fromUrl) {
+      f.name = fromUrl
+      src.name = 'link'
+    }
+  }
 
   if (pageUrl) f.signupUrl = pageUrl
   return { fields: f, sources: src }

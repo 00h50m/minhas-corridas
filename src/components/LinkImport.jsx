@@ -46,7 +46,11 @@ export default function LinkImport({ onApply }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Não foi possível ler a página.')
       const keys = ORDER.filter((k) => data.fields[k] != null && data.fields[k] !== '' && !(Array.isArray(data.fields[k]) && !data.fields[k].length))
-      if (keys.filter((k) => k !== 'signupUrl').length === 0) throw new Error('Não encontrei dados da prova nessa página. Preencha à mão — o link fica salvo.')
+      if (keys.filter((k) => k !== 'signupUrl').length === 0) {
+        onApply({ signupUrl: u })
+        setState({ status: 'error', error: 'Não encontrei dados da prova nessa página (o site deve montar o conteúdo só no navegador). Coloquei o link no campo “Link da inscrição”; preencha o resto à mão.' })
+        return
+      }
       setPicked(Object.fromEntries(keys.map((k) => [k, true])))
       setState({ status: 'done', fields: data.fields, sources: data.sources ?? {}, keys })
     } catch (err) {
@@ -83,12 +87,15 @@ export default function LinkImport({ onApply }) {
                     <span>
                       <span className="k">{LABELS[k]}</span>
                       <b>{show(k, state.fields[k])}</b>
-                      {state.sources[k] === 'texto' && <span className="flag flag-warn">confira</span>}
+                      {(state.sources[k] === 'texto' || state.sources[k] === 'link') && <span className="flag flag-warn">{state.sources[k] === 'link' ? 'tirado do link · confira' : 'confira'}</span>}
                     </span>
                   </label>
                 </li>
               ))}
             </ul>
+            {state.sources.name === 'link' && state.keys.length <= 2 && (
+              <div className="alert alert-info small"><IconInfo /><div>Essa página não traz os dados da prova para leitura automática — só deu para aproveitar o nome do link. Data, cidade e distâncias você preenche à mão.</div></div>
+            )}
             {state.sources.date === 'texto' && (
               <div className="alert alert-warn small"><IconInfo /><div>A data veio do texto da página — pode ser outra data citada (como prazo de inscrição). Confira.</div></div>
             )}

@@ -65,3 +65,24 @@ describe('proteções do leitor de links', () => {
     await expect(assertPublicUrl('https://1.1.1.1/')).resolves.toBeTruthy()
   })
 })
+
+import { nameFromUrl } from './pageParse.js'
+describe('nome pelo link (páginas montadas no navegador)', () => {
+  it('transforma o final do link em nome', () => {
+    expect(nameFromUrl('https://www.ravelisports.com.br/evento/corrida-encantada-itupeva-2026')).toBe('Corrida Encantada Itupeva 2026')
+    expect(nameFromUrl('https://site.com/eventos/meia-maratona-de-sao-paulo/12345678')).toBe('Meia Maratona de Sao Paulo')
+    expect(nameFromUrl('https://site.com/e/night-run-10k-3f9a8b7c6d5e')).toBe('Night Run 10K')
+    expect(nameFromUrl('https://site.com/evento?id=99')).toBe(null)
+  })
+  it('página vazia (app montado no navegador) usa o link e marca a origem', () => {
+    const shell = '<html><head><title>Raveli Sports</title></head><body><div id="root"></div><script src="/app.js"></script></body></html>'
+    const { fields, sources } = parseRacePage(shell, 'https://www.ravelisports.com.br/evento/corrida-encantada-itupeva-2026')
+    expect(fields.name).toBe('Corrida Encantada Itupeva 2026')
+    expect(sources.name).toBe('link')
+    expect(fields.date).toBeUndefined()
+  })
+  it('não troca um título real pelo link', () => {
+    const page = '<html><head><title>Corrida Encantada de Itupeva | Raveli Sports</title></head></html>'
+    expect(parseRacePage(page, 'https://www.ravelisports.com.br/evento/xyz-abc').fields.name).toBe('Corrida Encantada de Itupeva')
+  })
+})

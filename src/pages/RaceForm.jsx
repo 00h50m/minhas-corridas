@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconAlert, IconInfo } from '../components/Icons.jsx'
-import { COMMON_DISTANCES, STATUSES, UFS, emptyRace, validateRace } from '../lib/model.js'
+import { COMMON_DISTANCES, MONEY_FIELDS, STATUSES, UFS, defaultChecklist, emptyRace, validateRace } from '../lib/model.js'
+import { raceCosts } from '../lib/costs.js'
 import { formatDateBR } from '../lib/dates.js'
 import { durationToInput, formatKm, formatMoney, kmToInput, moneyToInput, parseDuration, parseKm, parseMoney } from '../lib/format.js'
 import { nearbyRaces } from '../lib/stats.js'
 
-const TEXT_FIELDS = ['name', 'city', 'state', 'status', 'startTime', 'venueName', 'venueAddress', 'signupUrl', 'organizer', 'shirtSize', 'kitItems', 'kitPickupTime', 'kitPickupAddress', 'kitPickupBy', 'bibNumber', 'companions', 'leaveHomeTime', 'notes']
+const TEXT_FIELDS = ['name', 'city', 'state', 'status', 'startTime', 'venueName', 'venueAddress', 'signupUrl', 'organizer', 'shirtSize', 'kitItems', 'kitPickupTime', 'kitPickupAddress', 'kitPickupBy', 'bibNumber', 'companions', 'leaveHomeTime', 'notes', 'otherDesc']
 
 function toForm(r) {
   const f = {}
@@ -18,8 +19,7 @@ function toForm(r) {
   f.distanceKm = kmToInput(r.distanceKm)
   f.availableDistances = r.availableDistances ?? []
   f.otherDistance = ''
-  f.fee = moneyToInput(r.fee)
-  f.extraFees = moneyToInput(r.extraFees)
+  for (const k of MONEY_FIELDS) f[k] = moneyToInput(r[k])
   f.signupDeadline = r.signupDeadline ?? ''
   f.lotChangeDate = r.lotChangeDate ?? ''
   f.kitPickupDate = r.kitPickupDate ?? ''
@@ -46,7 +46,7 @@ function fromForm(f, base) {
     r.availableDistances = [...r.availableDistances, r.distanceKm].sort((a, b) => a - b)
   }
 
-  for (const k of ['fee', 'extraFees']) {
+  for (const k of MONEY_FIELDS) {
     r[k] = null
     if (f[k]) {
       r[k] = parseMoney(f[k])
@@ -63,6 +63,7 @@ function fromForm(f, base) {
     r.targetTime = parseDuration(f.targetTime)
     if (r.targetTime == null) errors.targetTime = 'Use mm:ss ou h:mm:ss, ex.: 29:59 ou 1:55:00.'
   }
+  if (!r.checklist) r.checklist = defaultChecklist(r.status)
   return { race: r, errors: { ...validateRace(r), ...errors } }
 }
 
@@ -80,6 +81,16 @@ export default function RaceForm() {
   const [f, setF] = useState(() => toForm(base))
   const [errors, setErrors] = useState({})
   const [saveError, setSaveError] = useState(null)
+
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash !== '#custos') return
+    const el = document.getElementById('custos')
+    if (el) {
+      el.open = true
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    }
+  }, [hash])
 
   const nearby = useMemo(() => nearbyRaces(races, f.dateTBD ? null : f.date || null, existing?.id), [races, f.date, f.dateTBD, existing?.id])
 
@@ -142,6 +153,12 @@ export default function RaceForm() {
   const allDistances = [...new Set([...COMMON_DISTANCES, ...f.availableDistances])].sort((a, b) => a - b)
   const inv = (k) => (errors[k] ? 'true' : 'false')
   const feeTotal = (parseMoney(f.fee) ?? 0) + (parseMoney(f.extraFees) ?? 0)
+  const liveCosts = raceCosts(Object.fromEntries([['status', f.status], ...MONEY_FIELDS.map((k) => [k, parseMoney(f[k])])]))
+  const money = (k, label, hint) => (
+    <Field label={label} htmlFor={k} error={errors[k]} hint={hint}>
+      <input id={k} inputMode="decimal" className="input" value={f[k]} onChange={set(k)} aria-invalid={inv(k)} placeholder="0,00" />
+    </Field>
+  )
 
   return (
     <>
@@ -238,6 +255,7 @@ export default function RaceForm() {
                 <input id="extraFees" inputMode="decimal" className="input" value={f.extraFees} onChange={set('extraFees')} aria-invalid={inv('extraFees')} placeholder="0,00" />
               </Field>
             </div>
+            {money('feePaid', 'Valor pago da inscrição (R$)', 'Preencha quando pagar. Ele substitui a estimativa (inscrição + taxas) — não soma de novo.')}
             <div className="grid-2">
               <Field label="Prazo de inscrição" htmlFor="signupDeadline" error={errors.signupDeadline}>
                 <input id="signupDeadline" type="date" className="input" value={f.signupDeadline} onChange={set('signupDeadline')} aria-invalid={inv('signupDeadline')} />
@@ -247,6 +265,20 @@ export default function RaceForm() {
               </Field>
             </div>
             <Field label="Número de peito" htmlFor="bibNumber"><input id="bibNumber" className="input" value={f.bibNumber} onChange={set('bibNumber')} /></Field>
+          </div>
+        </details>
+
+        <details className="section" id="custos">
+          <summary>Transporte, hospedagem e outros<span className="sum">{liveCosts.hasAny ? formatMoney(liveCosts.committed ? liveCosts.total : liveCosts.planned ?? 0) : ''}</span></summary>
+          <div className="body">
+            <p className="hint" style={{ marginTop: 0 }}>Informe o estimado para planejar e o pago quando acertar. Em cada categoria, o valor pago substitui o estimado.</p>
+            <div className="list-group-title" style={{ marginTop: 4 }}>Transporte</div>
+            <div className="grid-2">{money('transportEst', 'Estimado')}{money('transportPaid', 'Pago')}</div>
+            <div className="list-group-title" style={{ marginTop: 4 }}>Hospedagem</div>
+            <div className="grid-2">{money('lodgingEst', 'Estimado')}{money('lodgingPaid', 'Pago')}</div>
+            <div className="list-group-title" style={{ marginTop: 4 }}>Outros</div>
+            <div className="grid-2">{money('otherEst', 'Estimado')}{money('otherPaid', 'Pago')}</div>
+            <Field label="O que entra em outros" htmlFor="otherDesc"><input id="otherDesc" className="input" value={f.otherDesc} onChange={set('otherDesc')} placeholder="Ex.: alimentação, estacionamento" maxLength={80} /></Field>
           </div>
         </details>
 

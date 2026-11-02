@@ -1,16 +1,28 @@
 import { SCHEMA_VERSION } from './store.js'
-import { normalizeRace, validateRace, validateResult } from '../lib/model.js'
+import { normalizeGoal, normalizeRace, validateGoal, validateRace, validateResult } from '../lib/model.js'
 import { todayISO } from '../lib/dates.js'
+import { FILE_KIND_LABEL, base64ToBlob, blobToBase64 } from './files.js'
 
-export function buildBackup(races) {
-  return JSON.stringify({ app: 'minhas-corridas', version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), races }, null, 2)
+/**
+ * Monta o JSON do backup. `files` (opcional) são registros do IndexedDB;
+ * quando presentes, vão em base64 dentro do próprio arquivo.
+ */
+export async function buildBackup(races, goals = [], files = null) {
+  const data = { app: 'minhas-corridas', version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), races, goals }
+  if (files) {
+    data.files = []
+    for (const f of files) {
+      data.files.push({ id: f.id, raceId: f.raceId, kind: f.kind, name: f.name, type: f.type, size: f.size, createdAt: f.createdAt, data: await blobToBase64(f.blob) })
+    }
+  }
+  return JSON.stringify(data, null, files ? 0 : 2)
 }
 
-export function backupFileName() {
-  return `minhas-corridas-backup-${todayISO()}.json`
+export function backupFileName(withFiles) {
+  return `minhas-corridas-backup${withFiles ? '-com-anexos' : ''}-${todayISO()}.json`
 }
 
-/** Valida o JSON de backup. Retorna { races } ou lança erro com mensagem amigável. */
+/** Valida o JSON de backup. Retorna { races, goals, files|null } ou lança erro com mensagem amigável. */
 export function parseBackup(text) {
   let data
   try {
@@ -38,11 +50,40 @@ export function parseBackup(text) {
     }
     return r
   })
-  return { races, exportedAt: data.exportedAt ?? null }
+
+  const goalIds = new Set()
+  const goals = (Array.isArray(data.goals) ? data.goals : []).map((raw, i) => {
+    if (!raw || typeof raw !== 'object' || !raw.id) throw new Error(`Objetivo ${i + 1} do backup está incompleto.`)
+    if (goalIds.has(raw.id)) throw new Error(`Objetivo duplicado no backup (${raw.title || raw.id}).`)
+    goalIds.add(raw.id)
+    const g = normalizeGoal(raw)
+    const errs = validateGoal(g)
+    if (Object.keys(errs).length) throw new Error(`Objetivo "${g.title || 'Sem título'}": ${Object.values(errs)[0]}`)
+    return g
+  })
+
+  let files = null
+  if (Array.isArray(data.files)) {
+    files = data.files.map((f, i) => {
+      if (!f || !f.id || !f.raceId || typeof f.data !== 'string' || !FILE_KIND_LABEL[f.kind]) throw new Error(`Anexo ${i + 1} do backup está incompleto.`)
+      let blob
+      try {
+        blob = base64ToBlob(f.data, f.type || 'application/octet-stream')
+      } catch {
+        throw new Error(`Anexo “${f.name || i + 1}” está corrompido.`)
+      }
+      return { id: f.id, raceId: f.raceId, kind: f.kind, name: f.name || 'arquivo', type: f.type, size: blob.size, createdAt: f.createdAt || new Date().toISOString(), blob }
+    }).filter((f) => ids.has(f.raceId))
+  }
+
+  return { races, goals, files, exportedAt: data.exportedAt ?? null }
 }
 
 export function downloadText(text, filename, mime) {
-  const blob = new Blob([text], { type: mime })
+  downloadBlob(new Blob([text], { type: mime }), filename)
+}
+
+export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

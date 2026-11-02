@@ -22,6 +22,15 @@ export const IconAlert = () => (<svg {...base}><path d="M12 3 2.5 20h19L12 3Z" /
 export const IconInfo = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg>)
 export const IconExternal = () => (<svg {...base}><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" /></svg>)
 
+export const IconTarget = () => (<svg {...base}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" fill="currentColor" /></svg>)
+export const IconClip = () => (<svg {...base}><path d="M20 11.5 12.2 19.3a5 5 0 0 1-7.1-7.1l8.1-8.1a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.2-7.2" /></svg>)
+export const IconFile = () => (<svg {...base}><path d="M14 3H6.5v18h11V6.5L14 3Z" /><path d="M14 3v3.5h3.5M9 12h6M9 16h6" /></svg>)
+export const IconImage = () => (<svg {...base}><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><circle cx="9" cy="10" r="1.8" /><path d="m4 18 5-5 4 4 2.5-2.5L20 19" /></svg>)
+export const IconX = () => (<svg {...base}><path d="M6 6l12 12M18 6 6 18" /></svg>)
+export const IconCheck = () => (<svg {...base} strokeWidth={2.6}><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>)
+export const IconWallet = () => (<svg {...base}><path d="M4 7.5h15.5v12H4z" /><path d="M4 7.5 15 4v3.5M15.5 13.5h4" /></svg>)
+export const IconCamera = () => (<svg {...base}><path d="M4 8h3.5L9 5.5h6L16.5 8H20v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>)
+
 export const RunnerArt = () => (
   <svg viewBox="0 0 120 90" aria-hidden="true">
     <path d="M6 76 C 30 76, 40 30, 66 30 S 96 60, 114 50" fill="none" stroke="var(--brand)" strokeWidth="8" strokeLinecap="round" />

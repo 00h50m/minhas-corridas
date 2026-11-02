@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { addFile, checkFile } from '../services/files.js'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { getRace, saveRace } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
-import { IconInfo } from '../components/Icons.jsx'
+import { IconCamera, IconInfo, IconX } from '../components/Icons.jsx'
 import { emptyResult, validateResult } from '../lib/model.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { durationToInput, formatDuration, formatPace, kmToInput, paceSeconds, parseDuration, parseKm } from '../lib/format.js'
@@ -32,6 +33,9 @@ export default function ResultForm() {
     report: base.report ?? ''
   }))
   const [errors, setErrors] = useState({})
+  const [photos, setPhotos] = useState([])
+  const [saving, setSaving] = useState(false)
+  const photoRef = useRef()
 
   if (!race) return <Navigate to="/corridas" replace />
 
@@ -48,7 +52,7 @@ export default function ResultForm() {
   const net = parseDuration(f.netTime)
   const livePace = paceSeconds(net, off)
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
     const errs = {}
     const res = {
@@ -88,11 +92,31 @@ export default function ResultForm() {
     }
     try {
       saveRace({ ...race, status: 'concluida', result: res })
-      notify(race.result ? 'Resultado atualizado' : 'Resultado registrado. Parabéns!')
-      nav(`/corridas/${race.id}`, { replace: true })
     } catch (err) {
       setErrors({ form: err.message })
+      return
     }
+    let failed = 0
+    if (photos.length) {
+      setSaving(true)
+      for (const file of photos) {
+        try {
+          await addFile(race.id, 'foto', file)
+        } catch {
+          failed++
+        }
+      }
+    }
+    notify(failed ? `Resultado salvo, mas ${failed} ${failed === 1 ? 'foto não pôde' : 'fotos não puderam'} ser guardada(s).` : race.result ? 'Resultado atualizado' : 'Resultado registrado. Parabéns!')
+    nav(`/corridas/${race.id}`, { replace: true })
+  }
+
+  const onPhotos = (e) => {
+    const picked = [...(e.target.files ?? [])]
+    e.target.value = ''
+    const bad = picked.map(checkFile).filter(Boolean)
+    setErrors((p) => ({ ...p, photos: bad.length ? bad.join(' ') : undefined }))
+    setPhotos((p) => [...p, ...picked.filter((f) => !checkFile(f) && f.type.startsWith('image/'))])
   }
 
   const inv = (k) => (errors[k] ? 'true' : 'false')
@@ -170,13 +194,33 @@ export default function ResultForm() {
           </div>
         </details>
 
+        <details className="section" open={photos.length > 0}>
+          <summary>Fotos<span className="sum">{photos.length ? `${photos.length} para salvar` : 'opcional'}</span></summary>
+          <div className="body" style={{ paddingBottom: 16 }}>
+            {photos.length > 0 && (
+              <ul className="file-list">
+                {photos.map((p, i) => (
+                  <li key={i}>
+                    <span className="file-meta"><b>{p.name}</b></span>
+                    <button type="button" className="mini-btn" aria-label={`Tirar ${p.name}`} onClick={() => setPhotos((l) => l.filter((_, j) => j !== i))}><IconX /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button" className="btn btn-block" onClick={() => photoRef.current?.click()}><IconCamera /> Escolher fotos</button>
+            <input ref={photoRef} type="file" accept="image/*" multiple hidden onChange={onPhotos} data-testid="result-photo-input" />
+            {errors.photos && <div className="err" role="alert">{errors.photos}</div>}
+            <p className="note">As fotos ficam só neste aparelho. Depois você pode ver, adicionar ou excluir no detalhe da prova.</p>
+          </div>
+        </details>
+
         {errors.form && <div className="alert alert-error" role="alert" style={{ marginTop: 12 }}>{errors.form}</div>}
-        {Object.keys(errors).filter((k) => errors[k]).length > 0 && !errors.form && (
+        {Object.keys(errors).filter((k) => errors[k] && k !== 'photos').length > 0 && !errors.form && (
           <div className="alert alert-error" role="alert" style={{ marginTop: 12 }}><IconInfo /><div>Confira os campos destacados.</div></div>
         )}
 
         <div className="sticky-actions">
-          <button type="submit" className="btn btn-primary" disabled={!!dateProblem}>{race.result ? 'Salvar resultado' : 'Concluir prova'}</button>
+          <button type="submit" className="btn btn-primary" disabled={!!dateProblem || saving}>{saving ? 'Salvando fotos…' : race.result ? 'Salvar resultado' : 'Concluir prova'}</button>
         </div>
       </form>
     </>

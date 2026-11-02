@@ -3,7 +3,8 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { STATUS_BY_ID } from '../lib/model.js'
 import { dayOfMonth, formatDateBR, monthShort, weekdayShort } from '../lib/dates.js'
 import { formatKm } from '../lib/format.js'
-import { IconBack, IconHistory, IconHome, IconPlus, IconFlag, IconSettings, RunnerArt } from './Icons.jsx'
+import { IconBack, IconHistory, IconHome, IconPlus, IconFlag, IconTarget, RunnerArt } from './Icons.jsx'
+import { GOAL_STATUS_BY_ID } from '../lib/model.js'
 
 export function TopBar({ title, sub, back, right }) {
   const nav = useNavigate()
@@ -32,8 +33,8 @@ export function BottomNav() {
         <NavLink to="/" end className={cls}><IconHome /><span>Início</span></NavLink>
         <NavLink to="/corridas" className={cls}><IconFlag /><span>Corridas</span></NavLink>
         <Link to="/corridas/nova" className="nav-fab" aria-label="Cadastrar corrida"><IconPlus /></Link>
+        <NavLink to="/objetivos" className={cls}><IconTarget /><span>Objetivos</span></NavLink>
         <NavLink to="/historico" className={cls}><IconHistory /><span>Histórico</span></NavLink>
-        <NavLink to="/ajustes" className={cls}><IconSettings /><span>Ajustes</span></NavLink>
       </div>
     </nav>
   )
@@ -125,10 +126,11 @@ export function UIProvider({ children }) {
   const timer = useRef()
 
   const confirm = useCallback((opts) => new Promise((resolve) => setDialog({ ...opts, resolve })), [])
-  const notify = useCallback((msg) => {
+  /** notify('texto') ou notify('texto', { actionLabel: 'Desfazer', onAction }) */
+  const notify = useCallback((msg, opts = {}) => {
     clearTimeout(timer.current)
-    setToast(msg)
-    timer.current = setTimeout(() => setToast(null), 2800)
+    setToast({ msg, ...opts })
+    timer.current = setTimeout(() => setToast(null), opts.onAction ? 5000 : 2800)
   }, [])
 
   const close = (v) => {
@@ -140,7 +142,14 @@ export function UIProvider({ children }) {
     <UIContext.Provider value={{ confirm, notify }}>
       {children}
       {dialog && <ConfirmDialog {...dialog} onClose={close} />}
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast.msg}</span>
+          {toast.onAction && (
+            <button className="toast-action" onClick={() => { clearTimeout(timer.current); setToast(null); toast.onAction() }}>{toast.actionLabel || 'Desfazer'}</button>
+          )}
+        </div>
+      )}
     </UIContext.Provider>
   )
 }
@@ -189,5 +198,25 @@ export function Sheet({ title, onClose, children }) {
         {children}
       </div>
     </div>
+  )
+}
+
+export function Progress({ pct, tone = 'brand', label }) {
+  const v = Math.max(0, Math.min(1, pct || 0))
+  return (
+    <div className={`progress tone-${tone}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)} aria-label={label}>
+      <div style={{ width: `${v * 100}%` }} />
+    </div>
+  )
+}
+
+export function GoalStatusBadge({ status }) {
+  const s = GOAL_STATUS_BY_ID[status]
+  if (!s) return null
+  return (
+    <span className={`status gstatus-${status}`}>
+      <span className="ic" aria-hidden="true">{s.icon}</span>
+      {s.label}
+    </span>
   )
 }

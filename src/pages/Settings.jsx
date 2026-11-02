@@ -1,19 +1,39 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { clearAll, getState, replaceAll, useStore } from '../services/store.js'
 import { backupFileName, buildBackup, downloadText, parseBackup } from '../services/backup.js'
+import { allFiles, clearFiles, filesUsage, formatBytes, pruneFiles, replaceFiles } from '../services/files.js'
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconInfo, IconTrash, IconUpload } from '../components/Icons.jsx'
 import { formatDateBR } from '../lib/dates.js'
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 
 export default function Settings() {
   const store = useStore()
   const { confirm, notify } = useUI()
   const fileRef = useRef()
   const [importError, setImportError] = useState(null)
+  const [usage, setUsage] = useState(null)
+  const [withFiles, setWithFiles] = useState(false)
+  const [busy, setBusy] = useState(null)
 
-  const onExport = () => {
-    downloadText(buildBackup(getState().races), backupFileName(), 'application/json')
-    notify('Backup baixado')
+  const refreshUsage = () => filesUsage().then(setUsage).catch(() => setUsage({ count: 0, bytes: 0, error: true }))
+  useEffect(() => {
+    refreshUsage()
+  }, [])
+
+  const onExport = async () => {
+    setBusy('export')
+    try {
+      const { races, goals } = getState()
+      const files = withFiles ? await allFiles() : null
+      downloadText(await buildBackup(races, goals, files), backupFileName(withFiles), 'application/json')
+      notify('Backup baixado')
+    } catch (err) {
+      notify(err.message || 'Não foi possível gerar o backup.')
+    } finally {
+      setBusy(null)
+    }
   }
 
   const onFile = async (e) => {
@@ -22,49 +42,77 @@ export default function Settings() {
     if (!file) return
     setImportError(null)
     try {
-      if (file.size > 5 * 1024 * 1024) throw new Error('Arquivo grande demais para um backup do app.')
-      const { races, exportedAt } = parseBackup(await file.text())
+      if (file.size > 400 * 1024 * 1024) throw new Error('Arquivo grande demais para um backup do app.')
+      setBusy('import')
+      const { races, goals, files, exportedAt } = parseBackup(await file.text())
+      setBusy(null)
       const when = exportedAt ? ` de ${formatDateBR(exportedAt.slice(0, 10))}` : ''
+      const cur = store.races.length + store.goals.length
       const ok = await confirm({
         title: 'Restaurar backup?',
-        message: `O backup${when} tem ${races.length} ${races.length === 1 ? 'corrida' : 'corridas'}. Os dados atuais deste aparelho${store.races.length ? ` (${store.races.length} ${store.races.length === 1 ? 'corrida' : 'corridas'})` : ''} serão substituídos.`,
+        message:
+          `O backup${when} tem ${plural(races.length, 'corrida', 'corridas')}, ${plural(goals.length, 'objetivo', 'objetivos')}` +
+          (files ? ` e ${plural(files.length, 'anexo', 'anexos')}` : ' e não inclui anexos') +
+          `. Os dados atuais deste aparelho serão substituídos.` +
+          (files ? '' : ' Anexos já guardados aqui continuam, se a corrida existir no backup.'),
         confirmLabel: 'Restaurar',
-        danger: store.races.length > 0
+        danger: cur > 0
       })
       if (!ok) return
-      replaceAll(races)
+      setBusy('import')
+      replaceAll(races, goals)
+      if (files) await replaceFiles(files)
+      else await pruneFiles(races.map((r) => r.id))
       notify('Backup restaurado')
     } catch (err) {
       setImportError(err.message)
+    } finally {
+      setBusy(null)
+      refreshUsage()
     }
   }
 
   const onClear = async () => {
-    const ok = await confirm({ title: 'Apagar todos os dados?', message: 'Todas as corridas e resultados deste aparelho serão apagados. Recomendo baixar um backup antes.', confirmLabel: 'Apagar tudo', danger: true })
+    const ok = await confirm({ title: 'Apagar todos os dados?', message: 'Todas as corridas, objetivos, resultados, anexos e fotos deste aparelho serão apagados. Recomendo baixar um backup antes.', confirmLabel: 'Apagar tudo', danger: true })
     if (!ok) return
     clearAll()
+    await clearFiles().catch(() => {})
+    refreshUsage()
     notify('Dados apagados')
   }
 
+  const empty = !store.races.length && !store.goals.length && !usage?.count
+
   return (
     <>
-      <TopBar title="Ajustes" />
+      <TopBar title="Ajustes" back="/" />
       <div className="page">
         <div className="alert alert-info">
           <IconInfo />
           <div>
-            <b>Seus dados ficam só neste aparelho</b>, no armazenamento local do navegador. Não há conta nem sincronização: outro celular ou navegador não vê estas corridas, e limpar os dados do site apaga tudo. Faça backup de vez em quando.
+            <b>Seus dados ficam só neste aparelho</b>, no armazenamento do navegador. Não há conta nem sincronização: outro celular ou navegador não vê estas corridas, e limpar os dados do site apaga tudo, inclusive anexos e fotos. Faça backup de vez em quando.
           </div>
         </div>
 
         <div className="section-title"><h2>Backup</h2></div>
         <div className="card">
-          <p style={{ marginTop: 0 }}>{store.races.length} {store.races.length === 1 ? 'corrida salva' : 'corridas salvas'} neste aparelho.</p>
-          <button className="btn btn-dark btn-block" onClick={onExport} disabled={store.status !== 'ready'}><IconDownload /> Baixar backup (.json)</button>
-          <button className="btn btn-block" style={{ marginTop: 10 }} onClick={() => fileRef.current?.click()}><IconUpload /> Restaurar de um arquivo</button>
+          <p style={{ marginTop: 0 }}>
+            {plural(store.races.length, 'corrida', 'corridas')} e {plural(store.goals.length, 'objetivo', 'objetivos')} salvos neste aparelho.
+            {usage && !usage.error && <> {plural(usage.count, 'anexo/foto', 'anexos/fotos')} ({formatBytes(usage.bytes)}).</>}
+          </p>
+          <label className="check">
+            <input type="checkbox" checked={withFiles} onChange={(e) => setWithFiles(e.target.checked)} disabled={!usage?.count} />
+            Incluir anexos e fotos{usage?.count ? ` (${formatBytes(usage.bytes)})` : ''}
+          </label>
+          <button className="btn btn-dark btn-block" onClick={onExport} disabled={store.status !== 'ready' || !!busy}>
+            <IconDownload /> {busy === 'export' ? 'Gerando…' : 'Baixar backup (.json)'}
+          </button>
+          <button className="btn btn-block" style={{ marginTop: 10 }} onClick={() => fileRef.current?.click()} disabled={!!busy}>
+            <IconUpload /> {busy === 'import' ? 'Restaurando…' : 'Restaurar de um arquivo'}
+          </button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={onFile} />
           {importError && <div className="alert alert-error" role="alert" style={{ marginTop: 10 }}>{importError}</div>}
-          <p className="note">O backup inclui todas as corridas, detalhes e resultados. Restaurar substitui o que está no aparelho.</p>
+          <p className="note">O backup inclui corridas, detalhes, custos, checklists, resultados e objetivos. Anexos e fotos entram só se você marcar a opção (o arquivo fica maior). Restaurar substitui o que está no aparelho.</p>
         </div>
 
         <div className="section-title"><h2>Instalar no celular</h2></div>
@@ -75,9 +123,9 @@ export default function Settings() {
         </div>
 
         <div className="section-title"><h2>Zona de cuidado</h2></div>
-        <button className="btn btn-danger btn-block" onClick={onClear} disabled={!store.races.length}><IconTrash /> Apagar todos os dados</button>
+        <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>
 
-        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.1 (fase 1)</p>
+        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão 0.2</p>
       </div>
     </>
   )

@@ -9,6 +9,9 @@ import RaceDetail from './pages/RaceDetail.jsx'
 import ResultForm from './pages/ResultForm.jsx'
 import History from './pages/History.jsx'
 import Settings from './pages/Settings.jsx'
+import Goals from './pages/Goals.jsx'
+import GoalForm from './pages/GoalForm.jsx'
+import GoalDetail from './pages/GoalDetail.jsx'
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -44,6 +47,10 @@ export default function App() {
                 <Route path="/corridas/:id/editar" element={<RaceForm />} />
                 <Route path="/corridas/:id/resultado" element={<ResultForm />} />
                 <Route path="/historico" element={<History />} />
+                <Route path="/objetivos" element={<Goals />} />
+                <Route path="/objetivos/novo" element={<GoalForm />} />
+                <Route path="/objetivos/:id" element={<GoalDetail />} />
+                <Route path="/objetivos/:id/editar" element={<GoalForm key="edit" />} />
               </>
             )}
             <Route path="/ajustes" element={<Settings />} />

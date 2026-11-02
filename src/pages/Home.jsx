@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
-import { IconPlus, IconStopwatch } from '../components/Icons.jsx'
+import { IconPlus, IconSettings, IconStopwatch, IconTarget } from '../components/Icons.jsx'
+import { GoalCard } from './Goals.jsx'
+import { memo as historyMemo } from './History.jsx'
+import { activeGoals, goalProgress } from '../lib/goals.js'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatKm, formatMoney } from '../lib/format.js'
 import { nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
@@ -14,14 +17,15 @@ function greeting() {
 }
 
 export default function Home() {
-  const { races } = useStore()
+  const { races, goals } = useStore()
+  const settings = <Link to="/ajustes" className="icon-btn" aria-label="Ajustes e backup"><IconSettings /></Link>
   const today = todayISO()
   const year = Number(today.slice(0, 4))
 
   if (races.length === 0) {
     return (
       <>
-        <TopBar title="Minhas Corridas" sub={greeting()} />
+        <TopBar title="Minhas Corridas" sub={greeting()} right={settings} />
         <div className="page">
           <EmptyState
             title="Bora para a primeira?"
@@ -39,11 +43,16 @@ export default function Home() {
   const pending = pendingResults(races, today)
   const summary = yearSummary(races, year)
   const sameDates = sameDateGroups(races)
+  // Objetivos já atingidos (aguardando confirmação) aparecem primeiro.
+  const active = activeGoals(goals)
+    .map((g, i) => ({ g, i, hit: goalProgress(g, races, today).achieved }))
+    .sort((a, b) => (a.hit === b.hit ? a.i - b.i : a.hit ? -1 : 1))
+    .map((x) => x.g)
   const undatedCount = races.filter((r) => !r.date && ['interesse', 'aberta', 'inscrita'].includes(r.status)).length
 
   return (
     <>
-      <TopBar title="Minhas Corridas" sub={greeting()} />
+      <TopBar title="Minhas Corridas" sub={greeting()} right={settings} />
       <div className="page">
         {pending.length > 0 && (
           <div className="alert alert-warn" style={{ marginBottom: 12 }}>
@@ -65,6 +74,7 @@ export default function Home() {
               {next.distanceKm != null && <span className="chip">{formatKm(next.distanceKm)}</span>}
               {next.bibNumber && <span className="chip">Peito {next.bibNumber}</span>}
               {next.kitPickupDate && daysBetween(today, next.kitPickupDate) >= 0 && <span className="chip">Kit: {formatDateBR(next.kitPickupDate)}</span>}
+              {next.checklist?.length > 0 && <span className="chip">Checklist {next.checklist.filter((i) => i.done).length}/{next.checklist.length}</span>}
             </div>
           </Link>
         ) : (
@@ -83,12 +93,26 @@ export default function Home() {
         <div className="stats">
           <div className="stat"><div className="v">{summary.doneCount}</div><div className="l">{summary.doneCount === 1 ? 'prova concluída' : 'provas concluídas'}</div></div>
           <div className="stat"><div className="v">{formatKm(summary.km, { unit: false })}</div><div className="l">km em provas</div></div>
-          <div className="stat"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 24 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições</div></div>
+          <Link to="/historico" onClick={() => { historyMemo.tab = 'gastos' }} className="stat stat-link"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 24 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições ›</div></Link>
         </div>
         <p className="note">
-          Quilômetros somam só as provas concluídas registradas aqui — não representam todo o seu volume de treino. Gastos consideram inscrição e taxas das provas em que você está inscrita ou concluiu.
+          Quilômetros somam só as provas concluídas registradas aqui — não representam todo o seu volume de treino. Gastos com inscrição usam o valor pago ou, na falta dele, inscrição + taxas, das provas inscritas e concluídas (desistências só com valor pago).
           {summary.missingCost > 0 && ` ${summary.missingCost} ${summary.missingCost === 1 ? 'prova está' : 'provas estão'} sem valor informado.`}
         </p>
+
+        <div className="section-title">
+          <h2>Objetivos</h2>
+          <Link to="/objetivos">{goals.length ? 'Ver todos' : ''}</Link>
+        </div>
+        {active.length === 0 ? (
+          <Link to="/objetivos/novo" className="card goal-empty">
+            <IconTarget />
+            <span><b>{goals.length ? 'Nenhum objetivo em andamento.' : 'Defina um objetivo.'}</b><br /><span className="muted small">Ex.: 5 km abaixo de 30:00, primeira meia, orçamento do ano.</span></span>
+          </Link>
+        ) : (
+          active.slice(0, 3).map((g) => <GoalCard key={g.id} goal={g} races={races} today={today} compact />)
+        )}
+        {active.length > 3 && <p className="note"><Link to="/objetivos">+{active.length - 3} em andamento</Link></p>}
 
         <div className="section-title">
           <h2>Próximas provas</h2>

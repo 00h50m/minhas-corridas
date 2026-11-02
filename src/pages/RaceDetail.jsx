@@ -5,7 +5,10 @@ import { IconCalendar, IconEdit, IconExternal, IconStopwatch, IconTrash, IconAle
 import { STATUSES } from '../lib/model.js'
 import { countdownLabel, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
-import { inscriptionCost, nearbyRaces } from '../lib/stats.js'
+import { nearbyRaces } from '../lib/stats.js'
+import { raceCosts } from '../lib/costs.js'
+import Checklist from '../components/Checklist.jsx'
+import Attachments from '../components/Attachments.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
 
@@ -28,7 +31,9 @@ export default function RaceDetail() {
 
   const today = todayISO()
   const place = [r.city, r.state].filter(Boolean).join('/')
-  const cost = inscriptionCost(r)
+  const costs = raceCosts(r)
+  const checklistOpenByDefault = ['interesse', 'aberta', 'inscrita'].includes(r.status)
+  const doneItems = (r.checklist ?? []).filter((i) => i.done).length
   const near = nearbyRaces(races, r.date, r.id)
   const res = r.result
   const pace = res ? paceSeconds(res.netTime, res.officialDistanceKm) : null
@@ -130,6 +135,8 @@ export default function RaceDetail() {
                 <Row k="Esforço percebido" v={res.effort && `${res.effort}/10`} />
               </dl>
               {res.report && <p style={{ marginTop: 14, whiteSpace: 'pre-wrap' }}>{res.report}</p>}
+              <div className="list-group-title" style={{ marginTop: 16 }}>Fotos</div>
+              <Attachments raceId={r.id} mode="photos" />
               {res.officialUrl && <a className="btn btn-ghost btn-block" href={res.officialUrl} target="_blank" rel="noreferrer"><IconExternal /> Resultado oficial</a>}
               <button className="btn btn-ghost btn-block" onClick={onDeleteResult} style={{ color: 'var(--danger)' }}>Apagar resultado</button>
             </div>
@@ -159,9 +166,6 @@ export default function RaceDetail() {
             <Row k="Sair de casa" v={r.leaveHomeTime} />
             <Row k="Companhia" v={r.companions} />
             <Row k="Organizador" v={r.organizer} />
-            <Row k="Inscrição" v={r.fee != null && formatMoney(r.fee)} />
-            <Row k="Taxas" v={r.extraFees != null && formatMoney(r.extraFees)} />
-            <Row k="Total inscrição" v={r.fee != null && r.extraFees != null && formatMoney(cost)} />
             <Row k="Prazo inscrição" v={r.signupDeadline && formatDateBR(r.signupDeadline)} />
             <Row k="Muda de lote" v={r.lotChangeDate && formatDateBR(r.lotChangeDate)} />
             <Row k="Nº de peito" v={r.bibNumber} />
@@ -173,11 +177,29 @@ export default function RaceDetail() {
             <Row k="Itens do kit" v={r.kitItems} />
           </dl>
           {r.notes && <p style={{ marginTop: 12, whiteSpace: 'pre-wrap' }}>{r.notes}</p>}
-          {!r.venueName && !r.fee && !r.kitPickupDate && !r.notes && !r.bibNumber && (
+          {!r.venueName && !r.kitPickupDate && !r.notes && !r.bibNumber && !r.organizer && !r.signupDeadline && (
             <div className="muted small">Ainda sem detalhes. <Link to={`/corridas/${r.id}/editar`}>Completar cadastro</Link></div>
           )}
           {r.signupUrl && <a className="btn btn-ghost btn-block" href={r.signupUrl} target="_blank" rel="noreferrer"><IconExternal /> Página de inscrição</a>}
         </div>
+
+        <div className="section-title"><h2>Custos</h2><Link to={`/corridas/${r.id}/editar#custos`}>Editar</Link></div>
+        <CostsCard r={r} costs={costs} />
+
+        {checklistOpenByDefault ? (
+          <>
+            <div className="section-title"><h2>Checklist</h2></div>
+            <Checklist race={r} />
+          </>
+        ) : (
+          <details className="section">
+            <summary>Checklist<span className="sum">{doneItems}/{r.checklist?.length ?? 0}</span></summary>
+            <div className="body" style={{ paddingBottom: 16 }}><Checklist race={r} /></div>
+          </details>
+        )}
+
+        <div className="section-title"><h2>Anexos</h2></div>
+        <Attachments raceId={r.id} mode="docs" />
 
         <div className="btn-row" style={{ marginTop: 16 }}>
           <button className="btn" onClick={exportIcs} disabled={!r.date} title={r.date ? '' : 'Defina a data para exportar'}><IconCalendar /> Agenda (.ics)</button>
@@ -186,5 +208,51 @@ export default function RaceDetail() {
         {!r.date && <p className="note">Para adicionar à agenda, defina a data da prova.</p>}
       </div>
     </>
+  )
+}
+
+function CostsCard({ r, costs }) {
+  if (!costs.hasAny) {
+    return (
+      <div className="card muted small">
+        Nenhum custo informado. <Link to={`/corridas/${r.id}/editar#custos`}>Adicionar inscrição, transporte ou hospedagem</Link>
+      </div>
+    )
+  }
+  const visible = costs.lines.filter((l) => l.estimated != null || l.paid != null)
+  return (
+    <div className="card">
+      <table className="cost-table">
+        <thead>
+          <tr><th scope="col">Categoria</th><th scope="col">Estimado</th><th scope="col">Pago</th></tr>
+        </thead>
+        <tbody>
+          {visible.map((l) => (
+            <tr key={l.id}>
+              <th scope="row">{l.label}{l.id === 'outros' && r.otherDesc ? <span className="muted small"> · {r.otherDesc}</span> : ''}</th>
+              <td>{l.estimated != null ? formatMoney(l.estimated) : '—'}</td>
+              <td>{l.paid != null ? formatMoney(l.paid) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {costs.committed || costs.paidOnly ? (
+        <div className="cost-total">
+          <span>Total da corrida</span>
+          <b>{formatMoney(costs.total)}</b>
+        </div>
+      ) : (
+        <div className="cost-total">
+          <span>Previsto, se você se inscrever</span>
+          <b>{formatMoney(costs.planned)}</b>
+        </div>
+      )}
+      <p className="note">
+        {costs.committed && (costs.estimatedPart > 0 ? `${formatMoney(costs.paid)} pagos + ${formatMoney(costs.estimatedPart)} estimados (sem valor pago informado). ` : 'Tudo com valor pago informado. ')}
+        {costs.paidOnly && 'Prova cancelada ou desistência: só os valores pagos entram no total. '}
+        {!costs.committed && !costs.paidOnly && 'Ainda não entra nos seus gastos — só quando a inscrição for confirmada. '}
+        Em cada categoria vale o pago; se não houver, a estimativa. A inscrição nunca é somada duas vezes.
+      </p>
+    </div>
   )
 }

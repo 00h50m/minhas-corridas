@@ -90,3 +90,14 @@ export function kmToInput(n) {
 export function durationToInput(sec) {
   return sec == null ? '' : formatDuration(sec)
 }
+
+/** Número em formato brasileiro: "1.500", "150,5" ou "21.1". Vazio = null; inválido = NaN. */
+export function parseNumber(s) {
+  let t = String(s ?? '').trim()
+  if (!t) return null
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '')
+  if (!/^\d+(\.\d+)?$/.test(t)) return NaN
+  return Number(t)
+}
+

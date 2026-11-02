@@ -1,5 +1,6 @@
 import { daysBetween, todayISO, yearOf } from './dates.js'
 import { PLANNING_STATUSES, SIGNED_UP_STATUSES } from './model.js'
+import { inscriptionSpent } from './costs.js'
 import { paceSeconds } from './format.js'
 
 export function byDateAsc(a, b) {
@@ -32,15 +33,23 @@ export function pendingResults(races, today = todayISO()) {
 export function yearSummary(races, year) {
   const done = races.filter((r) => r.status === 'concluida' && yearOf(r.date) === year)
   const km = done.reduce((s, r) => s + (r.result?.officialDistanceKm ?? r.distanceKm ?? 0), 0)
-  const signedUp = races.filter((r) => SIGNED_UP_STATUSES.includes(r.status) && yearOf(r.date) === year)
-  const withCost = signedUp.filter((r) => inscriptionCost(r) != null)
-  const spent = withCost.reduce((s, r) => s + inscriptionCost(r), 0)
+  const inYear = races.filter((r) => yearOf(r.date) === year)
+  let spent = 0
+  let spentCount = 0
+  for (const r of inYear) {
+    const v = inscriptionSpent(r)
+    if (v != null) {
+      spent += v
+      spentCount++
+    }
+  }
+  const signedUp = inYear.filter((r) => SIGNED_UP_STATUSES.includes(r.status))
   return {
     doneCount: done.length,
     km: Math.round(km * 1000) / 1000,
-    spent,
-    spentCount: withCost.length,
-    missingCost: signedUp.length - withCost.length
+    spent: Math.round(spent * 100) / 100,
+    spentCount,
+    missingCost: signedUp.filter((r) => inscriptionSpent(r) == null).length
   }
 }
 

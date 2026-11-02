@@ -56,6 +56,16 @@ export function emptyRace() {
     leaveHomeTime: '',
     targetTime: null, // meta de tempo para esta prova, em segundos
     notes: '',
+    // Custos. Inscrição estimada = fee + extraFees; feePaid é o valor efetivamente pago.
+    feePaid: null,
+    transportEst: null,
+    transportPaid: null,
+    lodgingEst: null,
+    lodgingPaid: null,
+    otherEst: null,
+    otherPaid: null,
+    otherDesc: '',
+    checklist: null, // [{ id, text, done }]
     result: null,
     createdAt: null,
     updatedAt: null
@@ -104,7 +114,30 @@ export function validateRace(r) {
   }
   if (r.signupUrl && !isUrl(r.signupUrl)) e.signupUrl = 'Use um link completo, começando com https://'
   if (r.status === 'concluida' && !r.date) e.date = 'Uma prova concluída precisa ter data.'
+  for (const k of MONEY_FIELDS) {
+    if (r[k] != null && !(typeof r[k] === 'number' && r[k] >= 0 && r[k] <= 1_000_000)) e[k] = 'Valor inválido.'
+  }
   return e
+}
+
+export const MONEY_FIELDS = ['fee', 'extraFees', 'feePaid', 'transportEst', 'transportPaid', 'lodgingEst', 'lodgingPaid', 'otherEst', 'otherPaid']
+
+export const DEFAULT_CHECKLIST = [
+  'Inscrição confirmada',
+  'Kit retirado',
+  'Documento separado',
+  'Roupa e tênis preparados',
+  'Relógio carregado',
+  'Transporte organizado',
+  'Horário de saída definido'
+]
+
+export function defaultChecklist(status) {
+  return DEFAULT_CHECKLIST.map((text, i) => ({
+    id: 'c' + i + '-' + newId().slice(0, 8),
+    text,
+    done: i === 0 && (status === 'inscrita' || status === 'concluida')
+  }))
 }
 
 export function validateResult(res) {
@@ -127,5 +160,94 @@ export function normalizeRace(raw) {
   const r = { ...base, ...raw }
   r.availableDistances = Array.isArray(r.availableDistances) ? r.availableDistances.filter((n) => typeof n === 'number' && n > 0) : []
   r.result = r.result ? { ...emptyResult(), ...r.result } : null
+  r.checklist = Array.isArray(r.checklist)
+    ? r.checklist.filter((c) => c && typeof c.text === 'string' && c.text.trim()).map((c) => ({ id: String(c.id || newId()), text: c.text.trim().slice(0, 120), done: !!c.done }))
+    : defaultChecklist(r.status)
+  if (typeof r.otherDesc !== 'string') r.otherDesc = ''
   return r
+}
+
+/* ---------- Objetivos ---------- */
+
+export const GOAL_TYPES = [
+  { id: 'primeira', label: 'Primeira prova numa distância', example: 'Completar minha primeira meia maratona', auto: true },
+  { id: 'tempo', label: 'Tempo abaixo de uma marca', example: 'Correr 5 km abaixo de 30:00', auto: true },
+  { id: 'quantidade', label: 'Quantidade de provas', example: 'Completar 8 provas no ano', auto: true },
+  { id: 'km', label: 'Distância acumulada em provas', example: 'Somar 100 km em provas', auto: true },
+  { id: 'orcamento', label: 'Orçamento de inscrições', example: 'Gastar até R$ 1.500 em inscrições', auto: true },
+  { id: 'manual', label: 'Outro objetivo (manual)', example: 'Correr uma prova com minha mãe', auto: false }
+]
+export const GOAL_TYPE_BY_ID = Object.fromEntries(GOAL_TYPES.map((t) => [t.id, t]))
+
+export const GOAL_STATUSES = [
+  { id: 'andamento', label: 'Em andamento', icon: '▶' },
+  { id: 'concluido', label: 'Concluído', icon: '✓' },
+  { id: 'pausado', label: 'Pausado', icon: '❚❚' }
+]
+export const GOAL_STATUS_BY_ID = Object.fromEntries(GOAL_STATUSES.map((s) => [s.id, s]))
+
+/** Unidade exibida para o valor alvo. */
+export function goalUnit(g) {
+  switch (g.type) {
+    case 'primeira':
+    case 'km':
+      return 'km'
+    case 'tempo':
+      return 'tempo'
+    case 'quantidade':
+      return 'provas'
+    case 'orcamento':
+      return 'R$'
+    default:
+      return g.unit || ''
+  }
+}
+
+export function emptyGoal(type = 'tempo') {
+  return {
+    id: null,
+    title: '',
+    type,
+    targetValue: null, // segundos (tempo), km, nº de provas, R$ ou número livre (manual)
+    unit: '', // só para objetivos manuais
+    distanceKm: null, // tempo e primeira prova
+    startDate: null, // início do período considerado (opcional)
+    deadline: null, // prazo (opcional)
+    status: 'andamento',
+    manualValue: null, // progresso informado à mão (manual)
+    notes: '',
+    createdAt: null,
+    updatedAt: null
+  }
+}
+
+export function validateGoal(g) {
+  const e = {}
+  if (!g.title || !g.title.trim()) e.title = 'Dê um título ao objetivo.'
+  else if (g.title.length > 120) e.title = 'Título muito longo (máx. 120 caracteres).'
+  if (!GOAL_TYPE_BY_ID[g.type]) e.type = 'Escolha o tipo.'
+  if (!GOAL_STATUS_BY_ID[g.status]) e.status = 'Status inválido.'
+  if (g.type === 'primeira' || g.type === 'tempo') {
+    if (!(g.distanceKm > 0 && g.distanceKm <= 400)) e.distanceKm = 'Informe a distância em km.'
+  }
+  if (g.type !== 'primeira') {
+    const v = g.targetValue
+    if (!(typeof v === 'number' && v > 0)) e.targetValue = 'Informe o valor alvo.'
+    else if (g.type === 'quantidade' && !(Number.isInteger(v) && v <= 500)) e.targetValue = 'Use um número inteiro de provas.'
+    else if (g.type === 'orcamento' && v > 1_000_000) e.targetValue = 'Valor alto demais.'
+    else if (g.type === 'km' && v > 100_000) e.targetValue = 'Distância alta demais.'
+  }
+  if (g.manualValue != null && !(typeof g.manualValue === 'number' && g.manualValue >= 0)) e.manualValue = 'Use um número maior ou igual a zero.'
+  if (g.startDate != null && !isValidISODate(g.startDate)) e.startDate = 'Data inválida.'
+  if (g.deadline != null && !isValidISODate(g.deadline)) e.deadline = 'Data inválida.'
+  if (!e.startDate && !e.deadline && g.startDate && g.deadline && g.startDate > g.deadline) e.deadline = 'O prazo é anterior ao início.'
+  return e
+}
+
+export function normalizeGoal(raw) {
+  const g = { ...emptyGoal(), ...raw }
+  if (g.type === 'primeira') g.targetValue = g.distanceKm
+  if (typeof g.notes !== 'string') g.notes = ''
+  if (typeof g.unit !== 'string') g.unit = ''
+  return g
 }

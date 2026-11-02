@@ -4,6 +4,9 @@ import { parseDuration, formatDuration, formatPace, paceSeconds, parseKm, parseM
 import { validateRace, validateResult, emptyRace, emptyResult } from './model.js'
 import { yearSummary, recordsByDistance, applyFilters, nearbyRaces, nextConfirmed, sameDateGroups } from './stats.js'
 import { buildICS } from './ics.js'
+import { emptyGoal, validateGoal } from './model.js'
+import { raceCosts, periodCosts } from './costs.js'
+import { goalProgress } from './goals.js'
 import { parseBackup, buildBackup } from '../services/backup.js'
 
 const race = (o) => ({ ...emptyRace(), id: Math.random().toString(36), name: 'Prova', ...o })
@@ -103,9 +106,95 @@ describe('estatísticas', () => {
     expect(text).toContain('DTSTART;VALUE=DATE:20261210')
     expect(text.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 75)).toBe(true)
   })
-  it('backup ida e volta', () => {
-    const back = parseBackup(buildBackup(races))
+  it('backup ida e volta (corridas e objetivos)', async () => {
+    const goals = [{ ...emptyGoal('quantidade'), id: 'g1', title: 'Oito provas', targetValue: 8 }]
+    const back = parseBackup(await buildBackup(races, goals))
     expect(back.races.length).toBe(6)
+    expect(back.goals[0].title).toBe('Oito provas')
+    expect(back.files).toBe(null)
     expect(() => parseBackup('{"x":1}')).toThrow()
+  })
+  it('aceita backup da fase 1 (sem objetivos) e cria checklist padrão', () => {
+    const v1 = JSON.stringify({ app: 'minhas-corridas', version: 1, races: [{ id: 'a', name: 'Antiga', status: 'inscrita', date: '2026-01-10' }] })
+    const back = parseBackup(v1)
+    expect(back.goals).toEqual([])
+    expect(back.races[0].checklist.length).toBe(7)
+    expect(back.races[0].checklist[0]).toMatchObject({ text: 'Inscrição confirmada', done: true })
+  })
+})
+
+describe('custos', () => {
+  it('valor pago substitui a estimativa da inscrição (sem somar duas vezes)', () => {
+    const r = race({ status: 'inscrita', date: '2026-05-01', fee: 150, extraFees: 15, feePaid: 160, transportEst: 80, lodgingEst: 300, lodgingPaid: 280 })
+    const c = raceCosts(r)
+    expect(c.lines[0]).toMatchObject({ estimated: 165, paid: 160, counted: 160, isEstimate: false })
+    expect(c.total).toBe(160 + 80 + 280)
+    expect(c.paid).toBe(440)
+    expect(c.estimatedPart).toBe(80)
+  })
+  it('interesse é previsão; desistência conta só o pago', () => {
+    expect(raceCosts(race({ status: 'interesse', fee: 100 }))).toMatchObject({ total: 0, planned: 100 })
+    expect(raceCosts(race({ status: 'desisti', fee: 100 })).total).toBe(0)
+    expect(raceCosts(race({ status: 'desisti', fee: 100, feePaid: 100 })).total).toBe(100)
+  })
+  it('totaliza por período e categoria', () => {
+    const list = [
+      race({ status: 'concluida', date: '2026-02-01', fee: 100, transportPaid: 50, result: null }),
+      race({ status: 'inscrita', date: '2026-09-01', feePaid: 120, otherEst: 30 }),
+      race({ status: 'inscrita', date: '2025-12-01', feePaid: 999 }),
+      race({ status: 'interesse', date: '2026-10-01', fee: 70 }),
+      race({ status: 'inscrita', date: null, feePaid: 90 })
+    ]
+    const p = periodCosts(list, '2026-01-01', '2026-12-31')
+    expect(p.total).toBe(300)
+    expect(p.paid).toBe(170)
+    expect(p.estimated).toBe(130)
+    expect(p.byCat.find((b) => b.id === 'inscricao').total).toBe(220)
+    expect(p.planned).toBe(70)
+    expect(p.undatedWithCost).toBe(1)
+    expect(p.rows.length).toBe(2)
+  })
+})
+
+describe('objetivos', () => {
+  const res = (km, t, isOfficial = true) => ({ ...emptyResult(), officialDistanceKm: km, netTime: t, isOfficial })
+  const list = [
+    race({ name: 'A', status: 'concluida', date: '2026-03-01', feePaid: 100, result: res(5, 1900) }),
+    race({ name: 'B', status: 'concluida', date: '2026-06-01', fee: 150, result: res(5, 1790, false) }),
+    race({ name: 'C', status: 'concluida', date: '2026-08-01', feePaid: 200, result: res(21.0975, 7500) }),
+    race({ name: 'D', status: 'inscrita', date: '2026-12-01', feePaid: 120 })
+  ]
+  const goal = (o) => ({ ...emptyGoal(o.type), title: 'x', ...o })
+  it('tempo usa só resultado oficial e mostra registro pessoal à parte', () => {
+    const p = goalProgress(goal({ type: 'tempo', distanceKm: 5, targetValue: 1800 }), list, '2026-11-02')
+    expect(p.achieved).toBe(false)
+    expect(p.label).toBe('Melhor: 31:40')
+    expect(p.note).toContain('29:50')
+    const ok = goalProgress(goal({ type: 'tempo', distanceKm: 5, targetValue: 1920 }), list, '2026-11-02')
+    expect(ok.achieved).toBe(true)
+  })
+  it('primeira prova, quantidade e km no período', () => {
+    expect(goalProgress(goal({ type: 'primeira', distanceKm: 21.1 }), list).achieved).toBe(true)
+    expect(goalProgress(goal({ type: 'primeira', distanceKm: 42.195 }), list).achieved).toBe(false)
+    const q = goalProgress(goal({ type: 'quantidade', targetValue: 4, startDate: '2026-01-01', deadline: '2026-12-31' }), list)
+    expect(q.label).toBe('3 de 4')
+    expect(q.pct).toBe(0.75)
+    const k = goalProgress(goal({ type: 'km', targetValue: 50, startDate: '2026-04-01' }), list)
+    expect(k.label).toBe('26,098 km de 50 km')
+  })
+  it('orçamento soma inscrições e só fica cumprido ao fim do período', () => {
+    const g = goal({ type: 'orcamento', targetValue: 600, startDate: '2026-01-01', deadline: '2026-12-31' })
+    const p = goalProgress(g, list, '2026-11-02')
+    expect(p.label.replace(/\s/g, ' ')).toBe('R$ 570,00 de R$ 600,00')
+    expect(p.achieved).toBe(false)
+    expect(p.over).toBe(false)
+    expect(goalProgress(g, list, '2027-01-05').achieved).toBe(true)
+    expect(goalProgress({ ...g, targetValue: 500 }, list).over).toBe(true)
+  })
+  it('valida campos por tipo', () => {
+    expect(validateGoal(goal({ type: 'tempo', targetValue: 1800 })).distanceKm).toBeTruthy()
+    expect(validateGoal(goal({ type: 'quantidade', targetValue: 2.5 })).targetValue).toBeTruthy()
+    expect(validateGoal(goal({ type: 'manual', targetValue: 3, startDate: '2026-05-01', deadline: '2026-04-01' })).deadline).toBeTruthy()
+    expect(validateGoal(goal({ type: 'manual', targetValue: 3 }))).toEqual({})
   })
 })

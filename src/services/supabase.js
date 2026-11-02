@@ -2,8 +2,15 @@
 // A chave anon pode ficar no app: quem protege os dados são as regras (RLS) do banco.
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Projeto padrão do app. A chave "anon" é pública por definição (vai para o navegador de
+// qualquer forma); a proteção dos dados está nas regras RLS do banco (supabase/schema.sql).
+// As variáveis de ambiente, se existirem, têm prioridade.
+const DEFAULT_URL = 'https://yovlefpwtcahmgqkbwsr.supabase.co'
+const DEFAULT_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdmxlZnB3dGNhaG1ncWtid3NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MjQxMDYsImV4cCI6MjEwOTIwMDEwNn0.p7t7JKPUgAUYZvLsD9SdMH6lF4TZh4nvZtVW7e82nCs'
+
+const url = (import.meta.env.VITE_SUPABASE_URL || DEFAULT_URL).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY
 
 export const isConfigured = Boolean(url && anonKey)
 

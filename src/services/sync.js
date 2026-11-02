@@ -169,7 +169,10 @@ let started = false
 export function startSync() {
   if (started || !isConfigured) return
   started = true
-  supabase.auth.getSession().then(({ data }) => handleUser(data.session?.user ?? null))
+  supabase.auth
+    .getSession()
+    .then(({ data }) => handleUser(data.session?.user ?? null))
+    .catch(() => handleUser(null))
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'PASSWORD_RECOVERY') set({ recovery: true })
     const u = session?.user ?? null

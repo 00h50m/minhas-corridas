@@ -4,6 +4,7 @@ import { deleteAccountRemote, isConfigured, supabase, supabaseRemote } from './s
 import { getMeta, onLocalChange, pending, resetMeta, saveMeta } from './syncMeta.js'
 import { markAllLocal, syncOnce } from '../lib/syncEngine.js'
 import { applyRemote, getGoal, getRace, getState as getStore, wipeLocal } from './store.js'
+import { disablePush } from './push.js'
 import { allFiles, applyRemoteFiles, filesMissingBlob, getFileRecord, setFileBlob, wipeLocalFiles } from './files.js'
 
 /*
@@ -156,6 +157,8 @@ export async function resolveImport(send) {
 /** Sai da conta e limpa este aparelho (os dados continuam na nuvem). */
 export async function signOut() {
   if (!supabase) return
+  // Este aparelho para de receber avisos da conta que está saindo.
+  await disablePush().catch(() => {})
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
   await wipeDevice(null)
   set({ user: null, phase: 'signed-out', lastSyncAt: null, error: null, pending: 0 })
@@ -166,6 +169,7 @@ export async function deleteAccount() {
   if (!supabase || !state.user) return
   if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Sem internet. Para excluir a conta, conecte-se.')
   await deleteAccountRemote(state.user.id)
+  await disablePush({ remote: false }).catch(() => {})
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
   await wipeDevice(null)
   set({ user: null, phase: 'signed-out', lastSyncAt: null, error: null, pending: 0 })

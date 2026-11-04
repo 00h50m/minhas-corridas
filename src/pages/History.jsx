@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { DateTile, EmptyState, StatusBadge, TopBar } from '../components/ui.jsx'
-import { IconStopwatch } from '../components/Icons.jsx'
+import { IconCompare, IconStopwatch } from '../components/Icons.jsx'
 import { addDaysISO, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
 import { periodCosts } from '../lib/costs.js'
@@ -46,6 +46,9 @@ export default function History() {
           <div style={{ marginTop: 12 }}>{noResults}</div>
         ) : tab === 'provas' ? (
           <div style={{ marginTop: 12 }}>
+            {list.length >= 2 && (
+              <Link to="/comparar" className="btn btn-block" style={{ marginBottom: 12 }}><IconCompare /> Comparar duas provas km a km</Link>
+            )}
             {list.map((r) => {
               const res = r.result
               const pace = paceSeconds(res.netTime, res.officialDistanceKm)

@@ -137,7 +137,7 @@ export default function Races() {
         ) : (
           <MonthView races={dated} undated={undated} sameDates={sameDates} today={today} />
         )}
-        <p className="note">O botão de agenda no topo exporta para .ics as provas com data da lista filtrada (exceto canceladas e desistências).</p>
+        <p className="note">O botão de agenda no topo exporta para .ics as provas com data da lista filtrada (exceto canceladas e desistências). Para uma agenda que se atualiza sozinha, use a <Link to="/lembretes">agenda por assinatura</Link>.</p>
       </div>
 
       {sheet && <FilterSheet races={races} value={filters} onApply={(f) => { setFilters(f); setSheet(false) }} onClose={() => setSheet(false)} />}

@@ -13,6 +13,9 @@ import Goals from './pages/Goals.jsx'
 import GoalForm from './pages/GoalForm.jsx'
 import GoalDetail from './pages/GoalDetail.jsx'
 import Account from './pages/Account.jsx'
+import ShareResult from './pages/ShareResult.jsx'
+import Compare from './pages/Compare.jsx'
+import Reminders from './pages/Reminders.jsx'
 import ImportPrompt from './components/ImportPrompt.jsx'
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
@@ -49,7 +52,9 @@ export default function App() {
                 <Route path="/corridas/:id" element={<RaceDetail />} />
                 <Route path="/corridas/:id/editar" element={<RaceForm />} />
                 <Route path="/corridas/:id/resultado" element={<ResultForm />} />
+                <Route path="/corridas/:id/compartilhar" element={<ShareResult />} />
                 <Route path="/historico" element={<History />} />
+                <Route path="/comparar" element={<Compare />} />
                 <Route path="/objetivos" element={<Goals />} />
                 <Route path="/objetivos/novo" element={<GoalForm />} />
                 <Route path="/objetivos/:id" element={<GoalDetail />} />
@@ -58,6 +63,7 @@ export default function App() {
             )}
             <Route path="/ajustes" element={<Settings />} />
             <Route path="/conta" element={<Account />} />
+            <Route path="/lembretes" element={<Reminders />} />
             <Route path="*" element={store.status === 'ready' ? <NotFound /> : null} />
           </Routes>
         )}

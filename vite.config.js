@@ -28,7 +28,7 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
-      workbox: { navigateFallback: '/index.html', navigateFallbackDenylist: [/^\/api\//] }
+      workbox: { navigateFallback: '/index.html', navigateFallbackDenylist: [/^\/api\//, /^\/agenda\//], importScripts: ['push-sw.js'] }
     })
   ],
   test: { environment: 'node' }

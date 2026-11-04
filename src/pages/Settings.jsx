@@ -6,7 +6,7 @@ import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconInfo, IconTrash, IconUpload } from '../components/Icons.jsx'
 import { formatDateBR } from '../lib/dates.js'
 import { Link } from 'react-router-dom'
-import { IconCloud } from '../components/Icons.jsx'
+import { IconBell, IconCloud } from '../components/Icons.jsx'
 import { useSync } from '../services/sync.js'
 import { APP_VERSION, checkForUpdate, hardReload } from '../services/appUpdate.js'
 import { syncLabel } from './Account.jsx'
@@ -157,6 +157,14 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        <Link to="/lembretes" className="card account-card" style={{ marginTop: 12 }}>
+          <IconBell />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b>Agenda e avisos</b><br /><span className="small muted">Agenda por assinatura (.ics) e notificações de prazos no celular.</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
 
         <div className="section-title"><h2>Backup</h2></div>
         <div className="card">

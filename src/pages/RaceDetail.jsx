@@ -5,12 +5,14 @@ import { IconRepeat, IconCalendar, IconEdit, IconExternal, IconStopwatch, IconTr
 import { STATUSES } from '../lib/model.js'
 import { countdownLabel, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
-import { nearbyRaces } from '../lib/stats.js'
+import { distanceKey, nearbyRaces } from '../lib/stats.js'
 import { raceCosts } from '../lib/costs.js'
 import Checklist from '../components/Checklist.jsx'
 import Attachments from '../components/Attachments.jsx'
 import WatchSummary from '../components/WatchSummary.jsx'
 import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
+import { IconBell, IconCompare, IconShare } from '../components/Icons.jsx'
+import { comparableRaces } from '../lib/compare.js'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
 
@@ -40,6 +42,10 @@ export default function RaceDetail() {
   const res = r.result
   const pace = res ? paceSeconds(res.netTime, res.officialDistanceKm) : null
   const watchPace = res?.watchDistanceKm ? paceSeconds(res.netTime, res.watchDistanceKm) : null
+  // Sugestão para comparar: a prova anterior mais parecida (mesma distância, com parciais).
+  const cmpList = res ? comparableRaces(races, r) : []
+  const sameKm = (x) => distanceKey(x.result.officialDistanceKm) === distanceKey(res.officialDistanceKm)
+  const compareWith = cmpList.find((x) => sameKm(x) && x.date < r.date) ?? cmpList[0] ?? null
   const canResult = r.date && r.date <= today && r.status !== 'cancelada' && r.status !== 'desisti'
 
   const onDelete = async () => {
@@ -143,6 +149,14 @@ export default function RaceDetail() {
                 </>
               )}
               {res.report && <p style={{ marginTop: 14, whiteSpace: 'pre-wrap' }}>{res.report}</p>}
+              <div className="btn-row" style={{ marginTop: 14 }}>
+                <Link to={`/corridas/${r.id}/compartilhar`} className="btn btn-primary"><IconShare /> Compartilhar</Link>
+                {compareWith ? (
+                  <Link to={`/comparar?a=${compareWith.id}&b=${r.id}`} className="btn"><IconCompare /> Comparar</Link>
+                ) : (
+                  <button className="btn" disabled title="Registre outra prova para comparar"><IconCompare /> Comparar</button>
+                )}
+              </div>
               <div className="list-group-title" style={{ marginTop: 16 }}>Fotos</div>
               <Attachments raceId={r.id} mode="photos" />
               {res.officialUrl && <a className="btn btn-ghost btn-block" href={res.officialUrl} target="_blank" rel="noreferrer"><IconExternal /> Resultado oficial</a>}
@@ -233,7 +247,11 @@ export default function RaceDetail() {
           <button className="btn" onClick={exportIcs} disabled={!r.date} title={r.date ? '' : 'Defina a data para exportar'}><IconCalendar /> Agenda (.ics)</button>
           <button className="btn btn-danger" onClick={onDelete}><IconTrash /> Excluir</button>
         </div>
-        {!r.date && <p className="note">Para adicionar à agenda, defina a data da prova.</p>}
+        {!r.date ? (
+          <p className="note">Para adicionar à agenda, defina a data da prova.</p>
+        ) : (
+          <p className="note"><Link to="/lembretes"><IconBell /> Agenda que se atualiza sozinha e notificações de prazos</Link></p>
+        )}
       </div>
     </>
   )

@@ -102,10 +102,22 @@ export function deadlineVEvents(r) {
   return out
 }
 
-export function buildICS(races, { deadlines = true } = {}) {
+/**
+ * Monta o calendário. `feed: true` é para a agenda por assinatura: avisa o app de calendário
+ * para buscar de novo a cada poucas horas.
+ */
+export function buildICS(races, { deadlines = true, feed = false } = {}) {
   const events = races.map(raceToVEvent).filter(Boolean)
   const count = events.length
   if (deadlines) for (const r of races) events.push(...deadlineVEvents(r))
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Minhas Corridas//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Minhas Corridas', ...events.flat(), 'END:VCALENDAR']
+  const head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Minhas Corridas//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Minhas Corridas']
+  if (feed) head.push('METHOD:PUBLISH', 'X-WR-CALDESC:Provas do app Minhas Corridas', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H')
+  const lines = [...head, ...events.flat(), 'END:VCALENDAR']
   return { text: lines.map(fold).join('\r\n') + '\r\n', count, extra: events.length - count }
+}
+
+/** Provas que entram na agenda por assinatura: com data, sem canceladas/desistências e de até 1 ano atrás. */
+export function feedRaces(races, today) {
+  const from = addDaysISO(today, -365)
+  return races.filter((r) => r.date && r.status !== 'cancelada' && r.status !== 'desisti' && r.date >= from)
 }

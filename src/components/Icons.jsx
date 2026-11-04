@@ -44,3 +44,7 @@ export const RunnerArt = () => (
     <path d="M24 14v26" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" />
   </svg>
 )
+
+export const IconBell = () => (<svg {...base}><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5l1.5-2Z" /><path d="M10 20.5a2.2 2.2 0 0 0 4 0" /></svg>)
+export const IconShare = () => (<svg {...base}><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8" /><path d="M8 11H5.5v9.5h13V11H16" /></svg>)
+export const IconCompare = () => (<svg {...base}><path d="M5 20V10M10 20V4M15 20v-7M20 20V8" /></svg>)

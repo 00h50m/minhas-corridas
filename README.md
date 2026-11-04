@@ -15,7 +15,7 @@ npm test           # testes das regras e do motor de sincronização
 3. Framework: **Vite** (detectado sozinho). Build `npm run build`, saída `dist`.
 4. Deploy. O `vercel.json` já cuida das rotas internas (abrir `/corridas/...` direto funciona).
 
-Não há variáveis de ambiente nem chaves.
+Não há variáveis de ambiente obrigatórias. As notificações push precisam de algumas (ver “Agenda por assinatura e notificações”).
 
 ## Onde ficam os dados
 - Corridas, resultados, custos, checklists e objetivos: `localStorage` (chave `minhas-corridas:v1`, formato versão 2).
@@ -62,6 +62,25 @@ Como funciona:
 - **Análise da prova**: meta x resultado, ritmo pelas parciais (saída forte, quebra, split negativo), esforço, distância do relógio e comparação com provas anteriores.
 - **Plano de prova / do objetivo**: pace e passagens para a meta, quanto falta para o objetivo de tempo, degrau intermediário e próximas provas candidatas. É plano de ritmo, não de treino.
 - **Evolução**: este ano x anterior (até a mesma data), provas por mês e pace por distância.
+- **Card para compartilhar** (Resultado → Compartilhar): imagem PNG gerada no aparelho, nos formatos feed (4:5), stories (9:16) e quadrado. Distância, tempo, pace, classificação, selos (recorde pessoal, primeira na distância, meta batida) e as parciais por km; fundo na cor do app ou com uma foto da prova. Usa o compartilhamento do celular; onde não há, baixa a imagem.
+- **Comparar provas km a km** (Histórico → Comparar, ou no resultado): tempo, pace, FC, subida e esforço lado a lado; diferença por km e acumulada, maior ganho e perda, e em qual metade veio a diferença. Precisa das parciais do arquivo do relógio; sem elas, compara só os totais.
+- **Agenda por assinatura** e **notificações push de prazos**: em Ajustes → Agenda e avisos. Precisam de conta (ver abaixo).
+
+## Agenda por assinatura e notificações (opcional, precisam de conta)
+Rode o `supabase/schema.sql` de novo (trechos 6 e 7 são novos; é idempotente).
+
+**Agenda por assinatura** — sem configuração extra. Cada pessoa gera um link secreto (`/agenda/<token>/minhas-corridas.ics`) e assina no iPhone, Google Agenda ou Outlook. A função `api/agenda.js` chama `calendar_feed` no banco com a chave pública; o banco devolve só nome, data, horário, local, status, nº de peito, kit e prazos (nunca custos, notas ou resultados). Trocar o link invalida o anterior. Entram as provas com data (sem canceladas/desistências) de até 1 ano atrás. Mostra o que já foi sincronizado com a nuvem. Cada calendário decide quando atualizar (o Google pode levar até um dia).
+
+**Notificações push** — um envio por dia (Vercel Cron, `vercel.json`, 11:00 UTC = 8h de Brasília): fim da inscrição (3 dias antes e no dia), mudança de lote (véspera), retirada do kit (véspera e no dia, até marcar “Kit retirado”) e prova (véspera). Nunca manda a mesma duas vezes (`push_log`). No iPhone, só com o app na Tela de Início (iOS 16.4+). Variáveis no Vercel (Settings → Environment Variables), depois um novo deploy:
+
+| Variável | O quê |
+|---|---|
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Gere uma vez com `npx web-push generate-vapid-keys` |
+| `VAPID_SUBJECT` | `mailto:seu-email` (contato exigido pelos serviços de push) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → *service_role*. **Só no Vercel**, nunca com prefixo `VITE_` |
+| `CRON_SECRET` | Texto aleatório longo; o Vercel o envia ao chamar o cron |
+
+Sem essas variáveis, o app avisa que as notificações não estão configuradas e o resto funciona normalmente. Testes: `npm test` (regras, rodada diária, funções) e `node scripts/e2e-rodada4.mjs` (telas, com Supabase simulado; o push é entregue ao service worker pelo DevTools).
 
 ## Regras de custos
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).
@@ -69,4 +88,4 @@ Como funciona:
 - Inscrita/Concluída entram no gasto; Desisti/Cancelada só com valor pago; Interesse/Inscrição aberta aparecem como previsão.
 
 ## Fora do escopo
-GPS, prescrição de treinos, rede social, integrações (Garmin/Strava), busca automática de provas.
+GPS, prescrição de treinos, rede social, integrações (Garmin/Strava), busca automática de provas. O card de compartilhar gera só a imagem; não publica em nenhuma rede.

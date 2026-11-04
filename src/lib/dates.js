@@ -93,3 +93,13 @@ export function countdownLabel(iso, today = todayISO()) {
   if (n === -1) return 'Foi ontem'
   return `Há ${-n} dias`
 }
+
+/** "Hoje" (YYYY-MM-DD) num fuso horário, para o servidor. Fuso inválido → horário de Brasília. */
+export function todayInTimeZone(tz, now = new Date()) {
+  const fmt = (zone) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  try {
+    return fmt(tz || 'America/Sao_Paulo')
+  } catch {
+    return fmt('America/Sao_Paulo')
+  }
+}

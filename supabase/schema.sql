@@ -101,3 +101,128 @@ $$;
 
 revoke all on function public.delete_my_account(boolean) from public, anon;
 grant execute on function public.delete_my_account(boolean) to authenticated;
+
+-- 6) Agenda por assinatura (Ajustes → Agenda e avisos).
+--    Um link secreto por pessoa. O calendário (Google, Apple, Outlook) busca /api/agenda com esse
+--    token; a função calendar_feed devolve só os campos que vão para a agenda (nunca custos ou notas).
+create table if not exists public.calendar_feeds (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  token text not null unique check (char_length(token) >= 48),
+  created_at timestamptz not null default now()
+);
+alter table public.calendar_feeds enable row level security;
+drop policy if exists "feeds: dono lê" on public.calendar_feeds;
+drop policy if exists "feeds: dono apaga" on public.calendar_feeds;
+create policy "feeds: dono lê" on public.calendar_feeds
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "feeds: dono apaga" on public.calendar_feeds
+  for delete to authenticated using (user_id = (select auth.uid()));
+
+-- Cria (ou troca) o link. O token é gerado no banco: 2 UUIDs aleatórios = 244 bits.
+create or replace function public.rotate_calendar_feed()
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  uid uuid := auth.uid();
+  t text := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
+begin
+  if uid is null then
+    raise exception 'não autenticado';
+  end if;
+  insert into public.calendar_feeds (user_id, token) values (uid, t)
+  on conflict (user_id) do update set token = excluded.token, created_at = now();
+  return t;
+end;
+$$;
+revoke all on function public.rotate_calendar_feed() from public, anon;
+grant execute on function public.rotate_calendar_feed() to authenticated;
+
+-- Devolve null quando o token não existe (link trocado/desativado) ou { races: [...] }.
+drop function if exists public.calendar_feed(text);
+create or replace function public.calendar_feed(feed_token text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select case when f.uid is null then null else jsonb_build_object('races', coalesce((
+    select jsonb_agg(jsonb_build_object('id', r.id) || coalesce((
+      select jsonb_object_agg(e.key, e.value)
+      from jsonb_each(r.data) e
+      where e.key = any (array['name', 'date', 'startTime', 'distanceKm', 'city', 'state', 'venueName', 'venueAddress', 'status',
+        'bibNumber', 'kitPickupDate', 'kitPickupTime', 'kitPickupAddress', 'signupUrl', 'signupDeadline', 'lotChangeDate'])
+    ), '{}'::jsonb))
+    from public.records r
+    where r.user_id = f.uid and r.kind = 'race' and not r.deleted and r.data is not null
+  ), '[]'::jsonb)) end
+  from (select (select c.user_id from public.calendar_feeds c where char_length(feed_token) >= 48 and c.token = feed_token) as uid) f;
+$$;
+revoke all on function public.calendar_feed(text) from public;
+grant execute on function public.calendar_feed(text) to anon, authenticated;
+
+-- 7) Notificações push de prazos (Ajustes → Agenda e avisos).
+--    Cada aparelho que ativa as notificações vira uma linha. Quem envia é a função /api/push-cron
+--    (Vercel Cron, 1x por dia) com a chave service_role, que fica só no servidor.
+create table if not exists public.push_subscriptions (
+  endpoint text primary key check (char_length(endpoint) between 10 and 1000),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  p256dh text not null check (char_length(p256dh) < 200),
+  auth text not null check (char_length(auth) < 100),
+  tz text not null default 'America/Sao_Paulo' check (char_length(tz) < 60),
+  created_at timestamptz not null default now()
+);
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions (user_id);
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "push: dono lê" on public.push_subscriptions;
+create policy "push: dono lê" on public.push_subscriptions
+  for select to authenticated using (user_id = (select auth.uid()));
+
+-- O mesmo navegador pode trocar de conta: a inscrição passa a ser de quem entrou por último.
+create or replace function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text, p_tz text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'não autenticado';
+  end if;
+  if p_endpoint !~ '^https://' then
+    raise exception 'endpoint inválido';
+  end if;
+  insert into public.push_subscriptions (endpoint, user_id, p256dh, auth, tz)
+  values (p_endpoint, uid, p_p256dh, p_auth, coalesce(nullif(p_tz, ''), 'America/Sao_Paulo'))
+  on conflict (endpoint) do update set user_id = uid, p256dh = excluded.p256dh, auth = excluded.auth, tz = excluded.tz, created_at = now();
+end;
+$$;
+revoke all on function public.save_push_subscription(text, text, text, text) from public, anon;
+grant execute on function public.save_push_subscription(text, text, text, text) to authenticated;
+
+create or replace function public.delete_push_subscription(p_endpoint text)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from public.push_subscriptions where endpoint = p_endpoint and user_id = auth.uid();
+$$;
+revoke all on function public.delete_push_subscription(text) from public, anon;
+grant execute on function public.delete_push_subscription(text) to authenticated;
+
+-- Registro do que já foi enviado (evita repetir a mesma notificação). Só o servidor acessa.
+create table if not exists public.push_log (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  key text not null check (char_length(key) < 200),
+  created_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+alter table public.push_log enable row level security;
+
+-- A exclusão de conta (trecho 5) já leva tudo isto junto: as tabelas acima apagam em cascata com o usuário.

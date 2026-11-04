@@ -1,1 +1,7 @@
-{ "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }] }
+{
+  "rewrites": [
+    { "source": "/agenda/:token/minhas-corridas.ics", "destination": "/api/agenda?t=:token" },
+    { "source": "/((?!api/|agenda/).*)", "destination": "/index.html" }
+  ],
+  "crons": [{ "path": "/api/push-cron", "schedule": "0 11 * * *" }]
+}

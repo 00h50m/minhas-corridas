@@ -84,22 +84,23 @@ await expectText('tempo estimado')
 await shot('dia-da-prova')
 ok('Dia da prova: Início leva ao modo prova, com peito, mapa, checklist e previsão (sem meta)')
 
-// 2. Previsão no detalhe: usar como meta
+// 2. Meta no detalhe: previsão sugere, “Usar” preenche e “Definir meta” salva
 await p.goto(BASE + '/corridas/futura10', { waitUntil: 'networkidle0' })
-await p.waitForSelector('[data-testid=predict-card]')
-await expectText('Previsão de tempo')
+await p.waitForSelector('[data-testid=target-set] [data-testid=predict-hint]')
+await expectText('Meta de tempo')
 const mesma = await txt()
 if (!mesma.includes('10K da Ponte')) throw new Error('Fonte da previsão ausente')
-await click('[data-testid=predict-card] button', 'como meta')
+await click('[data-testid=predict-hint] button', 'Usar')
+await click('[data-testid=target-set] button', 'Definir meta')
 await p.waitForFunction(() => document.body.innerText.toLowerCase().includes('plano de prova'))
 const target = await p.evaluate(() => JSON.parse(localStorage.getItem('minhas-corridas:v1')).races.find((r) => r.id === 'futura10').targetTime)
 if (target !== 3000) throw new Error('Meta salva errada: ' + target)
-ok('Previsão no detalhe: 10K estimado pelo 10K anterior (50:00) e salvo como meta')
+ok('Meta no detalhe: 10K estimado pelo 10K anterior (50:00), usado e salvo como meta')
 
-// Maratona: longe demais dos 5K/10K? 42,195/10 = 4,2x → aproximada; ainda mostra, com aviso
+// Maratona: 42,195/10 = 4,2x → aproximada; ainda mostra, com aviso
 await p.goto(BASE + '/corridas/futura', { waitUntil: 'networkidle0' })
-await p.waitForSelector('[data-testid=predict-card]')
-await expectText('distância bem diferente')
+await p.waitForSelector('[data-testid=predict-hint]')
+await expectText('estimativa aproximada')
 ok('Maratona estimada por provas curtas aparece marcada como aproximada')
 
 // 3. Previsão no formulário

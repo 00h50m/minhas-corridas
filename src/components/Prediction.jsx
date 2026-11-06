@@ -16,7 +16,7 @@ export function PredictionHint({ races, km, excludeId, onUse }) {
     <div className="predict-hint" data-testid="predict-hint">
       <span>
         Pelas suas provas: <b>~{formatDuration(p.estimate)}</b> ({formatPace(p.estimate / km)})
-        <span className="muted"> · base: {s.race.name}, {formatKm(s.km)} em {formatDuration(s.time)}</span>
+        <span className="muted"> · base: {s.race.name}, {formatKm(s.km)} em {formatDuration(s.time)}{p.quality === 'aproximada' ? ' — estimativa aproximada (distância bem diferente)' : ''}</span>
       </span>
       {onUse && <button type="button" className="link-btn" onClick={() => onUse(target)}>Usar {formatDuration(target)}</button>}
     </div>

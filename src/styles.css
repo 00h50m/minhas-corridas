@@ -670,3 +670,17 @@ details.link-import { margin-top: 0; }
 .decide-link { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; margin-top: 12px; }
 .decide-link > span:last-child { font-size: 24px; color: var(--ink-3); }
 .budget-head .flag { white-space: nowrap; flex: none; }
+
+/* Meta x realizado */
+.target-set .lbl { display: block; font-size: 14px; font-weight: 800; margin-bottom: 6px; color: var(--ink-2); }
+.target-set .grid-2-1 { align-items: start; }
+.target-set .btn { min-height: 48px; }
+.tc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tc-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tc-table th, .tc-table td { padding: 7px 0; border-bottom: 1px solid var(--line); font-weight: 700; text-align: right; white-space: nowrap; }
+.tc-table th:first-child { text-align: left; }
+.tc-table thead th { font-size: 12px; color: var(--ink-3); text-transform: uppercase; }
+.tc-table td { padding-left: 8px; }
+.tc-table .bar-cell { width: 32%; }
+.tc-table tr.half th, .tc-table tr.half td { background: var(--surface-2); }
+.tc-table tr.end th, .tc-table tr.end td { border-bottom: 0; font-weight: 800; }

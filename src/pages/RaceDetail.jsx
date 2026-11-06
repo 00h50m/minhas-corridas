@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteRace, getRace, saveRace, useStore } from '../services/store.js'
 import { StatusBadge, TopBar, useUI } from '../components/ui.jsx'
@@ -13,7 +14,7 @@ import WatchSummary from '../components/WatchSummary.jsx'
 import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
 import { IconBell, IconCompare, IconFlag, IconShare } from '../components/Icons.jsx'
 import { comparableRaces } from '../lib/compare.js'
-import { PredictionCard } from '../components/Prediction.jsx'
+import { TargetCompareCard, TargetQuickSet } from '../components/Target.jsx'
 import { DecisionActions, DecisionDetails, WishPicker, setWish } from '../components/Decision.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
@@ -32,6 +33,7 @@ export default function RaceDetail() {
   const { races, goals } = useStore()
   const nav = useNavigate()
   const { confirm, notify } = useUI()
+  const [editTarget, setEditTarget] = useState(false)
   const r = getRace(id)
   if (!r) return <Navigate to="/corridas" replace />
 
@@ -126,16 +128,6 @@ export default function RaceDetail() {
                 <div><div className="v">{formatKm(res.officialDistanceKm, { unit: false })}</div><div className="l">km oficiais</div></div>
               </div>
               {!res.isOfficial && <div className="alert alert-info small" style={{ marginTop: 12 }}><IconInfo /><div>Registro pessoal — sem resultado oficial da organização.</div></div>}
-              {r.targetTime && (
-                <div className={`alert small ${res.netTime <= r.targetTime ? 'alert-ok' : 'alert-warn'}`} style={{ marginTop: 12 }}>
-                  <div>
-                    <b>Meta {formatDuration(r.targetTime)}</b> ·{' '}
-                    {res.netTime <= r.targetTime
-                      ? `batida por ${formatDuration(r.targetTime - res.netTime)}`
-                      : `ficou ${formatDuration(res.netTime - r.targetTime)} acima`}
-                  </div>
-                </div>
-              )}
               <dl className="kv" style={{ marginTop: 14 }}>
                 <Row k="Tempo bruto" v={res.grossTime && formatDuration(res.grossTime)} />
                 <Row k="Distância no relógio" v={!res.watch && res.watchDistanceKm && `${formatKm(res.watchDistanceKm)} (pace ${formatPace(watchPace)})`} />
@@ -177,6 +169,14 @@ export default function RaceDetail() {
           <Link to={`/corridas/${r.id}/dia`} className="btn btn-dark btn-block" style={{ marginTop: 12 }}><IconFlag /> Modo dia da prova</Link>
         )}
 
+        {res && r.targetTime && (
+          <>
+            <div className="section-title"><h2>Meta x realizado</h2></div>
+            <TargetCompareCard race={r} />
+          </>
+        )}
+        {res && !r.targetTime && <p className="note">Sem meta de tempo definida para esta prova. Defina a meta antes da próxima para comparar passagem por passagem.</p>}
+
         {res ? (
           <>
             <div className="section-title"><h2>Como foi a prova</h2></div>
@@ -185,15 +185,17 @@ export default function RaceDetail() {
         ) : (
           r.targetTime && r.distanceKm && !['cancelada', 'desisti'].includes(r.status) && (
             <>
-              <div className="section-title"><h2>Plano de prova</h2><Link to={`/corridas/${r.id}/editar`}>Mudar meta</Link></div>
+              <div className="section-title"><h2>Plano de prova</h2><button type="button" className="link-btn" onClick={() => setEditTarget((v) => !v)}>{editTarget ? 'Fechar' : 'Mudar meta'}</button></div>
+              {editTarget && <div className="card" style={{ marginBottom: 12 }}><TargetQuickSet race={r} races={races} onDone={() => setEditTarget(false)} /></div>}
               <RacePlan race={r} />
             </>
           )
         )}
         {!res && !r.targetTime && r.distanceKm && ['interesse', 'aberta', 'inscrita'].includes(r.status) && (
           <>
-            <div className="section-title"><h2>Previsão de tempo</h2></div>
-            <PredictionCard races={races} km={r.distanceKm} excludeId={r.id} onUse={(t) => { saveRace({ ...getRace(r.id), targetTime: t }); notify('Meta definida') }} />
+            <div className="section-title"><h2>Meta de tempo</h2></div>
+            <div className="card"><TargetQuickSet race={r} races={races} /></div>
+            <p className="note">Com a meta definida antes da prova, depois do resultado o app compara o plano com o que você fez: na chegada, na metade e em cada passagem.</p>
           </>
         )}
 

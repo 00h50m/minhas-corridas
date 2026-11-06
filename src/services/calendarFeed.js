@@ -29,12 +29,12 @@ export async function deleteFeed(userId) {
 }
 
 export function feedLinks(token, origin = location.origin) {
-  const https = `${origin}/agenda/${token}/minhas-corridas.ics`
+  const https = `${origin}/agenda/${token}/paceon.ics`
   const webcal = https.replace(/^https?:/, 'webcal:')
   return {
     https,
     webcal,
     google: `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(webcal)}`,
-    outlook: `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent('Minhas Corridas')}`
+    outlook: `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent('PaceOn')}`
   }
 }

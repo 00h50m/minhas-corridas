@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/agenda/:token/paceon.ics", "destination": "/api/agenda?t=:token" },
     { "source": "/agenda/:token/minhas-corridas.ics", "destination": "/api/agenda?t=:token" },
     { "source": "/((?!api/|agenda/).*)", "destination": "/index.html" }
   ],

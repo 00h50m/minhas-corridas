@@ -20,7 +20,7 @@ export async function buildBackup(races, goals = [], files = null) {
 }
 
 export function backupFileName(withFiles) {
-  return `minhas-corridas-backup${withFiles ? '-com-anexos' : ''}-${todayISO()}.json`
+  return `paceon-backup${withFiles ? '-com-anexos' : ''}-${todayISO()}.json`
 }
 
 /** Valida o JSON de backup. Retorna { races, goals, files|null } ou lança erro com mensagem amigável. */
@@ -32,7 +32,7 @@ export function parseBackup(text) {
     throw new Error('O arquivo não é um JSON válido.')
   }
   if (!data || data.app !== 'minhas-corridas' || !Array.isArray(data.races)) {
-    throw new Error('Este arquivo não parece ser um backup do Minhas Corridas.')
+    throw new Error('Este arquivo não parece ser um backup do PaceOn.')
   }
   if (typeof data.version !== 'number' || data.version > SCHEMA_VERSION) {
     throw new Error('Backup de uma versão mais nova do app. Atualize o app antes de restaurar.')

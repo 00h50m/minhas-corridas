@@ -6,10 +6,10 @@
   --ink-2: #4a4862;
   --ink-3: #6e6b85;
   --line: #e7dfd4;
-  --brand: #ff5a36;
+  --brand: #ff5f24;
   --brand-ink: #c2381a;
   --brand-soft: #ffe7df;
-  --hero: #1b1a33;
+  --hero: #17152f;
   --hero-ink: #fff4ec;
   --ok: #16794a;
   --ok-soft: #dcf3e6;
@@ -610,3 +610,8 @@ details.link-import { margin-top: 0; }
 .race-day .bib { margin-top: 12px; text-align: center; padding: 14px 16px 18px; border: 3px dashed var(--line); }
 .race-day .bib .l { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-3); }
 .race-day .bib .v { font-family: var(--display); font-weight: 800; font-size: 72px; line-height: 1; margin-top: 4px; letter-spacing: 2px; }
+
+/* Marca PaceOn */
+.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font); font-style: italic; font-weight: 800; letter-spacing: 0.5px; }
+.brand img { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+.brand .on { color: var(--brand); }

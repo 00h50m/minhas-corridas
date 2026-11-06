@@ -46,7 +46,7 @@ async function fetchPage(raw) {
       res = await fetch(url, {
         redirect: 'manual',
         signal: ctrl.signal,
-        headers: { 'user-agent': 'Mozilla/5.0 (compatible; MinhasCorridas/1.0; app pessoal)', accept: 'text/html,application/xhtml+xml', 'accept-language': 'pt-BR,pt;q=0.9' }
+        headers: { 'user-agent': 'Mozilla/5.0 (compatible; PaceOn/1.0; app pessoal)', accept: 'text/html,application/xhtml+xml', 'accept-language': 'pt-BR,pt;q=0.9' }
       })
     } catch {
       clearTimeout(timer)

@@ -80,7 +80,7 @@ export default function Races() {
       return
     }
     const { text, count } = buildICS(toExport)
-    downloadText(text, `minhas-corridas-${today}.ics`, 'text/calendar')
+    downloadText(text, `paceon-${today}.ics`, 'text/calendar')
     notify(`${count} ${count === 1 ? 'prova exportada' : 'provas exportadas'} para .ics`)
   }
 

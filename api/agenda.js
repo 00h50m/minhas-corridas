@@ -1,5 +1,5 @@
 // Agenda por assinatura: o app de calendário busca este endereço com o token secreto da pessoa
-// (/agenda/<token>/minhas-corridas.ics → /api/agenda?t=<token>). Usa a chave pública (anon):
+// (/agenda/<token>/paceon.ics → /api/agenda?t=<token>; o endereço antigo .../minhas-corridas.ics continua valendo). Usa a chave pública (anon):
 // quem filtra as provas e os campos é a função calendar_feed no banco.
 import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL, cleanSupabaseUrl } from '../src/config.js'
 import { buildICS, feedRaces } from '../src/lib/ics.js'
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     const races = rows.filter((r) => r && typeof r.id === 'string' && typeof r.name === 'string').map(normalizeRace)
     const { text } = buildICS(feedRaces(races, todayInTimeZone('America/Sao_Paulo')), { feed: true })
     res.setHeader('content-type', 'text/calendar; charset=utf-8')
-    res.setHeader('content-disposition', 'inline; filename="minhas-corridas.ics"')
+    res.setHeader('content-disposition', 'inline; filename="paceon.ics"')
     res.setHeader('cache-control', 'private, max-age=900')
     res.setHeader('x-robots-tag', 'noindex')
     return res.status(200).send(text)

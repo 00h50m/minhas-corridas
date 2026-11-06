@@ -11,21 +11,21 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'logo-256.png'],
       manifest: {
-        name: 'Minhas Corridas',
-        short_name: 'Corridas',
+        name: 'PaceOn',
+        short_name: 'PaceOn',
         description: 'Calendário de provas, inscrições e resultados',
         lang: 'pt-BR',
         start_url: '/',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#FBF7F2',
-        theme_color: '#FF5A36',
+        background_color: '#17152F',
+        theme_color: '#FF5F24',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
       workbox: { navigateFallback: '/index.html', navigateFallbackDenylist: [/^\/api\//, /^\/agenda\//], importScripts: ['push-sw.js'] }

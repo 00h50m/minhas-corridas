@@ -16,7 +16,7 @@ export function pushEnv(env = process.env) {
     missing,
     publicKey: env.VAPID_PUBLIC_KEY || '',
     privateKey: env.VAPID_PRIVATE_KEY || '',
-    subject: env.VAPID_SUBJECT || 'mailto:minhas-corridas@example.com'
+    subject: env.VAPID_SUBJECT || 'mailto:paceon@example.com'
   }
 }
 

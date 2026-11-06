@@ -205,7 +205,7 @@ export default function Settings() {
           <button className="link-btn" style={{ marginTop: 6 }} disabled={!!busy} onClick={onHardReload}>Travou numa versão antiga? Recarregar o app do zero</button>
         </div>
 
-        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>Minhas Corridas · versão {APP_VERSION}</p>
+        <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>PaceOn · versão {APP_VERSION}</p>
       </div>
     </>
   )

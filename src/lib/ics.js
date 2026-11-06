@@ -110,8 +110,8 @@ export function buildICS(races, { deadlines = true, feed = false } = {}) {
   const events = races.map(raceToVEvent).filter(Boolean)
   const count = events.length
   if (deadlines) for (const r of races) events.push(...deadlineVEvents(r))
-  const head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Minhas Corridas//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Minhas Corridas']
-  if (feed) head.push('METHOD:PUBLISH', 'X-WR-CALDESC:Provas do app Minhas Corridas', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H')
+  const head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PaceOn//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:PaceOn']
+  if (feed) head.push('METHOD:PUBLISH', 'X-WR-CALDESC:Provas do app PaceOn', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H')
   const lines = [...head, ...events.flat(), 'END:VCALENDAR']
   return { text: lines.map(fold).join('\r\n') + '\r\n', count, extra: events.length - count }
 }

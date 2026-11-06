@@ -1,13 +1,20 @@
 // Desenha o card de resultado num <canvas> (só no navegador). Conteúdo vem de shareCardInfo().
 const DISPLAY = '"Barlow Condensed", "Arial Narrow", system-ui, sans-serif'
 const TEXT = '"Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
-const BRAND = '#FF5A36'
-const HERO = '#1B1A33'
+const BRAND = '#FF5F24'
+const HERO = '#17152F'
 const CREAM = '#FFF4EC'
 
+let logo = null
+
+/** Fontes e logo do card (o logo é opcional: sem ele, só o nome). */
 export async function loadCardFonts() {
-  if (!document.fonts?.load) return
+  const img = new Image()
+  img.src = '/logo-256.png'
+  const logoReady = img.decode().then(() => (logo = img)).catch(() => {})
+  if (!document.fonts?.load) return logoReady
   await Promise.all([
+    logoReady,
     document.fonts.load(`800 100px "Barlow Condensed"`),
     document.fonts.load(`700 100px "Barlow Condensed"`),
     document.fonts.load(`800 40px "Nunito Sans"`),
@@ -130,19 +137,21 @@ export function drawCard(canvas, info, format, photo = null) {
   background(ctx, W, H, photo)
   ctx.textBaseline = 'alphabetic'
 
-  // Topo: marca do app, data e local
+  // Topo: marca do app (logo + PACEON), data e local
   let y = pad + (H > 1500 ? 80 : 0)
-  ctx.fillStyle = BRAND
-  roundRect(ctx, pad, y, 54, 54, 14)
-  ctx.fill()
+  if (logo) {
+    ctx.save()
+    roundRect(ctx, pad, y, 54, 54, 14)
+    ctx.clip()
+    ctx.drawImage(logo, pad, y, 54, 54)
+    ctx.restore()
+  }
+  const bx = logo ? pad + 70 : pad
+  ctx.font = `italic 800 34px ${TEXT}`
   ctx.fillStyle = '#fff'
-  ctx.font = `800 34px ${DISPLAY}`
-  ctx.textAlign = 'center'
-  ctx.fillText('MC', pad + 27, y + 39)
-  ctx.textAlign = 'left'
-  ctx.fillStyle = CREAM
-  ctx.font = `800 30px ${TEXT}`
-  ctx.fillText('MINHAS CORRIDAS', pad + 74, y + 38)
+  ctx.fillText('PACE', bx, y + 40)
+  ctx.fillStyle = BRAND
+  ctx.fillText('ON', bx + ctx.measureText('PACE').width, y + 40)
   y += 54 + 56
   const meta = [info.date, info.place].filter(Boolean).join('  ·  ')
   if (meta) {

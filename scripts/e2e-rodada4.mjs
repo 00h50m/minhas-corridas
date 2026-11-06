@@ -177,7 +177,7 @@ await p.waitForFunction(() => document.body.innerText.includes('Criar link da ag
 await click('button', 'Criar link da agenda')
 await p.waitForSelector('[data-testid=feed-link]')
 const link = await p.$eval('[data-testid=feed-link]', (e) => e.innerText)
-if (link !== `${BASE}/agenda/${'a'.repeat(64)}/minhas-corridas.ics`) throw new Error('Link da agenda errado: ' + link)
+if (link !== `${BASE}/agenda/${'a'.repeat(64)}/paceon.ics`) throw new Error('Link da agenda errado: ' + link)
 const hrefs = await p.$$eval('.card a.btn', (as) => as.map((a) => a.href))
 if (!hrefs.some((h) => h.startsWith('webcal://localhost:4173/agenda/')) || !hrefs.some((h) => h.startsWith('https://calendar.google.com/calendar/render?cid=webcal'))) throw new Error('Links de assinatura: ' + hrefs.join(' '))
 await click('button', 'Trocar link')

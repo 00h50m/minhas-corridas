@@ -1,4 +1,6 @@
-# Minhas Corridas
+# PaceOn
+
+_(antigo Minhas Corridas)_
 
 App pessoal (PWA) para organizar provas de corrida de rua: calendário, inscrições, kit, custos (estimado x pago), checklist, anexos e fotos, resultados, histórico e objetivos pessoais.
 
@@ -89,6 +91,11 @@ Sem essas variáveis, o app avisa que as notificações não estão configuradas
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).
 - Em cada categoria (inscrição, transporte, hospedagem, outros) vale o pago; sem pago, o estimado.
 - Inscrita/Concluída entram no gasto; Desisti/Cancelada só com valor pago; Interesse/Inscrição aberta aparecem como previsão.
+
+## Marca
+- A arte original fica em `brand/paceon-original.png`. `node scripts/icons.mjs` gera a partir dela: `icon-192/512.png` (cantos transparentes), `icon-maskable-512.png` (Android, conteúdo na área segura), `apple-touch-icon.png` (iPhone, opaco), `favicon.png` e `logo-256.png` (topo do app e card de compartilhar).
+- Cores: laranja `#FF5F24` e azul-escuro `#17152F`, tiradas do logo.
+- Os nomes internos continuam `minhas-corridas` (chaves do armazenamento, banco de arquivos, backup e UIDs do .ics), para não perder dados nem duplicar eventos na agenda. Links antigos da agenda (`.../minhas-corridas.ics`) seguem funcionando; os novos terminam em `paceon.ics`.
 
 ## Fora do escopo
 GPS, prescrição de treinos, rede social, integrações (Garmin/Strava), busca automática de provas. O card de compartilhar gera só a imagem; não publica em nenhuma rede.

@@ -8,7 +8,7 @@ self.addEventListener('push', (event) => {
     d = { body: event.data ? event.data.text() : '' }
   }
   event.waitUntil(
-    self.registration.showNotification(d.title || 'Minhas Corridas', {
+    self.registration.showNotification(d.title || 'PaceOn', {
       body: d.body || '',
       icon: '/icon-192.png',
       badge: '/icon-192.png',

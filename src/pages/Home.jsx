@@ -11,6 +11,15 @@ import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/date
 import { formatKm, formatMoney } from '../lib/format.js'
 import { nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
 
+function Brand() {
+  return (
+    <span className="brand" aria-label="PaceOn">
+      <img src="/logo-256.png" alt="" width="34" height="34" />
+      <span aria-hidden="true">PACE<span className="on">ON</span></span>
+    </span>
+  )
+}
+
 function greeting() {
   const h = new Date().getHours()
   if (h < 12) return 'Bom dia'
@@ -32,7 +41,7 @@ export default function Home() {
   if (races.length === 0) {
     return (
       <>
-        <TopBar title="Minhas Corridas" sub={greeting()} right={settings} />
+        <TopBar title={<Brand />} sub={greeting()} right={settings} />
         <div className="page">
           <EmptyState
             title="Bora para a primeira?"
@@ -62,7 +71,7 @@ export default function Home() {
 
   return (
     <>
-      <TopBar title="Minhas Corridas" sub={greeting()} right={settings} />
+      <TopBar title={<Brand />} sub={greeting()} right={settings} />
       <div className="page">
         {pending.length > 0 && (
           <div className="alert alert-warn" style={{ marginBottom: 12 }}>

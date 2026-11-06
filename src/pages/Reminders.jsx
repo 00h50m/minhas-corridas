@@ -5,8 +5,8 @@ import { TopBar, useUI } from '../components/ui.jsx'
 import { IconBell, IconCalendar, IconInfo } from '../components/Icons.jsx'
 import { useSync } from '../services/sync.js'
 import { deleteFeed, feedLinks, getFeedToken, rotateFeedToken } from '../services/calendarFeed.js'
-import { disablePush, enablePush, pushStatus, pushSupport, testPush } from '../services/push.js'
-import { PUSH_RULES } from '../lib/alerts.js'
+import { cachedPushPrefs, disablePush, enablePush, loadPushPrefs, pushStatus, pushSupport, savePushPrefs, testPush } from '../services/push.js'
+import { PUSH_OPTIONS, PUSH_TYPES } from '../lib/alerts.js'
 
 const RULE_TEXT = {
   inscricao: 'Fim da inscrição',
@@ -14,7 +14,7 @@ const RULE_TEXT = {
   kit: 'Retirada do kit',
   prova: 'Dia da prova'
 }
-const daysText = (list) => list.map((d) => (d === 0 ? 'no dia' : d === 1 ? 'na véspera' : `${d} dias antes`)).join(' e ')
+const dayLabel = (d) => (d === 0 ? 'No dia' : d === 1 ? 'Véspera' : `${d} dias antes`)
 
 export default function Reminders() {
   const sync = useSync()
@@ -34,7 +34,7 @@ export default function Reminders() {
         ) : (
           <>
             <FeedCard userId={sync.user.id} />
-            <PushCard />
+            <PushCard userId={sync.user.id} />
           </>
         )}
       </div>
@@ -122,7 +122,7 @@ function FeedCard({ userId }) {
   )
 }
 
-function PushCard() {
+function PushCard({ userId }) {
   const { notify } = useUI()
   const support = pushSupport()
   const [st, setSt] = useState(null)
@@ -150,13 +150,9 @@ function PushCard() {
     <>
       <div className="section-title"><h2>Notificações de prazos</h2></div>
       <div className="card">
-        <p style={{ marginTop: 0 }}>Avisos no celular mesmo com o app fechado, uma vez por dia de manhã:</p>
-        <ul className="rule-list">
-          {Object.entries(PUSH_RULES).map(([k, days]) => (
-            <li key={k}><b>{RULE_TEXT[k]}</b> — {daysText(days)}</li>
-          ))}
-        </ul>
-        <p className="note" style={{ marginTop: 6 }}>Valem as provas inscritas (kit e prova) e as de interesse ou inscrição aberta (prazos de inscrição). O kit para de ser lembrado quando você marca “Kit retirado” no checklist.</p>
+        <p style={{ marginTop: 0 }}>Avisos no celular mesmo com o app fechado, uma vez por dia, às 8h. Escolha quais quer receber:</p>
+        <PrefsEditor userId={userId} />
+        <p className="note" style={{ marginTop: 6 }}>Valem as provas inscritas (kit e prova) e as de interesse ou inscrição aberta (prazos de inscrição). O kit para de ser lembrado quando você marca “Kit retirado” no checklist. As escolhas valem para todos os seus aparelhos.</p>
 
         {support === 'ios-install' ? (
           <div className="alert alert-info" style={{ marginTop: 12 }}><IconInfo /><div>No iPhone, as notificações só funcionam com o app instalado: Safari → Compartilhar → <b>Adicionar à Tela de Início</b>. Depois abra o app pelo ícone e volte aqui (iOS 16.4 ou mais novo).</div></div>
@@ -184,5 +180,53 @@ function PushCard() {
         <p className="note">Ative em cada aparelho em que quiser receber. Ao sair da conta, este aparelho para de receber.</p>
       </div>
     </>
+  )
+}
+
+function PrefsEditor({ userId }) {
+  const [prefs, setPrefs] = useState(cachedPushPrefs)
+  const [state, setState] = useState('loading') // loading | ready | saving | error
+  const [error, setError] = useState(null)
+  useEffect(() => {
+    loadPushPrefs().then((p) => { setPrefs(p); setState('ready') }).catch((e) => { setError(e.message); setState('error') })
+  }, [])
+  const save = async (next) => {
+    const before = prefs
+    setPrefs(next)
+    setState('saving')
+    setError(null)
+    try {
+      setPrefs(await savePushPrefs(next, userId))
+      setState('ready')
+    } catch (e) {
+      setPrefs(before)
+      setError(e.message)
+      setState('error')
+    }
+  }
+  const toggle = (type, d) => {
+    const cur = prefs[type]
+    save({ ...prefs, [type]: cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d] })
+  }
+  const off = state === 'loading' || state === 'saving'
+  return (
+    <div className="prefs" data-testid="push-prefs" aria-busy={off}>
+      {PUSH_TYPES.map((t) => (
+        <div key={t} className="pref-row">
+          <div className="pref-name">{RULE_TEXT[t]}</div>
+          <div className="pref-days" role="group" aria-label={RULE_TEXT[t]}>
+            {PUSH_OPTIONS[t].map((d) => (
+              <button key={d} type="button" aria-pressed={prefs[t].includes(d)} disabled={off} onClick={() => toggle(t, d)}>{dayLabel(d)}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <label className="check">
+        <input type="checkbox" checked={prefs.weekly} disabled={off} onChange={(e) => save({ ...prefs, weekly: e.target.checked })} />
+        Resumo da semana às segundas
+      </label>
+      {state === 'saving' && <div className="muted small">Salvando…</div>}
+      {error && <div className="alert alert-error small" role="alert"><div>{error}</div></div>}
+    </div>
   )
 }

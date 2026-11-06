@@ -1,6 +1,6 @@
 // Controlador da conta e da sincronização para a interface.
 import { useSyncExternalStore } from 'react'
-import { deleteAccountRemote, isConfigured, supabase, supabaseRemote } from './supabase.js'
+import { deleteAccountRemote, isConfigured, supabase, supabaseReady, supabaseRemote } from './supabase.js'
 import { getMeta, onLocalChange, pending, resetMeta, saveMeta } from './syncMeta.js'
 import { markAllLocal, syncOnce } from '../lib/syncEngine.js'
 import { applyRemote, getGoal, getRace, getState as getStore, wipeLocal } from './store.js'
@@ -183,6 +183,10 @@ let started = false
 export function startSync() {
   if (started || !isConfigured) return
   started = true
+  supabaseReady.then(attachAuth).catch(() => set({ ready: true, phase: 'signed-out', error: 'Não foi possível carregar a conta. Recarregue o app.' }))
+}
+
+function attachAuth() {
   supabase.auth
     .getSession()
     .then(({ data }) => handleUser(data.session?.user ?? null))

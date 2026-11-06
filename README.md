@@ -33,6 +33,7 @@ node scripts/e2e.mjs   # precisa do Google Chrome em /usr/bin/google-chrome
 - `src/lib` — regras puras: datas locais, tempos/pace, validação, estatísticas, .ics
 - `src/services` — persistência (store) e backup
 - `src/components` — UI compartilhada (navegação, cards, diálogos)
+- Telas menos usadas (cadastro, resultado, ajustes, conta, compartilhar, comparar…) e a biblioteca do Supabase carregam sob demanda, para o app abrir mais rápido.
 - `src/pages` — Início, Corridas (lista/mês/filtros), Cadastro, Detalhe, Resultado, Histórico, Ajustes
 
 ## Conta e sincronização (fase 3, opcional)
@@ -65,13 +66,15 @@ Como funciona:
 - **Card para compartilhar** (Resultado → Compartilhar): imagem PNG gerada no aparelho, nos formatos feed (4:5), stories (9:16) e quadrado. Distância, tempo, pace, classificação, selos (recorde pessoal, primeira na distância, meta batida) e as parciais por km; fundo na cor do app ou com uma foto da prova. Usa o compartilhamento do celular; onde não há, baixa a imagem.
 - **Comparar provas km a km** (Histórico → Comparar, ou no resultado): tempo, pace, FC, subida e esforço lado a lado; diferença por km e acumulada, maior ganho e perda, e em qual metade veio a diferença. Precisa das parciais do arquivo do relógio; sem elas, compara só os totais.
 - **Agenda por assinatura** e **notificações push de prazos**: em Ajustes → Agenda e avisos. Precisam de conta (ver abaixo).
+- **Modo dia da prova** (`/corridas/:id/dia`): na véspera e no dia, o destaque do Início abre uma tela com contagem até a largada, número de peito grande, local com link para o mapa, aviso de kit pendente, pace e passagens da meta (ou a previsão), checklist e opção de manter a tela acesa. Funciona sem internet. Depois da largada, botão para registrar o resultado.
+- **Previsão de tempo** (fórmula de Riegel, `src/lib/predict.js`): estima o tempo numa distância pelas provas concluídas dos últimos 2 anos (3 km ou mais; oficiais primeiro), priorizando distância próxima e resultados recentes e recusando extrapolar mais de 4,5×. Aparece no detalhe de provas sem meta (com “Usar como meta”), no campo de meta do cadastro e no modo dia da prova. É estimativa, não plano de treino.
 
 ## Agenda por assinatura e notificações (opcional, precisam de conta)
-Rode o `supabase/schema.sql` de novo (trechos 6 e 7 são novos; é idempotente).
+Rode o `supabase/schema.sql` de novo sempre que ele mudar (trechos 6, 7 e 8; é idempotente).
 
 **Agenda por assinatura** — sem configuração extra. Cada pessoa gera um link secreto (`/agenda/<token>/minhas-corridas.ics`) e assina no iPhone, Google Agenda ou Outlook. A função `api/agenda.js` chama `calendar_feed` no banco com a chave pública; o banco devolve só nome, data, horário, local, status, nº de peito, kit e prazos (nunca custos, notas ou resultados). Trocar o link invalida o anterior. Entram as provas com data (sem canceladas/desistências) de até 1 ano atrás. Mostra o que já foi sincronizado com a nuvem. Cada calendário decide quando atualizar (o Google pode levar até um dia).
 
-**Notificações push** — um envio por dia (Vercel Cron, `vercel.json`, 11:00 UTC = 8h de Brasília): fim da inscrição (3 dias antes e no dia), mudança de lote (véspera), retirada do kit (véspera e no dia, até marcar “Kit retirado”) e prova (véspera). Nunca manda a mesma duas vezes (`push_log`). No iPhone, só com o app na Tela de Início (iOS 16.4+). Variáveis no Vercel (Settings → Environment Variables), depois um novo deploy:
+**Notificações push** — um envio por dia (Vercel Cron, `vercel.json`, 11:00 UTC = 8h de Brasília). Cada pessoa escolhe quais avisos e com quanta antecedência (vale para todos os aparelhos; trecho 8 do SQL, tabela `push_prefs`): fim da inscrição (7, 3, 1 dia ou no dia), mudança de lote (3 ou 1 dia), retirada do kit (véspera e/ou no dia, até marcar “Kit retirado”), prova (2 dias, véspera ou no dia) e um resumo da semana às segundas. Padrão: inscrição 3 dias antes e no dia, lote na véspera, kit na véspera e no dia, prova na véspera. Sem a tabela `push_prefs`, vale o padrão. Nunca manda a mesma duas vezes (`push_log`). No iPhone, só com o app na Tela de Início (iOS 16.4+). Variáveis no Vercel (Settings → Environment Variables), depois um novo deploy:
 
 | Variável | O quê |
 |---|---|
@@ -80,7 +83,7 @@ Rode o `supabase/schema.sql` de novo (trechos 6 e 7 são novos; é idempotente).
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → *service_role*. **Só no Vercel**, nunca com prefixo `VITE_` |
 | `CRON_SECRET` | Texto aleatório longo; o Vercel o envia ao chamar o cron |
 
-Sem essas variáveis, o app avisa que as notificações não estão configuradas e o resto funciona normalmente. Testes: `npm test` (regras, rodada diária, funções) e `node scripts/e2e-rodada4.mjs` (telas, com Supabase simulado; o push é entregue ao service worker pelo DevTools).
+Sem essas variáveis, o app avisa que as notificações não estão configuradas e o resto funciona normalmente. Testes: `npm test` (regras, rodada diária, funções) e `node scripts/e2e-rodada4.mjs` / `e2e-rodada5.mjs` (telas, com Supabase simulado; o push é entregue ao service worker pelo DevTools).
 
 ## Regras de custos
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).

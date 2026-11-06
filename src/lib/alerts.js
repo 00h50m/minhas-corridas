@@ -47,37 +47,81 @@ export function repeatRace(r) {
 
 /* ---------- Notificações push (enviadas pelo servidor uma vez por dia) ---------- */
 
-// Em quais "dias antes" cada prazo vira notificação.
-export const PUSH_RULES = {
-  inscricao: [3, 0],
-  lote: [1],
+// Antecedências que a pessoa pode escolher, em dias (0 = no próprio dia).
+export const PUSH_OPTIONS = {
+  inscricao: [7, 3, 1, 0],
+  lote: [3, 1],
   kit: [1, 0],
-  prova: [1]
+  prova: [2, 1, 0]
+}
+export const PUSH_TYPES = Object.keys(PUSH_OPTIONS)
+
+// Padrão de quem nunca mexeu nas preferências.
+export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false }
+
+/** Aceita preferências salvas (ou nada) e devolve um objeto válido. */
+export function normalizePushPrefs(raw) {
+  const out = { weekly: DEFAULT_PUSH_PREFS.weekly }
+  for (const t of PUSH_TYPES) {
+    const v = raw && Array.isArray(raw[t]) ? raw[t] : DEFAULT_PUSH_PREFS[t]
+    out[t] = [...new Set(v.filter((d) => PUSH_OPTIONS[t].includes(d)))].sort((a, b) => b - a)
+  }
+  if (raw && typeof raw.weekly === 'boolean') out.weekly = raw.weekly
+  return out
 }
 
+const inDays = (d) => (d === 0 ? 'hoje' : d === 1 ? 'amanhã' : `em ${d} dias`)
+const cap = (s) => s[0].toUpperCase() + s.slice(1)
+
 const PUSH_TEXT = {
-  inscricao: (r, d) => ({ title: d === 0 ? 'Inscrição termina hoje' : `Inscrição termina em ${d} dias`, body: r.name }),
-  lote: (r) => ({ title: 'Amanhã o preço muda de lote', body: r.name }),
+  inscricao: (r, d) => ({ title: d === 0 ? 'Inscrição termina hoje' : `Inscrição termina ${inDays(d)}`, body: r.name }),
+  lote: (r, d) => ({ title: `${cap(inDays(d))} o preço muda de lote`, body: r.name }),
   kit: (r, d) => ({
-    title: d === 0 ? 'Hoje: retirar o kit' : 'Amanhã: retirar o kit',
+    title: `${cap(inDays(d))}: retirar o kit`,
     body: [r.name, r.kitPickupTime, r.kitPickupAddress].filter(Boolean).join(' · ')
   }),
-  prova: (r) => ({ title: 'Amanhã é dia de prova!', body: [r.name, r.startTime && `largada ${r.startTime}`].filter(Boolean).join(' · ') })
+  prova: (r, d) => ({
+    title: d === 0 ? 'Hoje é dia de prova!' : d === 1 ? 'Amanhã é dia de prova!' : `Prova ${inDays(d)}`,
+    body: [r.name, r.startTime && `largada ${r.startTime}`].filter(Boolean).join(' · ')
+  })
+}
+
+const SHORT_LABEL = { prova: 'prova', kit: 'kit', inscricao: 'fim da inscrição', lote: 'muda o lote' }
+const WEEKDAY = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+/** Resumo da semana (segunda-feira): o que vem nos próximos 7 dias. */
+export function weeklySummary(races, today) {
+  const [y, m, d] = today.split('-').map(Number)
+  if (new Date(y, m - 1, d).getDay() !== 1) return null
+  const items = upcomingAlerts(races, today, 6)
+  if (!items.length) return null
+  const parts = items.slice(0, 3).map((a) => {
+    const [yy, mm, dd] = a.date.split('-').map(Number)
+    return `${a.daysLeft === 0 ? 'hoje' : WEEKDAY[new Date(yy, mm - 1, dd).getDay()]}: ${SHORT_LABEL[a.type]} – ${a.race.name}`
+  })
+  if (items.length > 3) parts.push(`+${items.length - 3}`)
+  return { key: `semana:${today}`, type: 'semana', raceId: null, url: '/', title: `Sua semana: ${items.length} ${items.length === 1 ? 'compromisso' : 'compromissos'}`, body: parts.join('\n') }
 }
 
 /**
- * Notificações do dia para uma pessoa. Cada uma tem `key` única (prova, tipo, data e antecedência),
- * usada pelo servidor para nunca mandar a mesma duas vezes.
+ * Notificações do dia para uma pessoa, conforme as preferências. Cada uma tem `key` única
+ * (prova, tipo, data e antecedência), usada pelo servidor para nunca mandar a mesma duas vezes.
  */
-export function pushNotificationsFor(races, today = todayISO()) {
-  const max = Math.max(...Object.values(PUSH_RULES).flat())
-  return upcomingAlerts(races, today, max)
-    .filter((a) => PUSH_RULES[a.type]?.includes(a.daysLeft))
+export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null) {
+  const prefs = normalizePushPrefs(rawPrefs)
+  const max = Math.max(0, ...PUSH_TYPES.flatMap((t) => prefs[t]))
+  const out = upcomingAlerts(races, today, max)
+    .filter((a) => prefs[a.type]?.includes(a.daysLeft))
     .map((a) => ({
       key: `${a.race.id}:${a.type}:${a.date}:${a.daysLeft}`,
       type: a.type,
       raceId: a.race.id,
-      url: `/corridas/${a.race.id}`,
+      url: `/corridas/${a.race.id}${a.type === 'prova' && a.daysLeft <= 1 ? '/dia' : ''}`,
       ...PUSH_TEXT[a.type](a.race, a.daysLeft)
     }))
+  if (prefs.weekly) {
+    const w = weeklySummary(races, today)
+    if (w) out.unshift(w)
+  }
+  return out
 }

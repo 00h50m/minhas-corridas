@@ -46,6 +46,8 @@ export default function Home() {
   }
 
   const next = nextConfirmed(races, today)
+  // Na véspera e no dia, o destaque abre o modo "dia da prova".
+  const raceDay = next && daysBetween(today, next.date) <= 1
   const list = upcoming(races, today, 6).filter((r) => r.id !== next?.id).slice(0, 4)
   const pending = pendingResults(races, today)
   const summary = yearSummary(races, year)
@@ -73,8 +75,8 @@ export default function Home() {
         )}
 
         {next ? (
-          <Link to={`/corridas/${next.id}`} className="hero">
-            <div className="eyebrow">Próxima prova confirmada</div>
+          <Link to={`/corridas/${next.id}${raceDay ? '/dia' : ''}`} className="hero">
+            <div className="eyebrow">{raceDay ? 'Dia de prova · toque para o modo prova' : 'Próxima prova confirmada'}</div>
             <div className="count">{countdownLabel(next.date, today)}</div>
             <div className="name">{next.name}</div>
             <div className="meta">{[formatDateBR(next.date), next.startTime && `largada ${next.startTime}`, [next.city, next.state].filter(Boolean).join('/')].filter(Boolean).join(' · ')}</div>

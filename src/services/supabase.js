@@ -1,6 +1,5 @@
 // Cliente do Supabase. A URL e a chave pública (anon) vêm das variáveis de ambiente do build.
 // A chave anon pode ficar no app: quem protege os dados são as regras (RLS) do banco.
-import { createClient } from '@supabase/supabase-js'
 import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL, cleanSupabaseUrl } from '../config.js'
 
 const url = cleanSupabaseUrl(import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL)
@@ -10,11 +9,18 @@ export const isConfigured = Boolean(url && anonKey)
 export const supabaseUrl = url
 export const supabaseAnonKey = anonKey
 
-export const supabase = isConfigured
-  ? createClient(url, anonKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'minhas-corridas:auth' }
+// A biblioteca do Supabase é grande: carrega em paralelo, sem atrasar a primeira tela
+// (os dados vêm do aparelho). `supabase` fica null até `supabaseReady` resolver; a conta
+// e a sincronização só usam o cliente depois disso (startSync espera por ele).
+export let supabase = null
+export const supabaseReady = isConfigured
+  ? import('@supabase/supabase-js').then(({ createClient }) => {
+      supabase = createClient(url, anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: 'minhas-corridas:auth' }
+      })
+      return supabase
     })
-  : null
+  : Promise.resolve(null)
 
 const BUCKET = 'anexos'
 const PAGE = 1000

@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from '
 import { repeatRace } from '../lib/alerts.js'
 import LinkImport from '../components/LinkImport.jsx'
 import TimeInput from '../components/TimeInput.jsx'
+import { PredictionHint } from '../components/Prediction.jsx'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -10,7 +11,7 @@ import { IconAlert, IconInfo } from '../components/Icons.jsx'
 import { COMMON_DISTANCES, MONEY_FIELDS, STATUSES, UFS, defaultChecklist, emptyRace, validateRace } from '../lib/model.js'
 import { raceCosts } from '../lib/costs.js'
 import { formatDateBR } from '../lib/dates.js'
-import { durationToInput, formatKm, formatMoney, kmToInput, moneyToInput, parseDuration, parseKm, parseMoney } from '../lib/format.js'
+import { durationToInput, formatDuration, formatKm, formatMoney, kmToInput, moneyToInput, parseDuration, parseKm, parseMoney } from '../lib/format.js'
 import { nearbyRaces } from '../lib/stats.js'
 
 const TEXT_FIELDS = ['name', 'city', 'state', 'status', 'startTime', 'venueName', 'venueAddress', 'signupUrl', 'organizer', 'shirtSize', 'kitItems', 'kitPickupTime', 'kitPickupAddress', 'kitPickupBy', 'bibNumber', 'companions', 'leaveHomeTime', 'notes', 'otherDesc']
@@ -369,6 +370,7 @@ export default function RaceForm() {
           <div className="body">
             <Field label="Meta de tempo para esta prova" htmlFor="targetTime" error={errors.targetTime} hint="Usada para comparar com o resultado. Digite só números: 3500 = 35:00 · 15500 = 1:55:00.">
               <TimeInput id="targetTime" value={f.targetTime} onChange={set('targetTime')} invalid={!!errors.targetTime} />
+              {parseKm(f.distanceKm) && <PredictionHint races={races} km={parseKm(f.distanceKm)} excludeId={existing?.id} onUse={(t) => { setF((p) => ({ ...p, targetTime: formatDuration(t) })); setErrors((p) => ({ ...p, targetTime: undefined })) }} />}
             </Field>
             <Field label="Observações" htmlFor="notes"><textarea id="notes" className="input" value={f.notes} onChange={set('notes')} /></Field>
           </div>

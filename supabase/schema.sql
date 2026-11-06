@@ -226,3 +226,21 @@ create table if not exists public.push_log (
 alter table public.push_log enable row level security;
 
 -- A exclusão de conta (trecho 5) já leva tudo isto junto: as tabelas acima apagam em cascata com o usuário.
+
+-- 8) Preferências das notificações (quais avisos e com quanta antecedência; resumo da semana).
+--    Uma linha por pessoa, valendo para todos os aparelhos. Sem linha = padrão do app.
+create table if not exists public.push_prefs (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  prefs jsonb not null default '{}'::jsonb check (pg_column_size(prefs) < 2000),
+  updated_at timestamptz not null default now()
+);
+alter table public.push_prefs enable row level security;
+drop policy if exists "prefs: dono lê" on public.push_prefs;
+drop policy if exists "prefs: dono insere" on public.push_prefs;
+drop policy if exists "prefs: dono altera" on public.push_prefs;
+create policy "prefs: dono lê" on public.push_prefs
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "prefs: dono insere" on public.push_prefs
+  for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "prefs: dono altera" on public.push_prefs
+  for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));

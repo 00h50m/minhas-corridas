@@ -103,7 +103,7 @@ describe('notificações push de prazos', () => {
   it('só nos dias combinados, com chave única', () => {
     const out = pushNotificationsFor(rs, today)
     expect(out.map((x) => x.key)).toEqual(['b:kit:2026-11-04:0', 'b:prova:2026-11-05:1', 'a:lote:2026-11-05:1', 'a:inscricao:2026-11-07:3'])
-    expect(out[1]).toMatchObject({ title: 'Amanhã é dia de prova!', body: 'Inscrita · largada 07:00', url: '/corridas/b' })
+    expect(out[1]).toMatchObject({ title: 'Amanhã é dia de prova!', body: 'Inscrita · largada 07:00', url: '/corridas/b/dia' })
     expect(out[0]).toMatchObject({ title: 'Hoje: retirar o kit', body: 'Inscrita · 10:00' })
     expect(out[3].title).toBe('Inscrição termina em 3 dias')
   })

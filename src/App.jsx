@@ -1,22 +1,25 @@
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { BottomNav, UIProvider } from './components/ui.jsx'
 import { useStore } from './services/store.js'
 import Home from './pages/Home.jsx'
 import Races from './pages/Races.jsx'
-import RaceForm from './pages/RaceForm.jsx'
 import RaceDetail from './pages/RaceDetail.jsx'
-import ResultForm from './pages/ResultForm.jsx'
 import History from './pages/History.jsx'
-import Settings from './pages/Settings.jsx'
 import Goals from './pages/Goals.jsx'
-import GoalForm from './pages/GoalForm.jsx'
-import GoalDetail from './pages/GoalDetail.jsx'
-import Account from './pages/Account.jsx'
-import ShareResult from './pages/ShareResult.jsx'
-import Compare from './pages/Compare.jsx'
-import Reminders from './pages/Reminders.jsx'
 import ImportPrompt from './components/ImportPrompt.jsx'
+
+// Telas menos usadas (e as que trazem bibliotecas grandes) carregam só quando abertas.
+const RaceForm = lazy(() => import('./pages/RaceForm.jsx'))
+const ResultForm = lazy(() => import('./pages/ResultForm.jsx'))
+const Settings = lazy(() => import('./pages/Settings.jsx'))
+const GoalForm = lazy(() => import('./pages/GoalForm.jsx'))
+const GoalDetail = lazy(() => import('./pages/GoalDetail.jsx'))
+const Account = lazy(() => import('./pages/Account.jsx'))
+const ShareResult = lazy(() => import('./pages/ShareResult.jsx'))
+const Compare = lazy(() => import('./pages/Compare.jsx'))
+const Reminders = lazy(() => import('./pages/Reminders.jsx'))
+const RaceDay = lazy(() => import('./pages/RaceDay.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
@@ -43,6 +46,7 @@ export default function App() {
           </div>
         )}
         {(store.status === 'ready' || store.status === 'error') && (
+          <Suspense fallback={<div className="loading"><div><div className="spinner" />Abrindo…</div></div>}>
           <Routes>
             {store.status === 'ready' && (
               <>
@@ -53,6 +57,7 @@ export default function App() {
                 <Route path="/corridas/:id/editar" element={<RaceForm />} />
                 <Route path="/corridas/:id/resultado" element={<ResultForm />} />
                 <Route path="/corridas/:id/compartilhar" element={<ShareResult />} />
+                <Route path="/corridas/:id/dia" element={<RaceDay />} />
                 <Route path="/historico" element={<History />} />
                 <Route path="/comparar" element={<Compare />} />
                 <Route path="/objetivos" element={<Goals />} />
@@ -66,6 +71,7 @@ export default function App() {
             <Route path="/lembretes" element={<Reminders />} />
             <Route path="*" element={store.status === 'ready' ? <NotFound /> : null} />
           </Routes>
+          </Suspense>
         )}
       </div>
       <BottomNav />

@@ -3,7 +3,7 @@ import { deleteRace, getRace, saveRace, useStore } from '../services/store.js'
 import { StatusBadge, TopBar, useUI } from '../components/ui.jsx'
 import { IconRepeat, IconCalendar, IconEdit, IconExternal, IconStopwatch, IconTrash, IconAlert, IconInfo } from '../components/Icons.jsx'
 import { STATUSES } from '../lib/model.js'
-import { countdownLabel, formatDateBR, todayISO } from '../lib/dates.js'
+import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
 import { distanceKey, nearbyRaces } from '../lib/stats.js'
 import { raceCosts } from '../lib/costs.js'
@@ -11,8 +11,9 @@ import Checklist from '../components/Checklist.jsx'
 import Attachments from '../components/Attachments.jsx'
 import WatchSummary from '../components/WatchSummary.jsx'
 import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
-import { IconBell, IconCompare, IconShare } from '../components/Icons.jsx'
+import { IconBell, IconCompare, IconFlag, IconShare } from '../components/Icons.jsx'
 import { comparableRaces } from '../lib/compare.js'
+import { PredictionCard } from '../components/Prediction.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
 
@@ -171,6 +172,10 @@ export default function RaceDetail() {
           )
         )}
 
+        {r.status === 'inscrita' && r.date && daysBetween(today, r.date) >= 0 && daysBetween(today, r.date) <= 7 && (
+          <Link to={`/corridas/${r.id}/dia`} className="btn btn-dark btn-block" style={{ marginTop: 12 }}><IconFlag /> Modo dia da prova</Link>
+        )}
+
         {res ? (
           <>
             <div className="section-title"><h2>Como foi a prova</h2></div>
@@ -183,6 +188,12 @@ export default function RaceDetail() {
               <RacePlan race={r} />
             </>
           )
+        )}
+        {!res && !r.targetTime && r.distanceKm && ['interesse', 'aberta', 'inscrita'].includes(r.status) && (
+          <>
+            <div className="section-title"><h2>Previsão de tempo</h2></div>
+            <PredictionCard races={races} km={r.distanceKm} excludeId={r.id} onUse={(t) => { saveRace({ ...getRace(r.id), targetTime: t }); notify('Meta definida') }} />
+          </>
         )}
 
         <div className="section-title"><h2>Status</h2></div>

@@ -1,5 +1,6 @@
 // Notificações push de prazos neste aparelho. Precisa de conta (o servidor lê as provas da nuvem).
 import { supabase } from './supabase.js'
+import { DEFAULT_PUSH_PREFS, normalizePushPrefs } from '../lib/alerts.js'
 
 const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
@@ -106,4 +107,40 @@ export async function testPush() {
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(body.error || 'Não foi possível enviar o teste.')
   return body
+}
+
+/* Preferências (tabela push_prefs; valem para todos os aparelhos da conta). */
+
+const PREFS_KEY = 'minhas-corridas:push-prefs'
+
+export function cachedPushPrefs() {
+  try {
+    return normalizePushPrefs(JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'))
+  } catch {
+    return normalizePushPrefs(DEFAULT_PUSH_PREFS)
+  }
+}
+
+function prefsError(error) {
+  if (error?.code === 'PGRST205' || error?.code === '42P01' || /push_prefs/.test(error?.message || '')) {
+    return new Error('O banco ainda não tem as preferências de avisos: rode o trecho 8 do supabase/schema.sql no Supabase.')
+  }
+  if (/failed to fetch|network/i.test(error?.message || '')) return new Error('Sem conexão com o servidor.')
+  return new Error(error?.message || 'Não foi possível salvar.')
+}
+
+export async function loadPushPrefs() {
+  const { data, error } = await supabase.from('push_prefs').select('prefs').maybeSingle()
+  if (error) throw prefsError(error)
+  const prefs = normalizePushPrefs(data?.prefs ?? null)
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* sem armazenamento */ }
+  return prefs
+}
+
+export async function savePushPrefs(prefs, userId) {
+  const clean = normalizePushPrefs(prefs)
+  const { error } = await supabase.from('push_prefs').upsert({ user_id: userId, prefs: clean, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+  if (error) throw prefsError(error)
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(clean)) } catch { /* sem armazenamento */ }
+  return clean
 }

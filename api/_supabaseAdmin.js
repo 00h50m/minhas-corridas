@@ -37,6 +37,10 @@ export function adminDb({ url, serviceKey }, fetchImpl = fetch) {
       const rows = await call(`records?select=id,data&kind=eq.race&deleted=is.false&user_id=eq.${encodeURIComponent(userId)}`)
       return rows.filter((r) => r.data).map((r) => ({ ...r.data, id: r.id }))
     },
+    async prefs(userId) {
+      const rows = await call(`push_prefs?select=prefs&user_id=eq.${encodeURIComponent(userId)}`)
+      return rows?.[0]?.prefs ?? null
+    },
     async claim(userId, keys) {
       if (!keys.length) return []
       const rows = await call('push_log?on_conflict=user_id,key&select=key', {

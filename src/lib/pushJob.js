@@ -8,6 +8,7 @@ import { normalizeRace } from './model.js'
  * db: {
  *   subscriptions(): [{ endpoint, user_id, p256dh, auth, tz }]
  *   races(userId): [race]
+ *   prefs(userId): preferências salvas ou null (opcional; sem a tabela, vale o padrão)
  *   claim(userId, keys): keys ainda não enviadas (e já marcadas como enviadas)
  *   release(userId, keys): desfaz a marcação (quando nenhum aparelho recebeu)
  *   removeSubscription(endpoint)
@@ -24,7 +25,13 @@ export async function runPushJob({ db, send, now = new Date() }) {
   for (const [userId, devices] of byUser) {
     const today = todayInTimeZone(devices[0].tz, now)
     const races = (await db.races(userId)).map(normalizeRace)
-    const due = pushNotificationsFor(races, today)
+    let prefs = null
+    try {
+      prefs = db.prefs ? await db.prefs(userId) : null
+    } catch {
+      prefs = null // tabela ainda não criada: usa o padrão
+    }
+    const due = pushNotificationsFor(races, today, prefs)
     if (!due.length) continue
     const fresh = new Set(await db.claim(userId, due.map((n) => n.key)))
     const toSend = due.filter((n) => fresh.has(n.key))

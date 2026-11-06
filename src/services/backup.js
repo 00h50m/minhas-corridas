@@ -1,14 +1,16 @@
 import { SCHEMA_VERSION } from './store.js'
 import { normalizeGoal, normalizeRace, validateGoal, validateRace, validateResult } from '../lib/model.js'
 import { todayISO } from '../lib/dates.js'
+import { normalizeProfile } from '../lib/profile.js'
 import { FILE_KIND_LABEL, base64ToBlob, blobToBase64 } from './files.js'
 
 /**
  * Monta o JSON do backup. `files` (opcional) são registros do IndexedDB;
  * quando presentes, vão em base64 dentro do próprio arquivo.
  */
-export async function buildBackup(races, goals = [], files = null) {
+export async function buildBackup(races, goals = [], files = null, profile = null) {
   const data = { app: 'minhas-corridas', version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), races, goals }
+  if (profile && (profile.updatedAt || profile.avatar)) data.profile = { data: profile.data, avatar: profile.avatar }
   if (files) {
     data.files = []
     for (const f of files) {
@@ -77,7 +79,10 @@ export function parseBackup(text) {
     }).filter((f) => ids.has(f.raceId))
   }
 
-  return { races, goals, files, exportedAt: data.exportedAt ?? null }
+  const profile = data.profile && typeof data.profile === 'object'
+    ? { data: normalizeProfile(data.profile.data), avatar: typeof data.profile.avatar === 'string' && data.profile.avatar.startsWith('data:image/') ? data.profile.avatar : null }
+    : null
+  return { races, goals, files, profile, exportedAt: data.exportedAt ?? null }
 }
 
 export function downloadText(text, filename, mime) {

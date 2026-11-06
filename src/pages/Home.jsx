@@ -1,4 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Avatar, AvatarButton } from '../components/Avatar.jsx'
+import { useProfile } from '../services/profile.js'
+import { greeting } from '../lib/profile.js'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
 import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconTarget, IconTrophy } from '../components/Icons.jsx'
@@ -26,29 +30,62 @@ function Brand() {
   )
 }
 
-function greeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Bom dia'
-  if (h < 18) return 'Boa tarde'
-  return 'Boa noite'
+const INVITE_KEY = 'minhas-corridas:convite-perfil'
+
+/** Convite discreto para completar o perfil (some ao preencher o nome ou ao dispensar). */
+function ProfileInvite() {
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(INVITE_KEY) === 'dispensado'
+    } catch {
+      return false
+    }
+  })
+  if (hidden) return null
+  const dismiss = () => {
+    try {
+      localStorage.setItem(INVITE_KEY, 'dispensado')
+    } catch {
+      /* sem armazenamento */
+    }
+    setHidden(true)
+  }
+  return (
+    <div className="card profile-invite" data-testid="profile-invite">
+      <Avatar size={48} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b>Como você quer ser chamada(o)?</b>
+        <div className="muted small">Nome, foto, camiseta e contato de emergência deixam o app com a sua cara. Tudo opcional.</div>
+        <div className="pi-actions">
+          <Link to="/perfil" className="link-btn">Completar perfil</Link>
+          <button type="button" className="link-btn muted-btn" onClick={dismiss}>Agora não</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Home() {
   const { races, goals } = useStore()
+  const prof = useProfile()
   const settings = (
     <>
       <SyncBadge />
+      <AvatarButton />
       <Link to="/ajustes" className="icon-btn" aria-label="Ajustes e backup"><IconSettings /></Link>
     </>
   )
   const today = todayISO()
   const year = Number(today.slice(0, 4))
+  const hello = greeting(prof.data, new Date(), today)
+  const invite = !prof.data.name && !prof.data.nickname
 
   if (races.length === 0) {
     return (
       <>
-        <TopBar title={<Brand />} sub={greeting()} right={settings} />
+        <TopBar title={<Brand />} sub={<span className="greet">{hello}</span>} right={settings} />
         <div className="page">
+          {invite && <ProfileInvite />}
           <EmptyState
             title="Bora para a primeira?"
             text="Cadastre uma prova que você quer fazer ou em que já está inscrita. Só o nome é obrigatório — o resto você completa depois."
@@ -82,8 +119,9 @@ export default function Home() {
 
   return (
     <>
-      <TopBar title={<Brand />} sub={greeting()} right={settings} />
+      <TopBar title={<Brand />} sub={<span className="greet">{hello}</span>} right={settings} />
       <div className="page home">
+        {invite && <ProfileInvite />}
         {pending.length > 0 && (
           <Link to={`/corridas/${pending[0].id}/resultado`} className="alert alert-warn home-pending">
             <IconStopwatch />

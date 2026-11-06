@@ -152,6 +152,14 @@ export function drawCard(canvas, info, format, photo = null) {
   ctx.fillText('PACE', bx, y + 40)
   ctx.fillStyle = BRAND
   ctx.fillText('ON', bx + ctx.measureText('PACE').width, y + 40)
+  if (info.athlete) {
+    const brandEnd = bx + ctx.measureText('PACEON').width + 30
+    ctx.textAlign = 'right'
+    ctx.fillStyle = CREAM
+    fit(ctx, info.athlete, (n) => `800 ${n}px ${TEXT}`, 32, W - pad - brandEnd, 20)
+    ctx.fillText(info.athlete, W - pad, y + 39)
+    ctx.textAlign = 'left'
+  }
   y += 54 + 56
   const meta = [info.date, info.place].filter(Boolean).join('  ·  ')
   if (meta) {

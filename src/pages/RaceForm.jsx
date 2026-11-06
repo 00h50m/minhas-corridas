@@ -5,6 +5,7 @@ import LinkImport from '../components/LinkImport.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { PredictionHint } from '../components/Prediction.jsx'
 import { WishPicker } from '../components/Decision.jsx'
+import { getProfile } from '../services/profile.js'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -324,7 +325,7 @@ export default function RaceForm() {
         <details className="section">
           <summary>Kit e retirada<span className="sum">{summaryOf(f.kitPickupDate && formatDateBR(f.kitPickupDate), f.kitPickupBy)}</span></summary>
           <div className="body">
-            <label className="check"><input id="shirtIncluded" type="checkbox" checked={f.shirtIncluded} onChange={set("shirtIncluded")} /> Camiseta incluída</label>
+            <label className="check"><input id="shirtIncluded" type="checkbox" checked={f.shirtIncluded} onChange={(e) => { const on = e.target.checked; setF((p) => ({ ...p, shirtIncluded: on, shirtSize: on && !p.shirtSize ? getProfile().data.shirtSize || '' : p.shirtSize })) }} /> Camiseta incluída</label>
             {f.shirtIncluded && (
               <Field label="Tamanho escolhido" htmlFor="shirtSize">
                 <input id="shirtSize" className="input" value={f.shirtSize} onChange={set('shirtSize')} placeholder="Ex.: P, M, Baby look M" />

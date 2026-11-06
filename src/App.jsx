@@ -21,6 +21,7 @@ const Compare = lazy(() => import('./pages/Compare.jsx'))
 const Reminders = lazy(() => import('./pages/Reminders.jsx'))
 const RaceDay = lazy(() => import('./pages/RaceDay.jsx'))
 const Decide = lazy(() => import('./pages/Decide.jsx'))
+const Profile = lazy(() => import('./pages/Profile.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/ajustes" element={<Settings />} />
             <Route path="/conta" element={<Account />} />
             <Route path="/lembretes" element={<Reminders />} />
+            <Route path="/perfil" element={<Profile />} />
             <Route path="*" element={store.status === 'ready' ? <NotFound /> : null} />
           </Routes>
           </Suspense>

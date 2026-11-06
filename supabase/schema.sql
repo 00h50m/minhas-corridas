@@ -244,3 +244,25 @@ create policy "prefs: dono insere" on public.push_prefs
   for insert to authenticated with check (user_id = (select auth.uid()));
 create policy "prefs: dono altera" on public.push_prefs
   for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- 9) Perfil opcional (nome, foto, dados para as provas, contato de emergência).
+--    Uma linha por pessoa. A foto vai reduzida (~320 px, JPEG) em `avatar`, como data URL.
+create table if not exists public.profiles (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  data jsonb not null default '{}'::jsonb check (pg_column_size(data) < 8000),
+  avatar text check (avatar is null or (char_length(avatar) < 300000 and avatar like 'data:image/%')),
+  updated_at timestamptz not null default now()
+);
+alter table public.profiles enable row level security;
+drop policy if exists "perfil: dono lê" on public.profiles;
+drop policy if exists "perfil: dono insere" on public.profiles;
+drop policy if exists "perfil: dono altera" on public.profiles;
+drop policy if exists "perfil: dono apaga" on public.profiles;
+create policy "perfil: dono lê" on public.profiles
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "perfil: dono insere" on public.profiles
+  for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "perfil: dono altera" on public.profiles
+  for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "perfil: dono apaga" on public.profiles
+  for delete to authenticated using (user_id = (select auth.uid()));

@@ -714,3 +714,20 @@ details.link-import { margin-top: 0; }
 .how-count { margin-top: 6px; }
 .how-count summary { font-size: 13px; font-weight: 700; color: var(--ink-3); cursor: pointer; padding: 4px 2px; }
 .how-count p { font-size: 13px; color: var(--ink-3); margin: 4px 2px 0; }
+
+/* Perfil */
+.avatar { display: inline-grid; place-items: center; border-radius: 50%; overflow: hidden; background: var(--brand-soft); color: var(--brand-ink); font-weight: 800; flex: none; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.avatar-btn { display: inline-flex; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--brand-soft); }
+.profile-head { display: flex; gap: 16px; align-items: center; }
+.avatar-edit { position: relative; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; }
+.avatar-edit .cam { position: absolute; right: -2px; bottom: -2px; width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--surface); }
+.avatar-edit .cam svg { width: 18px; height: 18px; }
+.ph-name { font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1.1; overflow-wrap: anywhere; }
+.profile-invite { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.profile-invite .pi-actions { display: flex; gap: 12px; margin-top: 6px; }
+.emergency-card .em-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.emergency-card .blood { font-family: var(--display); font-size: 30px; font-weight: 800; color: var(--danger); }
+.link-btn.muted-btn { color: var(--ink-3); }
+.topbar .sub .greet { font-size: 16px; font-weight: 800; color: var(--ink-2); }

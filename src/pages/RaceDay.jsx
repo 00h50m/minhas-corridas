@@ -5,6 +5,8 @@ import { getRace, useStore } from '../services/store.js'
 import { TopBar } from '../components/ui.jsx'
 import { IconExternal, IconPin, IconStopwatch } from '../components/Icons.jsx'
 import Checklist from '../components/Checklist.jsx'
+import { useProfile } from '../services/profile.js'
+import { ageOn } from '../lib/profile.js'
 import { PaceTable } from '../components/Analysis.jsx'
 import { PredictionCard } from '../components/Prediction.jsx'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
@@ -51,6 +53,7 @@ function useWakeLock(on) {
 export default function RaceDay() {
   const { id } = useParams()
   const { races } = useStore()
+  const em = useProfile().data
   const r = getRace(id)
   const [, tick] = useState(0)
   const [awake, setAwake] = useState(false)
@@ -121,6 +124,22 @@ export default function RaceDay() {
           <PredictionCard races={races} km={r.distanceKm} excludeId={r.id} />
         ) : (
           <div className="card muted small">Informe a distância e uma meta para ver o pace e as passagens. <Link to={`/corridas/${r.id}/editar`}>Editar prova</Link></div>
+        )}
+
+        <div className="section-title"><h2>Emergência</h2></div>
+        {em.emergencyName || em.emergencyPhone || em.bloodType ? (
+          <div className="card emergency-card" data-testid="emergency">
+            <div className="em-row">
+              <div style={{ minWidth: 0 }}>
+                {em.emergencyName && <div style={{ fontWeight: 800 }}>{em.emergencyName}</div>}
+                {em.emergencyPhone && <a href={`tel:${em.emergencyPhone.replace(/[^\d+]/g, '')}`} style={{ fontWeight: 800 }}>{em.emergencyPhone}</a>}
+                {(em.name || em.nickname) && <div className="muted small">Atleta: {em.name || em.nickname}{em.birthDate ? ` · ${ageOn(em.birthDate, today)} anos` : ''}</div>}
+              </div>
+              {em.bloodType && <div className="blood" aria-label={`Tipo sanguíneo ${em.bloodType}`}>{em.bloodType}</div>}
+            </div>
+          </div>
+        ) : (
+          <div className="card muted small">Sem contato de emergência. <Link to="/perfil">Adicionar no perfil</Link> — aparece aqui no dia da prova.</div>
         )}
 
         <div className="section-title"><h2>Checklist</h2></div>

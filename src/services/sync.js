@@ -5,6 +5,7 @@ import { getMeta, onLocalChange, pending, resetMeta, saveMeta } from './syncMeta
 import { markAllLocal, syncOnce } from '../lib/syncEngine.js'
 import { applyRemote, getGoal, getRace, getState as getStore, wipeLocal } from './store.js'
 import { disablePush } from './push.js'
+import { onProfileChange, syncProfile, wipeLocalProfile } from './profile.js'
 import { allFiles, applyRemoteFiles, filesMissingBlob, getFileRecord, setFileBlob, wipeLocalFiles } from './files.js'
 
 /*
@@ -85,6 +86,7 @@ export async function syncNow() {
       const meta = getMeta()
       await syncOnce({ remote: supabaseRemote(state.user.id), local, meta, userId: state.user.id, saveMeta })
       set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending() })
+      syncProfile(state.user.id).catch(() => {})
     } catch (e) {
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false
       set({ phase: offline ? 'offline' : 'error', error: offline ? null : e.message, pending: pending() })
@@ -106,6 +108,7 @@ function hasLocalData() {
 
 async function wipeDevice(ownerId) {
   wipeLocal()
+  wipeLocalProfile()
   await wipeLocalFiles().catch(() => {})
   resetMeta(ownerId)
 }
@@ -198,6 +201,7 @@ function attachAuth() {
     else if (u && u.id !== state.user?.id && event !== 'INITIAL_SESSION') setTimeout(() => handleUser(u), 0)
   })
   onLocalChange(() => scheduleSync())
+  onProfileChange(() => scheduleSync(800))
   window.addEventListener('online', () => scheduleSync(300))
   window.addEventListener('offline', () => state.user && set({ phase: 'offline' }))
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && scheduleSync(300))

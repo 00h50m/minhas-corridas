@@ -44,7 +44,7 @@ export function resultBadges(race, races) {
 export function shareCardInfo(race, races, opts = {}) {
   const res = race.result
   if (!res?.netTime || !res.officialDistanceKm) return null
-  const { places = true, splits = true, hr = false } = opts
+  const { places = true, splits = true, hr = false, athlete = '' } = opts
   const stats = [{ label: 'PACE', value: formatPace(res.netTime / res.officialDistanceKm).replace(' /km', '/km') }]
   if (places && res.overallPlace) stats.push({ label: 'GERAL', value: `${res.overallPlace}º` })
   if (places && res.categoryPlace) stats.push({ label: res.category ? `CAT. ${res.category}`.slice(0, 18).toUpperCase() : 'CATEGORIA', value: `${res.categoryPlace}º` })
@@ -53,6 +53,7 @@ export function shareCardInfo(race, races, opts = {}) {
   const full = (res.watch?.splits ?? []).filter((s) => !s.partial)
   return {
     name: race.name,
+    athlete: String(athlete || '').trim().slice(0, 40),
     date: race.date ? formatDateBR(race.date) : '',
     place: [race.city, race.state].filter(Boolean).join('/'),
     distance: distanceTitle(res.officialDistanceKm),

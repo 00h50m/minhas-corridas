@@ -10,11 +10,15 @@ import { IconBell, IconCloud } from '../components/Icons.jsx'
 import { useSync } from '../services/sync.js'
 import { APP_VERSION, checkForUpdate, hardReload } from '../services/appUpdate.js'
 import { syncLabel } from './Account.jsx'
+import { Avatar } from '../components/Avatar.jsx'
+import { getProfile, replaceProfile, useProfile } from '../services/profile.js'
+import { callName } from '../lib/profile.js'
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 
 export default function Settings() {
   const store = useStore()
+  const prof = useProfile()
   const sync = useSync()
   const cloud = !!sync.user
   const { confirm, notify } = useUI()
@@ -63,7 +67,7 @@ export default function Settings() {
     try {
       const { races, goals } = getState()
       const files = withFiles ? await allFiles() : null
-      downloadText(await buildBackup(races, goals, files), backupFileName(withFiles), 'application/json')
+      downloadText(await buildBackup(races, goals, files, getProfile()), backupFileName(withFiles), 'application/json')
       notify('Backup baixado')
     } catch (err) {
       notify(err.message || 'Não foi possível gerar o backup.')
@@ -80,7 +84,7 @@ export default function Settings() {
     try {
       if (file.size > 400 * 1024 * 1024) throw new Error('Arquivo grande demais para um backup do app.')
       setBusy('import')
-      const { races, goals, files, exportedAt } = parseBackup(await file.text())
+      const { races, goals, files, profile, exportedAt } = parseBackup(await file.text())
       setBusy(null)
       const when = exportedAt ? ` de ${formatDateBR(exportedAt.slice(0, 10))}` : ''
       const cur = store.races.length + store.goals.length
@@ -98,6 +102,7 @@ export default function Settings() {
       if (!ok) return
       setBusy('import')
       replaceAll(races, goals)
+      if (profile) replaceProfile(profile)
       if (files) await replaceFiles(files)
       else await pruneFiles(races.map((r) => r.id))
       notify('Backup restaurado')
@@ -131,6 +136,13 @@ export default function Settings() {
     <>
       <TopBar title="Ajustes" back="/" />
       <div className="page">
+        <Link to="/perfil" className="card account-card" style={{ marginBottom: 12 }} data-testid="profile-link">
+          <Avatar size={40} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b>{callName(prof.data) || 'Meu perfil'}</b><br /><span className="small muted">Nome, foto, camiseta, faixa etária e contato de emergência.</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
         {sync.configured && (
           <Link to="/conta" className="card account-card">
             <IconCloud />

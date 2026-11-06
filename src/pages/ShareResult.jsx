@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { getRace, useStore } from '../services/store.js'
 import { listFiles, useObjectURL } from '../services/files.js'
 import { TopBar, useUI } from '../components/ui.jsx'
+import { useProfile } from '../services/profile.js'
 import { IconDownload, IconShare } from '../components/Icons.jsx'
 import { CARD_FORMATS, cardFileName, shareCardInfo } from '../lib/shareCard.js'
 import { canvasToBlob, drawCard, loadCardFonts } from '../lib/drawCard.js'
@@ -21,6 +22,9 @@ export default function ShareResult() {
   const [places, setPlaces] = useState(true)
   const [splits, setSplits] = useState(true)
   const [hr, setHr] = useState(false)
+  const prof = useProfile()
+  const fullName = prof.data.name || prof.data.nickname
+  const [showName, setShowName] = useState(() => !!fullName && prof.data.showNameOnCard)
   const [photos, setPhotos] = useState([])
   const [photoId, setPhotoId] = useState(null)
   const [bitmap, setBitmap] = useState(null)
@@ -48,7 +52,7 @@ export default function ShareResult() {
     return () => { alive = false }
   }, [photoId, photos])
 
-  const info = useMemo(() => (r ? shareCardInfo(r, races, { places, splits, hr }) : null), [r, races, places, splits, hr])
+  const info = useMemo(() => (r ? shareCardInfo(r, races, { places, splits, hr, athlete: showName ? fullName : '' }) : null), [r, races, places, splits, hr, showName, fullName])
 
   useEffect(() => {
     if (info && fontsReady && canvasRef.current) drawCard(canvasRef.current, info, CARD_FORMATS[format], bitmap)
@@ -118,6 +122,7 @@ export default function ShareResult() {
         </div>
 
         <div className="card" style={{ marginTop: 12 }}>
+          {fullName ? <label className="check"><input type="checkbox" checked={showName} onChange={(e) => setShowName(e.target.checked)} /> Mostrar meu nome</label> : <p className="note" style={{ marginTop: 0 }}>Quer seu nome no card? <Link to="/perfil">Preencha no perfil</Link>.</p>}
           {hasPlaces && <label className="check"><input type="checkbox" checked={places} onChange={(e) => setPlaces(e.target.checked)} /> Mostrar classificação</label>}
           {hasSplits && <label className="check"><input type="checkbox" checked={splits} onChange={(e) => setSplits(e.target.checked)} /> Mostrar parciais por km{format === 'square' ? ' (não cabe no quadrado)' : ''}</label>}
           {res.watch?.avgHr && <label className="check"><input type="checkbox" checked={hr} onChange={(e) => setHr(e.target.checked)} /> Mostrar frequência cardíaca média</label>}

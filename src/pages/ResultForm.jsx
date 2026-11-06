@@ -6,6 +6,8 @@ import WatchSummary from '../components/WatchSummary.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { getRace, saveRace } from '../services/store.js'
+import { getProfile } from '../services/profile.js'
+import { ageCategory } from '../lib/profile.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconCamera, IconInfo, IconX } from '../components/Icons.jsx'
 import { emptyResult, validateResult } from '../lib/model.js'
@@ -22,6 +24,7 @@ export default function ResultForm() {
   const nav = useNavigate()
   const { notify } = useUI()
   const race = getRace(id)
+  const suggestedCat = ageCategory(getProfile().data, race?.date)
   const base = race?.result ?? { ...emptyResult(), officialDistanceKm: race?.distanceKm ?? null }
   const [f, setF] = useState(() => ({
     officialDistanceKm: kmToInput(base.officialDistanceKm),
@@ -208,7 +211,15 @@ export default function ResultForm() {
                 <input id="categoryPlace" className="input" inputMode="numeric" value={f.categoryPlace} onChange={set('categoryPlace')} aria-invalid={inv('categoryPlace')} placeholder="º" />
               </Field>
             </div>
-            <Field label="Categoria" htmlFor="category"><input id="category" className="input" value={f.category} onChange={set('category')} placeholder="Ex.: F 30-34" /></Field>
+            <Field label="Categoria" htmlFor="category">
+              <input id="category" className="input" value={f.category} onChange={set('category')} placeholder="Ex.: F 30-34" />
+              {suggestedCat && f.category !== suggestedCat.label && (
+                <div className="predict-hint" data-testid="cat-hint">
+                  <span>Pelo seu perfil: <b>{suggestedCat.label}</b> <span className="muted">(idade em 31/12)</span></span>
+                  <button type="button" className="link-btn" onClick={() => set('category')(suggestedCat.label)}>Usar</button>
+                </div>
+              )}
+            </Field>
             <Field label="Link do resultado oficial" htmlFor="officialUrl" error={errors.officialUrl}>
               <input id="officialUrl" type="url" inputMode="url" className="input" value={f.officialUrl} onChange={set('officialUrl')} aria-invalid={inv('officialUrl')} placeholder="https://" />
             </Field>

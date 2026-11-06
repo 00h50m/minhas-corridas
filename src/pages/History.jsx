@@ -6,13 +6,14 @@ import { IconCompare, IconStopwatch } from '../components/Icons.jsx'
 import { addDaysISO, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
 import { periodCosts } from '../lib/costs.js'
+import BudgetCard from '../components/Budget.jsx'
 import { compareYears, monthly, paceSeries } from '../lib/evolution.js'
 import { distanceLabel, history, recordsByDistance } from '../lib/stats.js'
 
 export const memo = { tab: 'provas', period: null }
 
 export default function History() {
-  const { races } = useStore()
+  const { races, goals } = useStore()
   const [tab, setTabState] = useState(memo.tab)
   const setTab = (t) => { memo.tab = t; setTabState(t) }
   const list = history(races)
@@ -39,7 +40,7 @@ export default function History() {
         </div>
 
         {tab === 'gastos' ? (
-          <Costs races={races} />
+          <Costs races={races} goals={goals} />
         ) : tab === 'evolucao' ? (
           <EvolutionTab races={races} />
         ) : list.length === 0 ? (
@@ -201,7 +202,7 @@ function PaceChart({ points }) {
   )
 }
 
-function Costs({ races }) {
+function Costs({ races, goals }) {
   const today = todayISO()
   const y = Number(today.slice(0, 4))
   const presets = [
@@ -218,6 +219,7 @@ function Costs({ races }) {
 
   return (
     <div style={{ marginTop: 12 }}>
+      <div style={{ marginBottom: 12 }}><BudgetCard goals={goals} races={races} today={today} showEmpty /></div>
       <div className="seg" role="group" aria-label="Período">
         {presets.map((p) => (
           <button type="button" key={p.id} aria-pressed={period.id === p.id} onClick={() => setPeriod({ id: p.id, from: p.from, to: p.to })}>{p.label}</button>

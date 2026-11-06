@@ -56,6 +56,7 @@ export function emptyRace() {
     companions: '',
     leaveHomeTime: '',
     targetTime: null, // meta de tempo para esta prova, em segundos
+    wish: null, // quanto quero fazer esta prova: 1 (talvez), 2 (quero), 3 (quero muito)
     notes: '',
     // Custos. Inscrição estimada = fee + extraFees; feePaid é o valor efetivamente pago.
     feePaid: null,
@@ -114,6 +115,7 @@ export function validateRace(r) {
   for (const k of ['signupDeadline', 'lotChangeDate', 'kitPickupDate']) {
     if (r[k] != null && !isValidISODate(r[k])) e[k] = 'Data inválida.'
   }
+  if (r.wish != null && ![1, 2, 3].includes(r.wish)) e.wish = 'Escolha de 1 a 3.'
   if (r.signupUrl && !isUrl(r.signupUrl)) e.signupUrl = 'Use um link completo, começando com https://'
   if (r.status === 'concluida' && !r.date) e.date = 'Uma prova concluída precisa ter data.'
   for (const k of MONEY_FIELDS) {
@@ -167,6 +169,7 @@ export function normalizeRace(raw) {
     ? r.checklist.filter((c) => c && typeof c.text === 'string' && c.text.trim()).map((c) => ({ id: String(c.id || newId()), text: c.text.trim().slice(0, 120), done: !!c.done }))
     : defaultChecklist(r.status)
   if (typeof r.otherDesc !== 'string') r.otherDesc = ''
+  if (![1, 2, 3].includes(r.wish)) r.wish = null
   return r
 }
 
@@ -218,6 +221,8 @@ export function emptyGoal(type = 'tempo') {
     deadline: null, // prazo (opcional)
     status: 'andamento',
     manualValue: null, // progresso informado à mão (manual)
+    budgetScope: 'inscricoes', // orçamento: 'inscricoes' ou 'total' (inscrição + transporte + hospedagem + outros)
+    alertPct: 80, // orçamento: avisar ao atingir esta porcentagem
     notes: '',
     createdAt: null,
     updatedAt: null
@@ -241,6 +246,7 @@ export function validateGoal(g) {
     else if (g.type === 'km' && v > 100_000) e.targetValue = 'Distância alta demais.'
   }
   if (g.manualValue != null && !(typeof g.manualValue === 'number' && g.manualValue >= 0)) e.manualValue = 'Use um número maior ou igual a zero.'
+  if (g.type === 'orcamento' && !(Number.isInteger(g.alertPct) && g.alertPct >= 50 && g.alertPct <= 100)) e.alertPct = 'Escolha entre 50% e 100%.'
   if (g.startDate != null && !isValidISODate(g.startDate)) e.startDate = 'Data inválida.'
   if (g.deadline != null && !isValidISODate(g.deadline)) e.deadline = 'Data inválida.'
   if (!e.startDate && !e.deadline && g.startDate && g.deadline && g.startDate > g.deadline) e.deadline = 'O prazo é anterior ao início.'
@@ -252,5 +258,7 @@ export function normalizeGoal(raw) {
   if (g.type === 'primeira') g.targetValue = g.distanceKm
   if (typeof g.notes !== 'string') g.notes = ''
   if (typeof g.unit !== 'string') g.unit = ''
+  if (g.budgetScope !== 'total') g.budgetScope = 'inscricoes'
+  if (!(Number.isInteger(g.alertPct) && g.alertPct >= 50 && g.alertPct <= 100)) g.alertPct = 80
   return g
 }

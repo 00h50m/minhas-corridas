@@ -14,6 +14,7 @@ import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
 import { IconBell, IconCompare, IconFlag, IconShare } from '../components/Icons.jsx'
 import { comparableRaces } from '../lib/compare.js'
 import { PredictionCard } from '../components/Prediction.jsx'
+import { DecisionActions, DecisionDetails, WishPicker, setWish } from '../components/Decision.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
 
@@ -193,6 +194,18 @@ export default function RaceDetail() {
           <>
             <div className="section-title"><h2>Previsão de tempo</h2></div>
             <PredictionCard races={races} km={r.distanceKm} excludeId={r.id} onUse={(t) => { saveRace({ ...getRace(r.id), targetTime: t }); notify('Meta definida') }} />
+          </>
+        )}
+
+        {['interesse', 'aberta'].includes(r.status) && (!r.date || r.date >= today) && (
+          <>
+            <div className="section-title"><h2>Vale a pena?</h2><Link to="/decidir">Comparar</Link></div>
+            <div className="card" data-testid="decision-card">
+              <div className="list-group-title" style={{ marginTop: 0 }}>Quanto quero</div>
+              <WishPicker value={r.wish} onChange={(v) => setWish(r.id, v)} />
+              <DecisionDetails race={r} races={races} goals={goals} today={today} hidePrediction={!r.targetTime && !!r.distanceKm} />
+              <DecisionActions race={r} />
+            </div>
           </>
         )}
 

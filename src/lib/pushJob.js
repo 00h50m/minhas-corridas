@@ -2,13 +2,14 @@
 // recebe um adaptador do banco (`db`) e a função de envio (`send`), para poder ser testada.
 import { pushNotificationsFor } from './alerts.js'
 import { todayInTimeZone } from './dates.js'
-import { normalizeRace } from './model.js'
+import { normalizeGoal, normalizeRace } from './model.js'
 
 /**
  * db: {
  *   subscriptions(): [{ endpoint, user_id, p256dh, auth, tz }]
  *   races(userId): [race]
  *   prefs(userId): preferências salvas ou null (opcional; sem a tabela, vale o padrão)
+ *   goals(userId): objetivos (opcional; usado no aviso de orçamento)
  *   claim(userId, keys): keys ainda não enviadas (e já marcadas como enviadas)
  *   release(userId, keys): desfaz a marcação (quando nenhum aparelho recebeu)
  *   removeSubscription(endpoint)
@@ -31,7 +32,8 @@ export async function runPushJob({ db, send, now = new Date() }) {
     } catch {
       prefs = null // tabela ainda não criada: usa o padrão
     }
-    const due = pushNotificationsFor(races, today, prefs)
+    const goals = db.goals ? (await db.goals(userId)).map(normalizeGoal) : []
+    const due = pushNotificationsFor(races, today, prefs, goals)
     if (!due.length) continue
     const fresh = new Set(await db.claim(userId, due.map((n) => n.key)))
     const toSend = due.filter((n) => fresh.has(n.key))

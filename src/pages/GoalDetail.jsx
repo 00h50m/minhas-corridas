@@ -7,7 +7,8 @@ import { GOAL_STATUSES, GOAL_TYPE_BY_ID, goalUnit } from '../lib/model.js'
 import { formatGoalTarget, goalProgress } from '../lib/goals.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, kmToInput, parseNumber } from '../lib/format.js'
-import { inscriptionSpent } from '../lib/costs.js'
+import { raceBudgetCost, scopeOf } from '../lib/budget.js'
+import { BudgetBar } from '../components/Budget.jsx'
 import { GoalPlan } from '../components/Analysis.jsx'
 import { formatMoney } from '../lib/format.js'
 
@@ -51,7 +52,7 @@ export default function GoalDetail() {
   }
 
   const raceLine = (r) => {
-    if (g.type === 'orcamento') return formatMoney(inscriptionSpent(r))
+    if (g.type === 'orcamento') return formatMoney(raceBudgetCost(r, scopeOf(g)).counted ?? 0)
     if (!r.result) return ''
     if (g.type === 'km') return formatKm(r.result.officialDistanceKm)
     return `${formatDuration(r.result.netTime)}${r.result.isOfficial ? '' : ' · registro pessoal'}`
@@ -78,7 +79,9 @@ export default function GoalDetail() {
             <div className="v">{p.label}</div>
             <div className="pct">{Math.round(p.pct * 100)}%</div>
           </div>
-          <Progress pct={p.pct} tone={tone} label="Progresso" />
+          {p.budget ? <BudgetBar b={p.budget} /> : <Progress pct={p.pct} tone={tone} label="Progresso" />}
+          {p.warn && g.status === 'andamento' && <div className="alert alert-warn small" style={{ marginTop: 10 }}><div><b>Perto do limite:</b> já passou de {p.budget.alertPct}% do orçamento.</div></div>}
+          {p.over && g.status === 'andamento' && <div className="alert alert-error small" style={{ marginTop: 10 }}><div><b>Orçamento estourado.</b></div></div>}
           <p className="small" style={{ margin: '10px 0 0' }}>{p.detail}</p>
           {g.type === 'tempo' && <p className="note">Percentual = proximidade da marca (alvo ÷ melhor tempo oficial). Chega a 100% quando o tempo fica abaixo do alvo.</p>}
         </div>
@@ -117,7 +120,7 @@ export default function GoalDetail() {
 
         {p.auto && (
           <>
-            <div className="section-title"><h2>{g.type === 'orcamento' ? 'Inscrições consideradas' : 'Provas consideradas'}</h2></div>
+            <div className="section-title"><h2>{g.type === 'orcamento' ? (scopeOf(g) === 'total' ? 'Gastos considerados' : 'Inscrições consideradas') : 'Provas consideradas'}</h2>{g.type === 'orcamento' && <Link to="/decidir">Decidir</Link>}</div>
             {p.races.length === 0 ? (
               <div className="card muted small">Nenhuma prova registrada conta para este objetivo ainda.</div>
             ) : (

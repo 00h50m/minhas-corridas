@@ -6,6 +6,9 @@ import SyncBadge from '../components/SyncBadge.jsx'
 import { GoalCard } from './Goals.jsx'
 import { memo as historyMemo } from './History.jsx'
 import { activeGoals, goalProgress } from '../lib/goals.js'
+import BudgetCard from '../components/Budget.jsx'
+import { currentBudget } from '../lib/budget.js'
+import { candidates, nextDeadline } from '../lib/decision.js'
 import { upcomingAlerts, whenLabel } from '../lib/alerts.js'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatKm, formatMoney } from '../lib/format.js'
@@ -63,10 +66,13 @@ export default function Home() {
   const sameDates = sameDateGroups(races)
   // Objetivos já atingidos (aguardando confirmação) aparecem primeiro.
   const alerts = upcomingAlerts(races, today, 7)
-  const active = activeGoals(goals)
+  const budgetId = currentBudget(goals, today)?.id
+  const active = activeGoals(goals).filter((g) => g.id !== budgetId)
     .map((g, i) => ({ g, i, hit: goalProgress(g, races, today).achieved }))
     .sort((a, b) => (a.hit === b.hit ? a.i - b.i : a.hit ? -1 : 1))
     .map((x) => x.g)
+  const cands = candidates(races, today)
+  const soonest = cands.map((r) => ({ r, d: nextDeadline(r, today) })).filter((x) => x.d).sort((a, b) => (a.d.date < b.d.date ? -1 : 1))[0]
   const undatedCount = races.filter((r) => !r.date && ['interesse', 'aberta', 'inscrita'].includes(r.status)).length
 
   return (
@@ -129,6 +135,17 @@ export default function Home() {
           </>
         )}
 
+        {cands.length > 0 && (
+          <Link to="/decidir" className="card decide-link" data-testid="decide-link">
+            <span style={{ fontSize: 26 }} aria-hidden="true">⚖️</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b>{cands.length} {cands.length === 1 ? 'prova em avaliação' : 'provas em avaliação'}</b><br />
+              <span className="muted small">{soonest ? `${soonest.d.label}: ${soonest.r.name}, ${whenLabel(soonest.d.daysLeft)}` : 'Compare custo, orçamento, datas e objetivos antes de se inscrever.'}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
+        )}
+
         <div className="section-title"><h2>Em {year}</h2></div>
         <div className="stats">
           <div className="stat"><div className="v">{summary.doneCount}</div><div className="l">{summary.doneCount === 1 ? 'prova concluída' : 'provas concluídas'}</div></div>
@@ -140,11 +157,15 @@ export default function Home() {
           {summary.missingCost > 0 && ` ${summary.missingCost} ${summary.missingCost === 1 ? 'prova está' : 'provas estão'} sem valor informado.`}
         </p>
 
+        <BudgetCard goals={goals} races={races} today={today} />
+
         <div className="section-title">
           <h2>Objetivos</h2>
           <Link to="/objetivos">{goals.length ? 'Ver todos' : ''}</Link>
         </div>
-        {active.length === 0 ? (
+        {active.length === 0 && budgetId ? (
+          <div className="card muted small">Além do orçamento, nenhum objetivo em andamento. <Link to="/objetivos/novo">Criar objetivo</Link></div>
+        ) : active.length === 0 ? (
           <Link to="/objetivos/novo" className="card goal-empty">
             <IconTarget />
             <span><b>{goals.length ? 'Nenhum objetivo em andamento.' : 'Defina um objetivo.'}</b><br /><span className="muted small">Ex.: 5 km abaixo de 30:00, primeira meia, orçamento do ano.</span></span>

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { getGoal, saveGoal } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { COMMON_DISTANCES, GOAL_STATUSES, GOAL_TYPES, GOAL_TYPE_BY_ID, emptyGoal, validateGoal } from '../lib/model.js'
 import { suggestGoalTitle } from '../lib/goals.js'
+import { BUDGET_SCOPES } from '../lib/budget.js'
 import TimeInput from '../components/TimeInput.jsx'
 import { todayISO } from '../lib/dates.js'
 import { durationToInput, formatKm, kmToInput, moneyToInput, parseDuration, parseKm, parseMoney, parseNumber } from '../lib/format.js'
@@ -21,13 +22,15 @@ function toForm(g) {
     startDate: g.startDate ?? '',
     deadline: g.deadline ?? '',
     status: g.status,
-    notes: g.notes
+    notes: g.notes,
+    budgetScope: g.budgetScope === 'total' ? 'total' : 'inscricoes',
+    alertPct: g.alertPct ?? 80
   }
 }
 
 function fromForm(f, base) {
   const errors = {}
-  const g = { ...base, type: f.type, status: f.status, notes: f.notes.trim(), unit: '', distanceKm: null, targetValue: null, manualValue: null }
+  const g = { ...base, type: f.type, status: f.status, notes: f.notes.trim(), unit: '', distanceKm: null, targetValue: null, manualValue: null, budgetScope: f.budgetScope, alertPct: Number(f.alertPct) }
   if (f.type === 'primeira' || f.type === 'tempo') {
     g.distanceKm = parseKm(f.distanceKm)
     if (f.distanceKm && g.distanceKm == null) errors.distanceKm = 'Use km, ex.: 5, 10 ou 21,1.'
@@ -66,7 +69,20 @@ export default function GoalForm() {
   const nav = useNavigate()
   const { notify } = useUI()
   const existing = id ? getGoal(id) : null
-  const base = existing ?? emptyGoal('tempo')
+  const [params] = useSearchParams()
+  // Atalho "Definir orçamento" (?tipo=orcamento&ano=2027): já abre no tipo e no ano certos.
+  const [base] = useState(() => {
+    if (existing) return existing
+    const tipo = GOAL_TYPE_BY_ID[params.get('tipo')] ? params.get('tipo') : 'tempo'
+    const g = emptyGoal(tipo)
+    const ano = /^\d{4}$/.test(params.get('ano') ?? '') ? params.get('ano') : null
+    if (PERIOD_TYPES.includes(tipo)) {
+      const y = ano ?? todayISO().slice(0, 4)
+      g.startDate = `${y}-01-01`
+      g.deadline = `${y}-12-31`
+    }
+    return g
+  })
   const [f, setF] = useState(() => toForm(base))
   const [errors, setErrors] = useState({})
   const [saveError, setSaveError] = useState(null)
@@ -162,9 +178,25 @@ export default function GoalForm() {
             </Field>
           )}
           {t === 'orcamento' && (
-            <Field label="Orçamento para inscrições (R$)" htmlFor="g-target" error={errors.targetValue}>
-              <input id="g-target" className="input" inputMode="decimal" value={f.target} onChange={set('target')} aria-invalid={inv('targetValue')} placeholder="Ex.: 1.500,00" />
-            </Field>
+            <>
+              <Field label="Orçamento (R$)" htmlFor="g-target" error={errors.targetValue}>
+                <input id="g-target" className="input" inputMode="decimal" value={f.target} onChange={set('target')} aria-invalid={inv('targetValue')} placeholder="Ex.: 1.500,00" />
+              </Field>
+              <Field label="O que entra na conta">
+                <div className="seg seg-col" role="radiogroup" aria-label="O que entra no orçamento">
+                  {BUDGET_SCOPES.map((s) => (
+                    <button type="button" key={s.id} role="radio" aria-checked={f.budgetScope === s.id} aria-pressed={f.budgetScope === s.id} onClick={() => set('budgetScope')(s.id)}>{s.label}</button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Avisar quando chegar a" error={errors.alertPct} hint="Aparece no Início e, com as notificações ativas, no celular. Também avisa se estourar.">
+                <div className="seg" role="group" aria-label="Porcentagem para avisar">
+                  {[70, 80, 90, 100].map((p) => (
+                    <button type="button" key={p} aria-pressed={Number(f.alertPct) === p} onClick={() => set('alertPct')(p)}>{p}%</button>
+                  ))}
+                </div>
+              </Field>
+            </>
           )}
           {t === 'manual' && (
             <>

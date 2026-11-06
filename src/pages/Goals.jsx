@@ -52,7 +52,7 @@ export default function Goals() {
 
 export function GoalCard({ goal: g, races, today, compact }) {
   const p = goalProgress(g, races, today)
-  const tone = p.over ? 'danger' : p.achieved || g.status === 'concluido' ? 'ok' : 'brand'
+  const tone = p.over ? 'danger' : p.warn ? 'warn' : p.achieved || g.status === 'concluido' ? 'ok' : 'brand'
   return (
     <Link to={`/objetivos/${g.id}`} className={`goal-card g-${g.status}`}>
       <div className="goal-top">
@@ -70,6 +70,7 @@ export function GoalCard({ goal: g, races, today, compact }) {
         <b>{p.label}</b>
         <span>
           {p.over ? <span className="flag flag-danger">Acima do orçamento</span>
+            : p.warn && g.status === 'andamento' ? <span className="flag flag-warn">Perto do limite</span>
             : p.achieved && g.status === 'andamento' ? <span className="flag flag-ok">✓ Atingido</span>
             : p.expired && g.status === 'andamento' ? <span className="flag flag-warn">Prazo encerrado</span>
             : p.daysLeft != null && g.status === 'andamento' ? `${p.daysLeft} ${p.daysLeft === 1 ? 'dia' : 'dias'}` : !p.auto ? 'manual' : ''}

@@ -12,7 +12,7 @@ describe('preferências das notificações', () => {
   it('normaliza: ignora antecedências inválidas e completa com o padrão', () => {
     expect(normalizePushPrefs(null)).toEqual(normalizePushPrefs(DEFAULT_PUSH_PREFS))
     const p = normalizePushPrefs({ inscricao: [0, 7, 7, 99], kit: [], weekly: true, lixo: 1 })
-    expect(p).toEqual({ inscricao: [7, 0], lote: [1], kit: [], prova: [1], weekly: true })
+    expect(p).toEqual({ inscricao: [7, 0], lote: [1], kit: [], prova: [1], weekly: true, orcamento: true })
   })
   it('respeita o que foi escolhido', () => {
     const today = '2026-11-04' // quarta

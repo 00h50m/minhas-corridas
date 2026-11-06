@@ -1,7 +1,8 @@
 // Cálculo automático do progresso dos objetivos a partir das provas registradas.
 import { GOAL_TYPE_BY_ID, goalUnit } from './model.js'
 import { distanceKey, byDateAsc } from './stats.js'
-import { inscriptionSpent, round2 } from './costs.js'
+import { round2 } from './costs.js'
+import { budgetStatus, scopeOf } from './budget.js'
 import { formatDuration, formatKm, formatMoney } from './format.js'
 import { daysBetween, formatDateBR, todayISO } from './dates.js'
 
@@ -34,7 +35,7 @@ export function suggestGoalTitle(g) {
     case 'km':
       return g.targetValue ? `Somar ${formatKm(g.targetValue)} em provas` : ''
     case 'orcamento':
-      return g.targetValue ? `Gastar até ${formatMoney(g.targetValue)} em inscrições` : ''
+      return g.targetValue ? `Gastar até ${formatMoney(g.targetValue)} ${scopeOf(g) === 'total' ? 'com provas (inscrição e viagem)' : 'em inscrições'}${g.deadline ? ` em ${g.deadline.slice(0, 4)}` : ''}` : ''
     default:
       return ''
   }
@@ -132,20 +133,21 @@ export function goalProgress(g, races, today = todayISO()) {
   }
 
   if (g.type === 'orcamento') {
-    const list = races.filter((r) => inWindow(g, r.date) && inscriptionSpent(r) != null).sort(byDateAsc)
-    const spent = round2(list.reduce((s, r) => s + inscriptionSpent(r), 0))
-    const over = spent > g.targetValue
-    const hasEstimate = list.some((r) => r.feePaid == null && ['inscrita', 'concluida'].includes(r.status))
+    const b = budgetStatus(g, races, today)
+    const over = b.level === 'estourou'
+    const what = b.scope === 'total' ? 'Inscrição, transporte, hospedagem e outros' : 'Inscrições'
     return {
       ...base,
-      races: list,
+      races: b.races,
       over,
-      pct: Math.min(1, spent / g.targetValue),
+      warn: b.level === 'atencao',
+      budget: b,
+      pct: Math.min(1, b.pct),
       // Orçamento só é "cumprido" quando o período termina sem estourar.
       achieved: !over && expired,
-      label: `${formatMoney(spent)} de ${formatMoney(g.targetValue)}`,
-      detail: over ? `Passou ${formatMoney(round2(spent - g.targetValue))} do orçamento.` : `Restam ${formatMoney(round2(g.targetValue - spent))}${expired ? '; período encerrado dentro do orçamento.' : '.'}`,
-      note: `Inscrições (pagas ou, na falta, estimadas) das provas inscritas e concluídas${hasEstimate ? ' — inclui valores estimados' : ''}. Desistências e cancelamentos entram só com valor pago.${!g.startDate && !g.deadline ? ' Sem período definido: considera todas as provas.' : ''}`
+      label: `${formatMoney(b.spent)} de ${formatMoney(g.targetValue)}`,
+      detail: over ? `Passou ${formatMoney(round2(b.spent - g.targetValue))} do orçamento.` : `Restam ${formatMoney(b.remaining)}${expired ? '; período encerrado dentro do orçamento.' : '.'}${!expired && b.planned > 0 ? ` ${b.plannedRaces.length === 1 ? 'Com a prova em avaliação' : `Com as ${b.plannedRaces.length} provas em avaliação`}: ${formatMoney(b.projected)} (${Math.round(b.projectedPct * 100)}%).` : ''}`,
+      note: `${what} (pagos ou, na falta, estimados) das provas inscritas e concluídas${b.estimatedPart > 0 ? ' — inclui valores estimados' : ''}. Desistências e cancelamentos entram só com valor pago.${!g.startDate && !g.deadline ? ' Sem período definido: considera todas as provas.' : ''}`
     }
   }
 

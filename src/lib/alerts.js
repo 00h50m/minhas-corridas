@@ -1,5 +1,7 @@
 // Prazos próximos para o Início: inscrição, mudança de lote, retirada do kit e a própria prova.
 import { daysBetween, todayISO } from './dates.js'
+import { budgetStatus, currentBudget } from './budget.js'
+import { formatMoney } from './format.js'
 
 const BEFORE_SIGNUP = ['interesse', 'aberta']
 
@@ -57,16 +59,17 @@ export const PUSH_OPTIONS = {
 export const PUSH_TYPES = Object.keys(PUSH_OPTIONS)
 
 // Padrão de quem nunca mexeu nas preferências.
-export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false }
+export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false, orcamento: true }
 
 /** Aceita preferências salvas (ou nada) e devolve um objeto válido. */
 export function normalizePushPrefs(raw) {
-  const out = { weekly: DEFAULT_PUSH_PREFS.weekly }
+  const out = { weekly: DEFAULT_PUSH_PREFS.weekly, orcamento: DEFAULT_PUSH_PREFS.orcamento }
   for (const t of PUSH_TYPES) {
     const v = raw && Array.isArray(raw[t]) ? raw[t] : DEFAULT_PUSH_PREFS[t]
     out[t] = [...new Set(v.filter((d) => PUSH_OPTIONS[t].includes(d)))].sort((a, b) => b - a)
   }
   if (raw && typeof raw.weekly === 'boolean') out.weekly = raw.weekly
+  out.orcamento = raw && typeof raw.orcamento === 'boolean' ? raw.orcamento : DEFAULT_PUSH_PREFS.orcamento
   return out
 }
 
@@ -107,7 +110,7 @@ export function weeklySummary(races, today) {
  * Notificações do dia para uma pessoa, conforme as preferências. Cada uma tem `key` única
  * (prova, tipo, data e antecedência), usada pelo servidor para nunca mandar a mesma duas vezes.
  */
-export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null) {
+export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null, goals = []) {
   const prefs = normalizePushPrefs(rawPrefs)
   const max = Math.max(0, ...PUSH_TYPES.flatMap((t) => prefs[t]))
   const out = upcomingAlerts(races, today, max)
@@ -123,5 +126,31 @@ export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null)
     const w = weeklySummary(races, today)
     if (w) out.unshift(w)
   }
+  if (prefs.orcamento) {
+    const b = budgetAlert(goals, races, today)
+    if (b) out.push(b)
+  }
   return out
+}
+
+/**
+ * Aviso de orçamento: uma vez ao chegar no limite de alerta e outra ao estourar.
+ * A chave leva o valor do orçamento, então mudar o teto permite avisar de novo.
+ */
+export function budgetAlert(goals, races, today = todayISO()) {
+  const g = currentBudget(goals, today)
+  if (!g) return null
+  const b = budgetStatus(g, races, today)
+  if (b.level === 'ok') return null
+  const over = b.level === 'estourou'
+  return {
+    key: `orcamento:${g.id}:${b.level}:${g.targetValue}:${b.alertPct}`,
+    type: 'orcamento',
+    raceId: null,
+    url: `/objetivos/${g.id}`,
+    title: over ? 'Orçamento estourado' : `Orçamento: ${Math.round(b.pct * 100)}% usado`,
+    body: over
+      ? `${formatMoney(b.spent)} de ${formatMoney(b.target)} — ${formatMoney(b.spent - b.target)} acima.`
+      : `${formatMoney(b.spent)} de ${formatMoney(b.target)}. Restam ${formatMoney(b.remaining)}.`
+  }
 }

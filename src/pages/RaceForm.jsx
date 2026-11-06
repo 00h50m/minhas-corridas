@@ -4,6 +4,7 @@ import { repeatRace } from '../lib/alerts.js'
 import LinkImport from '../components/LinkImport.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { PredictionHint } from '../components/Prediction.jsx'
+import { WishPicker } from '../components/Decision.jsx'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -30,6 +31,7 @@ function toForm(r) {
   f.kitPickupDate = r.kitPickupDate ?? ''
   f.shirtIncluded = !!r.shirtIncluded
   f.targetTime = durationToInput(r.targetTime)
+  f.wish = r.wish ?? null
   return f
 }
 
@@ -63,6 +65,7 @@ function fromForm(f, base) {
   r.kitPickupDate = f.kitPickupDate || null
   r.shirtIncluded = f.shirtIncluded
   if (!r.shirtIncluded) r.shirtSize = ''
+  r.wish = [1, 2, 3].includes(f.wish) ? f.wish : null
   r.targetTime = null
   if (f.targetTime) {
     r.targetTime = parseDuration(f.targetTime)
@@ -372,6 +375,11 @@ export default function RaceForm() {
               <TimeInput id="targetTime" value={f.targetTime} onChange={set('targetTime')} invalid={!!errors.targetTime} />
               {parseKm(f.distanceKm) && <PredictionHint races={races} km={parseKm(f.distanceKm)} excludeId={existing?.id} onUse={(t) => { setF((p) => ({ ...p, targetTime: formatDuration(t) })); setErrors((p) => ({ ...p, targetTime: undefined })) }} />}
             </Field>
+            {['interesse', 'aberta'].includes(f.status) && (
+              <Field label="Quanto quero esta prova" optional hint="Ajuda a ordenar as provas na tela Decidir.">
+                <WishPicker value={f.wish} onChange={(v) => setF((p) => ({ ...p, wish: v }))} />
+              </Field>
+            )}
             <Field label="Observações" htmlFor="notes"><textarea id="notes" className="input" value={f.notes} onChange={set('notes')} /></Field>
           </div>
         </details>

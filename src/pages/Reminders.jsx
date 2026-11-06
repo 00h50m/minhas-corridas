@@ -225,6 +225,10 @@ function PrefsEditor({ userId }) {
         <input type="checkbox" checked={prefs.weekly} disabled={off} onChange={(e) => save({ ...prefs, weekly: e.target.checked })} />
         Resumo da semana às segundas
       </label>
+      <label className="check">
+        <input type="checkbox" checked={prefs.orcamento} disabled={off} onChange={(e) => save({ ...prefs, orcamento: e.target.checked })} />
+        Aviso de orçamento (perto do limite e se estourar)
+      </label>
       {state === 'saving' && <div className="muted small">Salvando…</div>}
       {error && <div className="alert alert-error small" role="alert"><div>{error}</div></div>}
     </div>

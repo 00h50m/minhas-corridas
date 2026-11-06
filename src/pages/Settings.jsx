@@ -10,6 +10,7 @@ import { IconBell, IconCloud } from '../components/Icons.jsx'
 import { useSync } from '../services/sync.js'
 import { APP_VERSION, checkForUpdate, hardReload } from '../services/appUpdate.js'
 import { syncLabel } from './Account.jsx'
+import { InstallSection } from '../components/Install.jsx'
 import { Avatar } from '../components/Avatar.jsx'
 import { getProfile, replaceProfile, useProfile } from '../services/profile.js'
 import { callName } from '../lib/profile.js'
@@ -199,12 +200,8 @@ export default function Settings() {
           <p className="note">O backup inclui corridas, detalhes, custos, checklists, resultados e objetivos. Anexos e fotos entram só se você marcar a opção (o arquivo fica maior). Restaurar substitui o que está no aparelho.</p>
         </div>
 
-        <div className="section-title"><h2>Instalar no celular</h2></div>
-        <div className="card small">
-          <p style={{ margin: 0 }}><b>iPhone (Safari):</b> Compartilhar → Adicionar à Tela de Início.</p>
-          <p style={{ margin: '8px 0 0' }}><b>Android (Chrome):</b> menu ⋮ → Instalar app / Adicionar à tela inicial.</p>
-          <p className="muted" style={{ margin: '8px 0 0' }}>Depois de instalado, o app abre em tela cheia e funciona sem internet.</p>
-        </div>
+        <div className="section-title"><h2>Instalar o app</h2></div>
+        <InstallSection />
 
         <div className="section-title"><h2>Zona de cuidado</h2></div>
         <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>

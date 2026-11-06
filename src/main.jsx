@@ -4,8 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { load } from './services/store.js'
 import { startSync } from './services/sync.js'
+import { initInstall } from './services/install.js'
 import './styles.css'
 
+initInstall()
 load()
 startSync()
 

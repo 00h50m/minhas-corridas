@@ -731,3 +731,12 @@ details.link-import { margin-top: 0; }
 .emergency-card .blood { font-family: var(--display); font-size: 30px; font-weight: 800; color: var(--danger); }
 .link-btn.muted-btn { color: var(--ink-3); }
 .topbar .sub .greet { font-size: 16px; font-weight: 800; color: var(--ink-2); }
+
+/* Instalar */
+.install-card { margin-bottom: 12px; border: 1.5px solid var(--brand-soft); }
+.install-card .ic-top { display: flex; gap: 12px; align-items: center; }
+.install-card .ic-top img { border-radius: 12px; flex: none; }
+.install-card .ic-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.install-card .ic-actions .btn { min-height: 44px; padding: 0 18px; }
+.install-steps { margin: 10px 0 0; padding-left: 20px; font-size: 14px; display: grid; gap: 6px; }
+.ios-share { width: 18px; height: 18px; vertical-align: -3px; color: #0a84ff; }

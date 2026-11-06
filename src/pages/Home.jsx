@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Avatar, AvatarButton } from '../components/Avatar.jsx'
 import { useProfile } from '../services/profile.js'
 import { greeting } from '../lib/profile.js'
+import { InstallBanner } from '../components/Install.jsx'
+import { installAvailable, useInstall } from '../services/install.js'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
 import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconTarget, IconTrophy } from '../components/Icons.jsx'
@@ -78,14 +80,19 @@ export default function Home() {
   const today = todayISO()
   const year = Number(today.slice(0, 4))
   const hello = greeting(prof.data, new Date(), today)
-  const invite = !prof.data.name && !prof.data.nickname
+  const inst = useInstall()
+  const showInstall = installAvailable(inst) && !inst.snoozed
+  // Um convite por vez: primeiro instalar, depois o perfil.
+  const invite = !showInstall && !prof.data.name && !prof.data.nickname
 
   if (races.length === 0) {
     return (
       <>
         <TopBar title={<Brand />} sub={<span className="greet">{hello}</span>} right={settings} />
         <div className="page">
-          {invite && <ProfileInvite />}
+          {showInstall && <InstallBanner />}
+          {showInstall && <InstallBanner />}
+        {invite && <ProfileInvite />}
           <EmptyState
             title="Bora para a primeira?"
             text="Cadastre uma prova que você quer fazer ou em que já está inscrita. Só o nome é obrigatório — o resto você completa depois."
@@ -121,6 +128,7 @@ export default function Home() {
     <>
       <TopBar title={<Brand />} sub={<span className="greet">{hello}</span>} right={settings} />
       <div className="page home">
+        {showInstall && <InstallBanner />}
         {invite && <ProfileInvite />}
         {pending.length > 0 && (
           <Link to={`/corridas/${pending[0].id}/resultado`} className="alert alert-warn home-pending">

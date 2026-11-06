@@ -61,7 +61,8 @@ const races = [
   { id: 'feita', name: '10K do Parque', status: 'concluida', date: iso(-20), distanceKm: 10, result: { officialDistanceKm: 10, netTime: 3000, isOfficial: true, watch: null } }
 ]
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
-await p.evaluate((races) => { localStorage.clear(); localStorage.setItem('minhas-corridas:v1', JSON.stringify({ version: 2, races, goals: [] })) }, races)
+// O convite de instalar tem prioridade; aqui ele já foi dispensado para testar o do perfil.
+await p.evaluate((races) => { localStorage.clear(); localStorage.setItem('minhas-corridas:v1', JSON.stringify({ version: 2, races, goals: [] })); localStorage.setItem('minhas-corridas:instalar-dispensado', String(Date.now())) }, races)
 
 // 1. Sem perfil: convite discreto e saudação sem nome; dispensar fica lembrado
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })

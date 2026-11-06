@@ -322,7 +322,7 @@ ok('Objetivos de quantidade, orçamento, km e manual (+1 manual)')
 // 5. Concluir prova e registrar resultado
 await go('/')
 await expectText('Como foi?')
-await expectText('Próxima prova confirmada')
+await expectText('Próxima prova')
 await expectText('Faltam 40 dias')
 await shot('inicio-com-dados')
 ok('Início: próxima confirmada com contagem regressiva e aviso de resultado pendente')
@@ -532,9 +532,10 @@ await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => 
 await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
 await page2.goto(BASE + '/', { waitUntil: 'networkidle0' })
 let t3 = await page2.evaluate(() => document.body.innerText)
-for (const s of ['Próximos 7 dias'.toUpperCase(), 'Retirar o kit', 'EM 2 DIAS', 'Dia da prova', 'EM 5 DIAS']) if (!t3.includes(s)) throw new Error('Aviso ausente: ' + s + '\n' + t3.slice(0, 900))
+// A própria prova aparece no destaque (contagem), não repetida na lista da semana.
+for (const s of ['Esta semana'.toUpperCase(), 'Retirar o kit', 'EM 2 DIAS', 'Faltam 5 dias', 'Corrida Relâmpago']) if (!t3.includes(s)) throw new Error('Aviso ausente: ' + s + '\n' + t3.slice(0, 900))
 await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-inicio-avisos.png`, fullPage: true })
-ok('Avisos dos próximos 7 dias no Início (kit e prova)')
+ok('Avisos da semana no Início (kit) e a prova no destaque')
 
 await page2.goto(BASE + '/corridas', { waitUntil: 'networkidle0' })
 await page2.evaluate(() => [...document.querySelectorAll('a')].find((a) => a.innerText.includes('5K do Parque')).click())

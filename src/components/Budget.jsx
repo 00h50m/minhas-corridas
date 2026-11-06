@@ -17,7 +17,7 @@ export function BudgetBar({ b }) {
   )
 }
 
-export default function BudgetCard({ goals, races, today = todayISO(), showEmpty = false }) {
+export default function BudgetCard({ goals, races, today = todayISO(), showEmpty = false, compact = false }) {
   const g = currentBudget(goals, today)
   const year = today.slice(0, 4)
   if (!g) {
@@ -30,6 +30,22 @@ export default function BudgetCard({ goals, races, today = todayISO(), showEmpty
     )
   }
   const b = budgetStatus(g, races, today)
+  if (compact) {
+    return (
+      <Link to={`/objetivos/${g.id}`} className={`card budget-card budget-compact lv-${b.level}`} data-testid="budget-card">
+        <div className="budget-head">
+          <b>Orçamento {g.deadline ? g.deadline.slice(0, 4) : ''}</b>
+          <span className={`flag ${b.level === 'estourou' ? 'flag-danger' : b.level === 'atencao' ? 'flag-warn' : 'flag-ok'}`}>{b.level === 'estourou' ? 'Estourou' : b.level === 'atencao' ? 'Perto do limite' : `${pctText(b.pct)} usado`}</span>
+        </div>
+        <div className="budget-nums">
+          <span><b>{formatMoney(b.spent)}</b> de {formatMoney(b.target)}</span>
+          <span className={b.remaining < 0 ? 'delta-bad' : 'muted'}>{b.remaining < 0 ? `${formatMoney(-b.remaining)} acima` : `restam ${formatMoney(b.remaining)}`}</span>
+        </div>
+        <BudgetBar b={b} />
+        {b.planned > 0 && <div className="small muted" style={{ marginTop: 6 }}>Com as provas em avaliação: {formatMoney(b.projected)} ({pctText(b.projectedPct)})</div>}
+      </Link>
+    )
+  }
   return (
     <div className={`card budget-card lv-${b.level}`} data-testid="budget-card">
       <div className="budget-head">

@@ -684,3 +684,33 @@ details.link-import { margin-top: 0; }
 .tc-table .bar-cell { width: 32%; }
 .tc-table tr.half th, .tc-table tr.half td { background: var(--surface-2); }
 .tc-table tr.end th, .tc-table tr.end td { border-bottom: 0; font-weight: 800; }
+
+/* Início (rodada 8) */
+.home-pending { text-decoration: none; margin-bottom: 12px; }
+.home-pending u { font-weight: 800; }
+.hero .chip-dim { background: transparent; border: 1px dashed rgba(255, 255, 255, 0.35); }
+.hero .chip-hot { background: var(--brand); color: #fff; }
+.hero .prep { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12.5px; font-weight: 800; opacity: 0.9; }
+.hero .prep-bar { flex: 1; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.hero .prep-bar span { display: block; height: 100%; background: var(--brand); border-radius: 999px; }
+.hero .hero-cta { position: relative; z-index: 1; margin-top: 12px; font-size: 13.5px; font-weight: 800; color: #ffb39b; }
+.hero-empty { margin-bottom: 0; }
+.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.quick a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 68px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); text-decoration: none; color: var(--ink); font-size: 12.5px; font-weight: 800; }
+.quick a svg { width: 24px; height: 24px; color: var(--brand); }
+.quick a.hot { background: var(--brand); color: #fff; }
+.quick a.hot svg { color: #fff; }
+.quick i { position: absolute; top: 6px; right: 8px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--ink); color: var(--bg); font-style: normal; font-size: 11.5px; display: grid; place-items: center; }
+.quick a.hot i { background: #fff; color: var(--brand-ink); }
+.last-race .lr-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.last-race .lr-name { font-weight: 800; font-size: 16.5px; line-height: 1.25; }
+.last-race .lr-time { text-align: right; flex: none; }
+.last-race .lr-time .v { font-family: var(--display); font-size: 34px; font-weight: 800; line-height: 1; }
+.last-race .lr-time .l { font-size: 12.5px; font-weight: 700; color: var(--ink-3); margin-top: 2px; }
+.last-race .lr-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.flag-brand { background: var(--brand-soft); color: var(--brand-ink); }
+.budget-compact { display: block; margin-top: 10px; text-decoration: none; color: inherit; }
+.home-hint { display: inline-block; margin-top: 10px; font-size: 14px; font-weight: 800; color: var(--brand-ink); text-decoration: none; }
+.how-count { margin-top: 6px; }
+.how-count summary { font-size: 13px; font-weight: 700; color: var(--ink-3); cursor: pointer; padding: 4px 2px; }
+.how-count p { font-size: 13px; color: var(--ink-3); margin: 4px 2px 0; }

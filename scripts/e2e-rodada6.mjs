@@ -47,10 +47,10 @@ await p.evaluate((races) => { localStorage.clear(); localStorage.setItem('minhas
 // 1. Início: atalho para decidir; sem orçamento ainda
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=decide-link]')
-await expectText('2 provas em avaliação')
-await expectText('Preço muda de lote: 10K de Natal, em 3 dias')
+if ((await p.$eval('[data-testid=decide-link] i', (e) => e.innerText)) !== '2') throw new Error('Contador do atalho Decidir errado')
+await expectText('Preço muda de lote')
 if (await p.$('[data-testid=budget-card]')) throw new Error('Cartão de orçamento sem orçamento')
-ok('Início: atalho “2 provas em avaliação” com o prazo mais próximo')
+ok('Início: atalho Decidir com contador 2 e o prazo do lote na semana')
 
 // 2. Definir orçamento pela aba Gastos
 await p.goto(BASE + '/historico', { waitUntil: 'networkidle0' })
@@ -73,16 +73,16 @@ ok('Orçamento criado pela aba Gastos: ano preenchido, “tudo”, aviso em 70% 
 // 3. Início com o cartão do orçamento (e sem repetir na lista de objetivos)
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=budget-card]')
-await expectText('R$ 720,00 de R$ 1.000,00 (72%)')
-await expectText('Se fizer a prova em avaliação: R$ 880,00 (88%)')
-await expectText('1 sem valor informado')
+await expectText('R$ 720,00 de R$ 1.000,00')
+await expectText('Com as provas em avaliação: R$ 880,00 (88%)')
+await expectText('Perto do limite')
 const goalCards = await p.$$eval('.goal-card', (cs) => cs.length)
 if (goalCards !== 0) throw new Error('Orçamento repetido na lista de objetivos do Início')
 await shot('inicio-orcamento')
 ok('Início: orçamento com gasto, projeção das provas em avaliação e marca do aviso')
 
 // 4. Decidir
-await click('a', 'Decidir ›')
+await p.click('[data-testid=decide-link]')
 await p.waitForFunction(() => location.pathname === '/decidir')
 await p.waitForSelector('[data-testid=candidate]')
 let names = await p.$$eval('[data-testid=candidate] .t', (e) => e.map((x) => x.innerText))

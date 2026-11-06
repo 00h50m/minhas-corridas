@@ -1,18 +1,21 @@
 import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
-import { IconPlus, IconSettings, IconStopwatch, IconTarget } from '../components/Icons.jsx'
+import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconTarget, IconTrophy } from '../components/Icons.jsx'
 import SyncBadge from '../components/SyncBadge.jsx'
 import { GoalCard } from './Goals.jsx'
 import { memo as historyMemo } from './History.jsx'
 import { activeGoals, goalProgress } from '../lib/goals.js'
 import BudgetCard from '../components/Budget.jsx'
 import { currentBudget } from '../lib/budget.js'
-import { candidates, nextDeadline } from '../lib/decision.js'
+import { candidates } from '../lib/decision.js'
+import { resultBadges } from '../lib/shareCard.js'
+import { compareToTarget } from '../lib/targetCompare.js'
+import { formatDiff } from '../lib/compare.js'
 import { upcomingAlerts, whenLabel } from '../lib/alerts.js'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
-import { formatKm, formatMoney } from '../lib/format.js'
-import { nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
+import { formatDuration, formatKm, formatMoney, formatPace } from '../lib/format.js'
+import { history, nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
 
 function Brand() {
   return (
@@ -58,65 +61,57 @@ export default function Home() {
   }
 
   const next = nextConfirmed(races, today)
+  const daysToNext = next ? daysBetween(today, next.date) : null
   // Na véspera e no dia, o destaque abre o modo "dia da prova".
-  const raceDay = next && daysBetween(today, next.date) <= 1
-  const list = upcoming(races, today, 6).filter((r) => r.id !== next?.id).slice(0, 4)
+  const raceDay = next && daysToNext <= 1
+  const list = upcoming(races, today, 6).filter((r) => r.id !== next?.id).slice(0, 3)
   const pending = pendingResults(races, today)
   const summary = yearSummary(races, year)
   const sameDates = sameDateGroups(races)
-  // Objetivos já atingidos (aguardando confirmação) aparecem primeiro.
-  const alerts = upcomingAlerts(races, today, 7)
-  const budgetId = currentBudget(goals, today)?.id
-  const active = activeGoals(goals).filter((g) => g.id !== budgetId)
+  const alerts = upcomingAlerts(races, today, 7).filter((a) => !(a.type === 'prova' && a.race.id === next?.id))
+  const budget = currentBudget(goals, today)
+  // Objetivos já atingidos (aguardando confirmação) aparecem primeiro; o orçamento tem cartão próprio.
+  const active = activeGoals(goals).filter((g) => g.id !== budget?.id)
     .map((g, i) => ({ g, i, hit: goalProgress(g, races, today).achieved }))
     .sort((a, b) => (a.hit === b.hit ? a.i - b.i : a.hit ? -1 : 1))
     .map((x) => x.g)
   const cands = candidates(races, today)
-  const soonest = cands.map((r) => ({ r, d: nextDeadline(r, today) })).filter((x) => x.d).sort((a, b) => (a.d.date < b.d.date ? -1 : 1))[0]
   const undatedCount = races.filter((r) => !r.date && ['interesse', 'aberta', 'inscrita'].includes(r.status)).length
+  const last = history(races)[0]
+  const showLast = last && daysBetween(last.date, today) <= 60
 
   return (
     <>
       <TopBar title={<Brand />} sub={greeting()} right={settings} />
-      <div className="page">
+      <div className="page home">
         {pending.length > 0 && (
-          <div className="alert alert-warn" style={{ marginBottom: 12 }}>
+          <Link to={`/corridas/${pending[0].id}/resultado`} className="alert alert-warn home-pending">
             <IconStopwatch />
-            <div>
-              <b>Como foi?</b> {pending.length === 1 ? `"${pending[0].name}" já aconteceu.` : `${pending.length} provas já aconteceram.`}{' '}
-              <Link to={`/corridas/${pending[0].id}/resultado`}>Registrar resultado</Link>
-            </div>
-          </div>
-        )}
-
-        {next ? (
-          <Link to={`/corridas/${next.id}${raceDay ? '/dia' : ''}`} className="hero">
-            <div className="eyebrow">{raceDay ? 'Dia de prova · toque para o modo prova' : 'Próxima prova confirmada'}</div>
-            <div className="count">{countdownLabel(next.date, today)}</div>
-            <div className="name">{next.name}</div>
-            <div className="meta">{[formatDateBR(next.date), next.startTime && `largada ${next.startTime}`, [next.city, next.state].filter(Boolean).join('/')].filter(Boolean).join(' · ')}</div>
-            <div className="chips">
-              {next.distanceKm != null && <span className="chip">{formatKm(next.distanceKm)}</span>}
-              {next.bibNumber && <span className="chip">Peito {next.bibNumber}</span>}
-              {next.kitPickupDate && daysBetween(today, next.kitPickupDate) >= 0 && <span className="chip">Kit: {formatDateBR(next.kitPickupDate)}</span>}
-              {next.checklist?.length > 0 && <span className="chip">Checklist {next.checklist.filter((i) => i.done).length}/{next.checklist.length}</span>}
-            </div>
+            <div><b>Como foi?</b> {pending.length === 1 ? `“${pending[0].name}” já aconteceu.` : `${pending.length} provas já aconteceram.`} <u>Registrar resultado</u></div>
           </Link>
-        ) : (
-          <div className="card">
+        )}
+
+        {next ? <NextHero race={next} today={today} days={daysToNext} raceDay={raceDay} /> : (
+          <div className="card hero-empty">
             <b>Nenhuma inscrição confirmada à frente.</b>
-            <div className="muted small" style={{ marginTop: 4 }}>Quando marcar uma prova como “Inscrita”, a contagem regressiva aparece aqui.</div>
+            <div className="muted small" style={{ marginTop: 4 }}>
+              {cands.length ? <>Você tem {cands.length} {cands.length === 1 ? 'prova' : 'provas'} em avaliação. <Link to="/decidir">Decidir</Link></> : 'Quando marcar uma prova como “Inscrita”, a contagem regressiva aparece aqui.'}
+            </div>
           </div>
         )}
 
-        <div className="btn-row" style={{ marginTop: 12 }}>
-          <Link to="/corridas/nova" className="btn btn-primary"><IconPlus /> Corrida</Link>
-          <Link to={pending[0] ? `/corridas/${pending[0].id}/resultado` : '/corridas?concluir=1'} className="btn btn-dark"><IconStopwatch /> Resultado</Link>
-        </div>
+        <nav className="quick" aria-label="Atalhos">
+          <Link to={pending[0] ? `/corridas/${pending[0].id}/resultado` : '/corridas?concluir=1'} className={pending.length ? 'hot' : ''}>
+            <IconStopwatch /><span>Resultado</span>{pending.length > 0 && <i>{pending.length}</i>}
+          </Link>
+          <Link to="/decidir" data-testid="decide-link"><IconScale /><span>Decidir</span>{cands.length > 0 && <i>{cands.length}</i>}</Link>
+          <Link to="/historico" onClick={() => { historyMemo.tab = 'recordes' }}><IconTrophy /><span>Recordes</span></Link>
+          <Link to="/lembretes"><IconBell /><span>Avisos</span></Link>
+        </nav>
 
         {alerts.length > 0 && (
           <>
-            <div className="section-title"><h2>Próximos 7 dias</h2></div>
+            <div className="section-title"><h2>Esta semana</h2></div>
             <div className="card alerts-card">
               <ul>
                 {alerts.map((a) => (
@@ -135,52 +130,41 @@ export default function Home() {
           </>
         )}
 
-        {cands.length > 0 && (
-          <Link to="/decidir" className="card decide-link" data-testid="decide-link">
-            <span style={{ fontSize: 26 }} aria-hidden="true">⚖️</span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <b>{cands.length} {cands.length === 1 ? 'prova em avaliação' : 'provas em avaliação'}</b><br />
-              <span className="muted small">{soonest ? `${soonest.d.label}: ${soonest.r.name}, ${whenLabel(soonest.d.daysLeft)}` : 'Compare custo, orçamento, datas e objetivos antes de se inscrever.'}</span>
-            </span>
-            <span aria-hidden="true">›</span>
-          </Link>
-        )}
+        {showLast && <LastRace race={last} races={races} />}
 
-        <div className="section-title"><h2>Em {year}</h2></div>
+        <div className="section-title"><h2>Seu {year}</h2><Link to="/historico" onClick={() => { historyMemo.tab = 'evolucao' }}>Evolução</Link></div>
         <div className="stats">
           <div className="stat"><div className="v">{summary.doneCount}</div><div className="l">{summary.doneCount === 1 ? 'prova concluída' : 'provas concluídas'}</div></div>
           <div className="stat"><div className="v">{formatKm(summary.km, { unit: false })}</div><div className="l">km em provas</div></div>
-          <Link to="/historico" onClick={() => { historyMemo.tab = 'gastos' }} className="stat stat-link"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 24 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições ›</div></Link>
+          <Link to="/historico" onClick={() => { historyMemo.tab = 'gastos' }} className="stat stat-link"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 26 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições ›</div></Link>
         </div>
-        <p className="note">
-          Quilômetros somam só as provas concluídas registradas aqui — não representam todo o seu volume de treino. Gastos com inscrição usam o valor pago ou, na falta dele, inscrição + taxas, das provas inscritas e concluídas (desistências só com valor pago).
-          {summary.missingCost > 0 && ` ${summary.missingCost} ${summary.missingCost === 1 ? 'prova está' : 'provas estão'} sem valor informado.`}
-        </p>
-
-        <BudgetCard goals={goals} races={races} today={today} />
+        {budget ? <BudgetCard goals={goals} races={races} today={today} compact /> : (
+          <Link to={`/objetivos/novo?tipo=orcamento&ano=${year}`} className="home-hint">+ Definir orçamento de {year}</Link>
+        )}
+        <details className="how-count">
+          <summary>Como contamos</summary>
+          <p>Quilômetros somam só as provas concluídas registradas aqui — não o seu volume de treino. Gastos usam o valor pago ou, na falta dele, inscrição + taxas, das provas inscritas e concluídas (desistências só com valor pago).{summary.missingCost > 0 && ` ${summary.missingCost} ${summary.missingCost === 1 ? 'prova está' : 'provas estão'} sem valor informado.`}</p>
+        </details>
 
         <div className="section-title">
           <h2>Objetivos</h2>
-          <Link to="/objetivos">{goals.length ? 'Ver todos' : ''}</Link>
+          <Link to="/objetivos">{active.length > 2 ? `Ver todos (${active.length})` : goals.length ? 'Ver todos' : ''}</Link>
         </div>
-        {active.length === 0 && budgetId ? (
-          <div className="card muted small">Além do orçamento, nenhum objetivo em andamento. <Link to="/objetivos/novo">Criar objetivo</Link></div>
-        ) : active.length === 0 ? (
+        {active.length === 0 ? (
           <Link to="/objetivos/novo" className="card goal-empty">
             <IconTarget />
-            <span><b>{goals.length ? 'Nenhum objetivo em andamento.' : 'Defina um objetivo.'}</b><br /><span className="muted small">Ex.: 5 km abaixo de 30:00, primeira meia, orçamento do ano.</span></span>
+            <span><b>{budget ? 'Além do orçamento, nenhum objetivo em andamento.' : goals.length ? 'Nenhum objetivo em andamento.' : 'Defina um objetivo.'}</b><br /><span className="muted small">Ex.: 5 km abaixo de 30:00, primeira meia, 8 provas no ano.</span></span>
           </Link>
         ) : (
-          active.slice(0, 3).map((g) => <GoalCard key={g.id} goal={g} races={races} today={today} compact />)
+          active.slice(0, 2).map((g) => <GoalCard key={g.id} goal={g} races={races} today={today} compact />)
         )}
-        {active.length > 3 && <p className="note"><Link to="/objetivos">+{active.length - 3} em andamento</Link></p>}
 
         <div className="section-title">
           <h2>Próximas provas</h2>
-          <Link to="/corridas">Ver calendário</Link>
+          <Link to="/corridas">Calendário</Link>
         </div>
         {list.length === 0 ? (
-          <div className="card muted small">Nenhuma outra prova com data à frente.{undatedCount > 0 && ` ${undatedCount} com data a confirmar.`}</div>
+          <div className="card muted small">Nenhuma outra prova com data à frente.{undatedCount > 0 && ` ${undatedCount} com data a confirmar.`} <Link to="/corridas/nova">Cadastrar</Link></div>
         ) : (
           list.map((r) => (
             <RaceItem key={r.id} race={r} extra={sameDates.has(r.date) && <span className="flag flag-warn">Mesma data</span>} />
@@ -194,3 +178,63 @@ export default function Home() {
   )
 }
 
+/** Destaque da próxima prova confirmada: contagem, meta, kit e preparação. */
+function NextHero({ race: r, today, days, raceDay }) {
+  const items = r.checklist ?? []
+  const done = items.filter((i) => i.done).length
+  const kitDone = items.some((i) => i.done && /kit retirado/i.test(i.text))
+  const kitDays = r.kitPickupDate ? daysBetween(today, r.kitPickupDate) : null
+  const pace = r.targetTime && r.distanceKm ? formatPace(r.targetTime / r.distanceKm).replace(' /km', '/km') : null
+  return (
+    <Link to={`/corridas/${r.id}${raceDay ? '/dia' : ''}`} className="hero">
+      <div className="eyebrow">{raceDay ? 'Dia de prova · toque para o modo prova' : 'Próxima prova'}</div>
+      <div className="count">{countdownLabel(r.date, today)}</div>
+      <div className="name">{r.name}</div>
+      <div className="meta">{[formatDateBR(r.date), r.startTime && `largada ${r.startTime}`, [r.city, r.state].filter(Boolean).join('/')].filter(Boolean).join(' · ')}</div>
+      <div className="chips">
+        {r.distanceKm != null && <span className="chip">{formatKm(r.distanceKm)}</span>}
+        {r.targetTime ? <span className="chip">Meta {formatDuration(r.targetTime)}{pace ? ` · ${pace}` : ''}</span> : <span className="chip chip-dim">Sem meta</span>}
+        {r.bibNumber && <span className="chip">Peito {r.bibNumber}</span>}
+        {r.kitPickupDate && (kitDone ? <span className="chip">Kit ✓</span> : kitDays >= 0 && <span className={`chip${kitDays <= 2 ? ' chip-hot' : ''}`}>Kit {kitDays === 0 ? 'hoje' : kitDays === 1 ? 'amanhã' : formatDateBR(r.kitPickupDate).slice(0, 5)}</span>)}
+      </div>
+      {items.length > 0 && (
+        <div className="prep" aria-label={`Preparação: ${done} de ${items.length} itens`}>
+          <div className="prep-bar"><span style={{ width: `${(done / items.length) * 100}%` }} /></div>
+          <span>Preparação {done}/{items.length}</span>
+        </div>
+      )}
+      {days != null && days <= 7 && !raceDay && <div className="hero-cta">Modo dia da prova disponível ›</div>}
+    </Link>
+  )
+}
+
+/** Última prova concluída (até 60 dias): tempo, selos e compartilhar. */
+function LastRace({ race: r, races }) {
+  const res = r.result
+  const badges = resultBadges(r, races)
+  const c = compareToTarget(r)
+  return (
+    <>
+      <div className="section-title"><h2>Última prova</h2><Link to={`/corridas/${r.id}`}>Ver análise</Link></div>
+      <div className="card last-race" data-testid="last-race">
+        <div className="lr-top">
+          <div style={{ minWidth: 0 }}>
+            <div className="lr-name">{r.name}</div>
+            <div className="muted small">{formatDateBR(r.date)} · {formatKm(res.officialDistanceKm)}{res.overallPlace ? ` · ${res.overallPlace}º geral` : ''}</div>
+          </div>
+          <div className="lr-time">
+            <div className="v">{formatDuration(res.netTime)}</div>
+            <div className="l">{formatPace(res.netTime / res.officialDistanceKm)}</div>
+          </div>
+        </div>
+        {(badges.length > 0 || c) && (
+          <div className="lr-badges">
+            {badges.map((b) => <span key={b.id} className={`flag ${b.id === 'meta' ? 'flag-ok' : 'flag-brand'}`}>{b.label}</span>)}
+            {c && c.status !== 'batida' && <span className="flag flag-warn">Meta {formatDuration(c.target)} · {formatDiff(c.diff)}</span>}
+          </div>
+        )}
+        <Link to={`/corridas/${r.id}/compartilhar`} className="btn btn-primary btn-block" style={{ marginTop: 12 }}><IconShare /> Compartilhar resultado</Link>
+      </div>
+    </>
+  )
+}

@@ -154,7 +154,7 @@ as $$
       select jsonb_object_agg(e.key, e.value)
       from jsonb_each(r.data) e
       where e.key = any (array['name', 'date', 'startTime', 'distanceKm', 'city', 'state', 'venueName', 'venueAddress', 'status',
-        'bibNumber', 'kitPickupDate', 'kitPickupTime', 'kitPickupAddress', 'signupUrl', 'signupDeadline', 'lotChangeDate'])
+        'bibNumber', 'kitPickupDate', 'kitPickupTime', 'kitPickupAddress', 'signupUrl', 'signupDeadline', 'lotChangeDate', 'scheduleFeed'])
     ), '{}'::jsonb))
     from public.records r
     where r.user_id = f.uid and r.kind = 'race' and not r.deleted and r.data is not null

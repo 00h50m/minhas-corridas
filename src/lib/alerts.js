@@ -2,6 +2,8 @@
 import { daysBetween, todayISO } from './dates.js'
 import { budgetStatus, currentBudget } from './budget.js'
 import { formatMoney } from './format.js'
+import { raceKitSchedule, raceSchedule } from './logistics.js'
+import { minToHm } from './schedule.js'
 
 const BEFORE_SIGNUP = ['interesse', 'aberta']
 
@@ -79,14 +81,21 @@ const cap = (s) => s[0].toUpperCase() + s.slice(1)
 const PUSH_TEXT = {
   inscricao: (r, d) => ({ title: d === 0 ? 'Inscrição termina hoje' : `Inscrição termina ${inDays(d)}`, body: r.name }),
   lote: (r, d) => ({ title: `${cap(inDays(d))} o preço muda de lote`, body: r.name }),
-  kit: (r, d) => ({
-    title: `${cap(inDays(d))}: retirar o kit`,
-    body: [r.name, r.kitPickupTime, r.kitPickupAddress].filter(Boolean).join(' · ')
-  }),
-  prova: (r, d) => ({
-    title: d === 0 ? 'Hoje é dia de prova!' : d === 1 ? 'Amanhã é dia de prova!' : `Prova ${inDays(d)}`,
-    body: [r.name, r.startTime && `largada ${r.startTime}`].filter(Boolean).join(' · ')
-  })
+  kit: (r, d) => {
+    const k = raceKitSchedule(r)
+    return {
+      title: `${cap(inDays(d))}: retirar o kit`,
+      body: [r.name, r.kitPickupTime, r.kitPickupAddress, k && `sair às ${minToHm(k.depart, { withDay: false })}`].filter(Boolean).join(' · ')
+    }
+  },
+  prova: (r, d) => {
+    // Na véspera e no dia, a agenda planejada (se houver) diz a que horas acordar e sair.
+    const s = d <= 1 ? raceSchedule(r) : null
+    return {
+      title: d === 0 ? 'Hoje é dia de prova!' : d === 1 ? 'Amanhã é dia de prova!' : `Prova ${inDays(d)}`,
+      body: [r.name, r.startTime && `largada ${r.startTime}`, s && `acordar ${minToHm(s.wake, { withDay: false })}`, s && `sair ${minToHm(s.depart, { withDay: false })}`].filter(Boolean).join(' · ')
+    }
+  }
 }
 
 const SHORT_LABEL = { prova: 'prova', kit: 'kit', inscricao: 'fim da inscrição', lote: 'muda o lote' }

@@ -1,5 +1,6 @@
 import { isValidISODate, isValidTimeHM } from './dates.js'
 import { isValidWatch } from './activityFile.js'
+import { normalizeLogistics } from './logistics.js'
 
 export const STATUSES = [
   { id: 'interesse', label: 'Tenho interesse', short: 'Interesse', icon: '☆' },
@@ -68,6 +69,8 @@ export function emptyRace() {
     otherPaid: null,
     otherDesc: '',
     checklist: null, // [{ id, text, done }]
+    logistics: null, // planejamento de trajeto, custos e agenda (lib/logistics.js)
+    scheduleFeed: null, // horários da agenda para a assinatura (.ics), só se a pessoa pedir
     result: null,
     createdAt: null,
     updatedAt: null
@@ -170,6 +173,10 @@ export function normalizeRace(raw) {
     : defaultChecklist(r.status)
   if (typeof r.otherDesc !== 'string') r.otherDesc = ''
   if (![1, 2, 3].includes(r.wish)) r.wish = null
+  r.logistics = normalizeLogistics(r.logistics)
+  r.scheduleFeed = Array.isArray(r.scheduleFeed)
+    ? r.scheduleFeed.filter((e) => e && typeof e.title === 'string' && isValidISODate(e.date) && isValidTimeHM(e.time)).slice(0, 6).map((e) => ({ key: String(e.key || '').slice(0, 20), title: e.title.slice(0, 120), date: e.date, time: e.time }))
+    : null
   return r
 }
 

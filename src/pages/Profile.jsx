@@ -8,6 +8,7 @@ import { removeAvatar, saveProfile, setAvatarFromFile, useProfile } from '../ser
 import { useSync } from '../services/sync.js'
 import { BLOOD_TYPES, SEX_OPTIONS, SHIRT_SIZES, ageCategory, ageOn, callName, validateProfile } from '../lib/profile.js'
 import { UFS } from '../lib/model.js'
+import { FUELS } from '../lib/logistics.js'
 import { todayISO } from '../lib/dates.js'
 
 export default function Profile() {
@@ -113,6 +114,35 @@ export default function Profile() {
           </Field>
           <label className="check"><input type="checkbox" checked={f.showNameOnCard} onChange={set('showNameOnCard')} /> Mostrar meu nome no card de compartilhar</label>
         </div>
+
+        <div className="section-title"><h2>Veículo</h2></div>
+        <div className="card" data-testid="vehicle">
+          <p className="small muted" style={{ marginTop: 0 }}>Usado na Logística para calcular o combustível: distância ÷ consumo × preço por litro.</p>
+          <div className="grid-2">
+            <Field label="Consumo médio (km/l)" optional htmlFor="p-kml"><input id="p-kml" className="input" inputMode="decimal" value={f.vehicle.kmPerL ?? ''} onChange={(e) => setF((p) => ({ ...p, vehicle: { ...p.vehicle, kmPerL: e.target.value.replace(',', '.') } }))} placeholder="Ex.: 7" /></Field>
+            <Field label="Preço do litro (R$)" optional htmlFor="p-price"><input id="p-price" className="input" inputMode="decimal" value={f.vehicle.pricePerL ?? ''} onChange={(e) => setF((p) => ({ ...p, vehicle: { ...p.vehicle, pricePerL: e.target.value.replace(',', '.') } }))} placeholder="Ex.: 4,29" /></Field>
+          </div>
+          <div className="seg" role="radiogroup" aria-label="Combustível">
+            {FUELS.map((x) => <button type="button" key={x.id} role="radio" aria-checked={f.vehicle.fuel === x.id} aria-pressed={f.vehicle.fuel === x.id} onClick={() => setF((p) => ({ ...p, vehicle: { ...p.vehicle, fuel: x.id } }))}>{x.label}</button>)}
+          </div>
+        </div>
+
+        {f.favorites.length > 0 && (
+          <>
+            <div className="section-title"><h2>Endereços favoritos</h2></div>
+            <div className="card">
+              <ul className="plain-list" data-testid="favorites">
+                {f.favorites.map((x) => (
+                  <li key={x.id}>
+                    <span style={{ flex: 1, minWidth: 0 }}><b>★ {x.label}</b><br /><span className="muted small">{x.formatted || x.address}</span></span>
+                    <button type="button" className="link-btn" onClick={() => setF((p) => ({ ...p, favorites: p.favorites.filter((y) => y.id !== x.id) }))}>Remover</button>
+                  </li>
+                ))}
+              </ul>
+              <p className="note">Adicione favoritos na Logística de uma prova (☆ Salvar nos favoritos).</p>
+            </div>
+          </>
+        )}
 
         <div className="section-title"><h2>Emergência</h2></div>
         <div className="card">

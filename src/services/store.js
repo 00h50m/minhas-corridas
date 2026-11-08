@@ -1,6 +1,7 @@
 // Persistência local (localStorage) com assinatura de mudanças para o React.
 import { useSyncExternalStore } from 'react'
 import { newId, normalizeGoal, normalizeRace } from '../lib/model.js'
+import { applyLogistics } from '../lib/logistics.js'
 import { deleteFilesOfRace } from './files.js'
 import { noteDeleted, noteSaved } from './syncMeta.js'
 
@@ -75,7 +76,9 @@ export function getRace(id) {
 }
 
 /** Cria ou atualiza. Retorna a corrida salva. */
-export function saveRace(race) {
+export function saveRace(input) {
+  // A logística, quando há custos de deslocamento, define o Transporte da prova.
+  const race = applyLogistics(input)
   const now = new Date().toISOString()
   let saved
   let races

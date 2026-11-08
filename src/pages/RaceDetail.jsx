@@ -15,6 +15,7 @@ import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
 import { IconBell, IconCompare, IconFlag, IconShare } from '../components/Icons.jsx'
 import { comparableRaces } from '../lib/compare.js'
 import { TargetCompareCard, TargetQuickSet } from '../components/Target.jsx'
+import LogisticsSummary from '../components/LogisticsSummary.jsx'
 import { DecisionActions, DecisionDetails, WishPicker, setWish } from '../components/Decision.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
@@ -219,6 +220,13 @@ export default function RaceDetail() {
             </button>
           ))}
         </div>
+
+        {r.date && !['cancelada', 'desisti'].includes(r.status) && (!res || r.logistics) && (
+          <>
+            <div className="section-title"><h2>Logística</h2>{r.logistics && <Link to={`/corridas/${r.id}/logistica`}>Editar</Link>}</div>
+            <LogisticsSummary race={r} />
+          </>
+        )}
 
         <div className="section-title"><h2>Detalhes</h2></div>
         <div className="card">

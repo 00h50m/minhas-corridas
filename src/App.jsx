@@ -22,6 +22,7 @@ const Reminders = lazy(() => import('./pages/Reminders.jsx'))
 const RaceDay = lazy(() => import('./pages/RaceDay.jsx'))
 const Decide = lazy(() => import('./pages/Decide.jsx'))
 const Profile = lazy(() => import('./pages/Profile.jsx'))
+const Logistics = lazy(() => import('./pages/Logistics.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
@@ -60,6 +61,7 @@ export default function App() {
                 <Route path="/corridas/:id/resultado" element={<ResultForm />} />
                 <Route path="/corridas/:id/compartilhar" element={<ShareResult />} />
                 <Route path="/corridas/:id/dia" element={<RaceDay />} />
+                <Route path="/corridas/:id/logistica" element={<Logistics />} />
                 <Route path="/historico" element={<History />} />
                 <Route path="/comparar" element={<Compare />} />
                 <Route path="/decidir" element={<Decide />} />

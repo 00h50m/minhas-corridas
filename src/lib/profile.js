@@ -1,6 +1,8 @@
 // Perfil opcional da pessoa: nome, foto, dados para as provas e contato de emergência.
 import { isValidISODate, parseISODate } from './dates.js'
 import { UFS } from './model.js'
+import { DEFAULT_PREP, normalizePrep } from './schedule.js'
+import { FUELS, normalizePlace } from './logistics.js'
 
 export const SHIRT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XGG', 'Infantil']
 export const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
@@ -23,7 +25,10 @@ export function emptyProfile() {
     emergencyName: '',
     emergencyPhone: '',
     bloodType: '',
-    showNameOnCard: true
+    showNameOnCard: true,
+    vehicle: { kmPerL: null, fuel: 'gasolina', pricePerL: null },
+    prep: { ...DEFAULT_PREP }, // tempos de preparação padrão para a agenda do dia
+    favorites: [] // endereços favoritos: [{ id, label, address, formatted, lat, lon }]
   }
 }
 
@@ -43,6 +48,14 @@ export function normalizeProfile(raw) {
   p.emergencyPhone = str(p.emergencyPhone, 30)
   p.bloodType = BLOOD_TYPES.includes(p.bloodType) ? p.bloodType : ''
   p.showNameOnCard = p.showNameOnCard !== false
+  const v = p.vehicle && typeof p.vehicle === 'object' ? p.vehicle : {}
+  const n = (x, a, b) => (Number.isFinite(Number(x)) && x !== null && x !== '' && Number(x) >= a && Number(x) <= b ? Number(x) : null)
+  p.vehicle = { kmPerL: n(v.kmPerL, 1, 100), fuel: FUELS.some((f) => f.id === v.fuel) ? v.fuel : 'gasolina', pricePerL: n(v.pricePerL, 0.1, 50) }
+  p.prep = normalizePrep(p.prep)
+  p.favorites = (Array.isArray(p.favorites) ? p.favorites : [])
+    .map((f) => { const pl = normalizePlace(f); return pl && pl.label ? { ...pl, id: String(f.id || pl.label).slice(0, 20) } : null })
+    .filter(Boolean)
+    .slice(0, 20)
   return Object.fromEntries(Object.keys(emptyProfile()).map((k) => [k, p[k]]))
 }
 

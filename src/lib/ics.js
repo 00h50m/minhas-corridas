@@ -3,6 +3,7 @@
 import { addDaysISO, isValidTimeHM } from './dates.js'
 import { STATUS_BY_ID } from './model.js'
 import { formatKm } from './format.js'
+import { scheduleEvents } from './logistics.js'
 
 function esc(s) {
   return String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
@@ -106,10 +107,15 @@ export function deadlineVEvents(r) {
  * Monta o calendário. `feed: true` é para a agenda por assinatura: avisa o app de calendário
  * para buscar de novo a cada poucas horas.
  */
-export function buildICS(races, { deadlines = true, feed = false } = {}) {
+export function buildICS(races, { deadlines = true, feed = false, schedule = false } = {}) {
   const events = races.map(raceToVEvent).filter(Boolean)
   const count = events.length
   if (deadlines) for (const r of races) events.push(...deadlineVEvents(r))
+  // Agenda do dia: calculada na hora (exportação) ou a salva para a assinatura (só se a pessoa pediu).
+  for (const r of races) {
+    const evs = schedule ? scheduleEvents(r) : r.scheduleFeed ?? []
+    for (const e of evs) events.push(scheduleVEvent(r, e))
+  }
   const head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PaceOn//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:PaceOn']
   if (feed) head.push('METHOD:PUBLISH', 'X-WR-CALDESC:Provas do app PaceOn', 'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H')
   const lines = [...head, ...events.flat(), 'END:VCALENDAR']
@@ -120,4 +126,20 @@ export function buildICS(races, { deadlines = true, feed = false } = {}) {
 export function feedRaces(races, today) {
   const from = addDaysISO(today, -365)
   return races.filter((r) => r.date && r.status !== 'cancelada' && r.status !== 'desisti' && r.date >= from)
+}
+
+/** Evento curto com alarme na hora (acordar, sair de casa, sair para o kit). */
+function scheduleVEvent(r, e) {
+  const [h, m] = e.time.split(':')
+  return [
+    'BEGIN:VEVENT',
+    `UID:${r.id}-${e.key}@minhas-corridas`,
+    `DTSTAMP:${stamp()}`,
+    `DTSTART:${compactDate(e.date)}T${h}${m}00`,
+    'DURATION:PT10M',
+    `SUMMARY:${esc(e.title)}`,
+    'TRANSP:TRANSPARENT',
+    ...alarm('PT0M', e.title),
+    'END:VEVENT'
+  ]
 }

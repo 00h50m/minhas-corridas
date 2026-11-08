@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { repeatRace } from '../lib/alerts.js'
 import LinkImport from '../components/LinkImport.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { PredictionHint } from '../components/Prediction.jsx'
 import { WishPicker } from '../components/Decision.jsx'
 import { getProfile } from '../services/profile.js'
+import { logisticsManagesTransport } from '../lib/logistics.js'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -313,7 +314,13 @@ export default function RaceForm() {
           <div className="body">
             <p className="hint" style={{ marginTop: 0 }}>Informe o estimado para planejar e o pago quando acertar. Em cada categoria, o valor pago substitui o estimado.</p>
             <div className="list-group-title" style={{ marginTop: 4 }}>Transporte</div>
-            <div className="grid-2">{money('transportEst', 'Estimado')}{money('transportPaid', 'Pago')}</div>
+            {existing && logisticsManagesTransport(existing) ? (
+              <p className="small" data-testid="transport-from-logistics" style={{ margin: '0 0 12px' }}>
+                {formatMoney(existing.transportPaid ?? existing.transportEst)} {existing.transportPaid != null ? 'pagos' : 'estimados'} — calculado na <Link to={`/corridas/${existing.id}/logistica`}>Logística</Link> (combustível, pedágios, estacionamento). Edite os valores lá.
+              </p>
+            ) : (
+              <div className="grid-2">{money('transportEst', 'Estimado')}{money('transportPaid', 'Pago')}</div>
+            )}
             <div className="list-group-title" style={{ marginTop: 4 }}>Hospedagem</div>
             <div className="grid-2">{money('lodgingEst', 'Estimado')}{money('lodgingPaid', 'Pago')}</div>
             <div className="list-group-title" style={{ marginTop: 4 }}>Outros</div>

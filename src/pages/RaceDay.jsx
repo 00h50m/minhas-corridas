@@ -11,6 +11,9 @@ import { PaceTable } from '../components/Analysis.jsx'
 import { PredictionCard } from '../components/Prediction.jsx'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatPace } from '../lib/format.js'
+import { navLinks, raceSchedule, tripSummary } from '../lib/logistics.js'
+import { minToHm } from '../lib/schedule.js'
+import Timeline from '../components/Timeline.jsx'
 
 /** Minutos até HH:MM de hoje (negativo se já passou). */
 function minutesUntil(hm, now = new Date()) {
@@ -72,6 +75,14 @@ export default function RaceDay() {
   const started = isToday && toStart != null && toStart <= 0
   const map = mapsLink(r)
   const place = [r.venueName, [r.city, r.state].filter(Boolean).join('/')].filter(Boolean).join(' · ')
+  // Agenda planejada na Logística (se houver)
+  const sched = r.logistics?.prep ? raceSchedule(r, em.prep) : null
+  const ida = r.logistics ? tripSummary(r, r.logistics, 'ida') : null
+  const nav = ida?.points.length >= 2 ? navLinks(ida.points) : null
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes()
+  const nextAct = sched && isToday ? sched.items.find((i) => i.at > nowMin) : sched && d > 0 ? sched.items[0] : null
+  const leaveLabel = sched ? minToHm(sched.depart, { withDay: false }) : r.leaveHomeTime
+  const toLeaveSched = sched && isToday ? sched.depart - nowMin : toLeave
   const kitPending = r.kitPickupDate && r.kitPickupDate >= today && !(r.checklist ?? []).some((i) => i.done && /kit retirado/i.test(i.text))
 
   return (
@@ -82,8 +93,19 @@ export default function RaceDay() {
           <div className="eyebrow">{r.date ? formatDateBR(r.date) : 'Data a confirmar'}{r.distanceKm ? ` · ${formatKm(r.distanceKm)}` : ''}</div>
           <div className="count">{isToday ? (r.startTime ? (started ? 'Boa prova!' : `Largada ${untilLabel(toStart)}`) : 'É hoje!') : r.date ? countdownLabel(r.date, today) : ''}</div>
           <div className="name">{r.name}</div>
-          {r.startTime && <div className="meta">Largada às {r.startTime}{r.leaveHomeTime ? ` · sair de casa às ${r.leaveHomeTime}${isToday && toLeave > 0 ? ` (${untilLabel(toLeave)})` : ''}` : ''}</div>}
+          {r.startTime && <div className="meta">Largada às {r.startTime}{leaveLabel ? ` · sair de casa às ${leaveLabel}${isToday && toLeaveSched > 0 ? ` (${untilLabel(toLeaveSched)})` : ''}` : ''}</div>}
         </div>
+
+        {nextAct && !started && (
+          <div className="card next-act" style={{ marginTop: 12 }} data-testid="next-activity">
+            <div>
+              <div className="list-group-title" style={{ marginTop: 0 }}>{isToday ? 'Próxima atividade' : 'Primeira atividade do dia'}</div>
+              <div className="na-label">{nextAct.label}</div>
+              {isToday && <div className="muted small">{untilLabel(nextAct.at - nowMin)}</div>}
+            </div>
+            <div className="na-time">{minToHm(nextAct.at, { withDay: false })}</div>
+          </div>
+        )}
 
         {r.bibNumber && (
           <div className="card bib" aria-label={`Número de peito ${r.bibNumber}`}>
@@ -105,6 +127,26 @@ export default function RaceDay() {
           <div className="alert alert-warn" style={{ marginTop: 12 }}>
             <div><b>Kit ainda não retirado.</b> {formatDateBR(r.kitPickupDate)}{r.kitPickupTime ? ` · ${r.kitPickupTime}` : ''}{r.kitPickupAddress ? ` · ${r.kitPickupAddress}` : ''}</div>
           </div>
+        )}
+
+        {sched && (
+          <>
+            <div className="section-title"><h2>Agenda do dia</h2><Link to={`/corridas/${r.id}/logistica`}>Editar</Link></div>
+            <div className="card">
+              <Timeline schedule={sched} now={isToday ? nowMin : null} />
+              <p className="note">Chegada prevista às <b>{minToHm(sched.arrivalPlanned, { withDay: false })}</b>{ida?.complete ? ` · ${formatKm(ida.distanceKm)}, ${ida.trafficMin ?? ida.durationMin} min de trajeto` : ''}.</p>
+              {ida && ida.points.length > 2 && (
+                <>
+                  <div className="list-group-title">Paradas</div>
+                  <ol className="day-stops">{ida.points.filter((p) => p.role === 'stop').map((p, i) => <li key={i}><b>{p.label}</b> <span className="muted small">{p.formatted || p.address}{p.dwellMin ? ` · ${p.dwellMin} min` : ''}</span></li>)}</ol>
+                </>
+              )}
+              {nav && <a className="btn btn-dark btn-block" style={{ marginTop: 10 }} href={nav.google} target="_blank" rel="noreferrer" data-testid="day-route"><IconPin /> Abrir a rota no Google Maps</a>}
+            </div>
+          </>
+        )}
+        {!sched && r.date && (
+          <p className="note" style={{ marginTop: 12 }}><Link to={`/corridas/${r.id}/logistica`}>Planejar a logística</Link> para ver aqui a hora de acordar, sair e cada parada.</p>
         )}
 
         {started && (

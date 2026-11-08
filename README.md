@@ -67,6 +67,7 @@ Como funciona:
 - **Evolução**: este ano x anterior (até a mesma data), provas por mês e pace por distância.
 - **Card para compartilhar** (Resultado → Compartilhar): imagem PNG gerada no aparelho, nos formatos feed (4:5), stories (9:16) e quadrado. Distância, tempo, pace, classificação, selos (recorde pessoal, primeira na distância, meta batida) e as parciais por km; fundo na cor do app ou com uma foto da prova. Usa o compartilhamento do celular; onde não há, baixa a imagem.
 - **Comparar provas km a km** (Histórico → Comparar, ou no resultado): tempo, pace, FC, subida e esforço lado a lado; diferença por km e acumulada, maior ganho e perda, e em qual metade veio a diferença. Precisa das parciais do arquivo do relógio; sem elas, compara só os totais.
+- **Logística da prova** (`/corridas/:id/logistica`, pelo detalhe da prova): veja a seção “Logística, rotas e agenda do dia”.
 - **Convite para instalar**: no navegador, o Início mostra “Instale o PaceOn” — com botão que abre a instalação no Android/Chrome/Edge, passo a passo no iPhone/iPad (Compartilhar → Adicionar à Tela de Início) e, dentro do Instagram/WhatsApp, orientação para abrir no Safari/Chrome. Some quando o app está instalado; “Agora não” esconde por 30 dias. Sempre disponível em Ajustes → Instalar o app. Um convite por vez (instalar antes do perfil).
 - **Perfil opcional** (`/perfil`, pela foto no topo do Início ou em Ajustes): nome e apelido (saudação “Boa tarde, Gi” e “Feliz aniversário”), foto (recortada e reduzida a 320 px), cidade, equipe, data de nascimento e categoria (faixa etária pela idade em 31/12, sugerida ao registrar o resultado), tamanho de camiseta (preenche o cadastro de provas), contato de emergência e tipo sanguíneo (no modo dia da prova) e nome no card de compartilhar. O cadastro continua só e-mail e senha. Sem conta, fica no aparelho; com conta, na tabela `profiles` (trecho 9 do SQL), valendo a alteração mais recente. Entra no backup.
 - **Meta x realizado**: a meta de tempo é definida antes da prova direto no detalhe (com o pace e a sugestão da previsão) e, depois do resultado, comparada com o tempo feito: na chegada, na metade e em cada passagem (a cada 1, 2,5 ou 5 km, conforme a distância), com onde ganhou e onde perdeu tempo em relação ao plano. As passagens reais vêm das parciais do relógio, ajustadas à distância oficial e ao tempo líquido; sem o arquivo do relógio, compara só a chegada. Regras em `src/lib/targetCompare.js`.
@@ -77,7 +78,7 @@ Como funciona:
 - **Previsão de tempo** (fórmula de Riegel, `src/lib/predict.js`): estima o tempo numa distância pelas provas concluídas dos últimos 2 anos (3 km ou mais; oficiais primeiro), priorizando distância próxima e resultados recentes e recusando extrapolar mais de 4,5×. Aparece no detalhe de provas sem meta (com “Usar como meta”), no campo de meta do cadastro e no modo dia da prova. É estimativa, não plano de treino.
 
 ## Agenda por assinatura e notificações (opcional, precisam de conta)
-Rode o `supabase/schema.sql` de novo sempre que ele mudar (trechos 6 a 9; é idempotente).
+Rode o `supabase/schema.sql` de novo sempre que ele mudar (trechos 6 a 9; é idempotente; o trecho 6 foi atualizado para a agenda do dia na assinatura).
 
 **Agenda por assinatura** — sem configuração extra. Cada pessoa gera um link secreto (`/agenda/<token>/minhas-corridas.ics`) e assina no iPhone, Google Agenda ou Outlook. A função `api/agenda.js` chama `calendar_feed` no banco com a chave pública; o banco devolve só nome, data, horário, local, status, nº de peito, kit e prazos (nunca custos, notas ou resultados). Trocar o link invalida o anterior. Entram as provas com data (sem canceladas/desistências) de até 1 ano atrás. Mostra o que já foi sincronizado com a nuvem. Cada calendário decide quando atualizar (o Google pode levar até um dia).
 
@@ -96,6 +97,25 @@ Sem essas variáveis, o app avisa que as notificações não estão configuradas
 - Inscrição estimada = inscrição + taxas; o valor pago, quando informado, substitui a estimativa (nunca soma as duas).
 - Em cada categoria (inscrição, transporte, hospedagem, outros) vale o pago; sem pago, o estimado.
 - Inscrita/Concluída entram no gasto; Desisti/Cancelada só com valor pago; Interesse/Inscrição aberta aparecem como previsão.
+
+## Logística, rotas e agenda do dia
+Por prova, em abas **Ida · Volta · Kit · Custos · Agenda** (dados em `race.logistics`: sincronizam, entram no backup e funcionam sem internet).
+- **Trajetos:** saída (casa), até 8 paradas com tempo de permanência (reordenáveis), destino = local da prova do cadastro. Volta com as mesmas paradas ao contrário ou outras, e horário de saída. Kit em trajeto separado (pode ser em outro dia; ida e volta opcional). Endereços favoritos ficam no perfil.
+- **Rota:** distância e tempo por trecho e no total, mapa (Leaflet + OpenStreetMap, carregado só nesta tela) e links para Google Maps (com paradas) e Waze (um trecho por vez, limitação do Waze). Mudou um endereço → a rota aparece como desatualizada.
+- **Custos:** veículo no perfil (km/l, combustível, R$/litro). Combustível = distância ÷ consumo × preço por litro, por sentido e para o kit; pedágios por sentido (da rota quando o serviço informa a tarifa, senão à mão); estacionamento e outras despesas; estimado e pago por item. O total vira o **Transporte** da prova (`transportEst`/`transportPaid`), então orçamento, Gastos e Decidir já enxergam — sem duplicar. Enquanto houver item sem valor pago, o total fica como estimado.
+- **Agenda (Gerar minha agenda):** de trás para frente a partir da largada: chegada desejada, estacionar, trajeto (com trânsito previsto quando houver) + paradas, margem para imprevistos → **sair de casa**; preparativos finais, vestir, café (opcional), banho → **acordar**; depois aquecimento, posicionamento e largada. Recalcula sozinha. Os tempos podem virar padrão do perfil. Regras em `src/lib/schedule.js` e `src/lib/logistics.js`.
+- **Modo dia da prova:** próxima atividade, hora de sair, agenda, paradas, rota e chegada prevista.
+- **Calendário e avisos:** “Baixar agenda com alarmes (.ics)” cria eventos “Acordar”, “Sair de casa” e “Sair para o kit” com alarme no calendário do celular (o jeito confiável de acordar: o app não é despertador). Opcionalmente os horários vão para a agenda por assinatura, sem endereços (rode de novo o trecho 6 do SQL). A notificação da véspera inclui “acordar” e “sair”.
+
+**Serviço de rotas (opcional)** — função `api/route.js`; a chave fica só no servidor (Vercel → Environment Variables, sem `VITE_`):
+
+| Variável | Serviço | Trânsito previsto | Pedágios | Custo |
+|---|---|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | Google Routes API + Geocoding API | sim (saída futura) | quando o Google tem a tarifa | precisa de conta de faturamento; cota mensal gratuita (confira a tabela atual) |
+| `ORS_API_KEY` | OpenRouteService | não | não | gratuito (limite diário) |
+| nenhuma | — | — | — | distância e tempo informados à mão |
+
+No Google Cloud: ative **Routes API** e **Geocoding API**, restrinja a chave a essas duas APIs e defina cotas diárias (protege contra uso indevido). A função aceita só chamadas do próprio site e limita consultas por IP. O mapa usa os mapas do OpenStreetMap (uso leve, com atribuição).
 
 ## Marca
 - A arte original fica em `brand/paceon-original.png`. `node scripts/icons.mjs` gera a partir dela: `icon-192/512.png` (cantos transparentes), `icon-maskable-512.png` (Android, conteúdo na área segura), `apple-touch-icon.png` (iPhone, opaco), `favicon.png` e `logo-256.png` (topo do app e card de compartilhar).

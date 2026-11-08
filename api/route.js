@@ -32,10 +32,21 @@ async function getJson(fetchImpl, url, init = {}) {
   }
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
-    if (res.status === 429) throw fail(429, 'Limite de consultas de rota atingido. Tente mais tarde.')
-    throw fail(502, 'O serviço de rotas recusou a consulta.')
+    if (res.status === 429) throw fail(429, 'Limite de consultas de rota atingido (cota do dia). Tente mais tarde.')
+    const why = body?.error?.message || body?.error_message || ''
+    console.error('Serviço de rotas recusou:', res.status, why)
+    throw fail(502, explain(why, 'O serviço de rotas recusou a consulta.'))
   }
   return body
+}
+
+/** Traduz os motivos mais comuns do Google para o que a pessoa precisa fazer. */
+export function explain(why, fallback) {
+  const w = String(why || '')
+  if (/billing/i.test(w)) return 'O Google recusou: o faturamento não está ativo no projeto do Google Cloud. Vincule uma conta de faturamento ao projeto.'
+  if (/not authorized to use this API|has not been used|is disabled|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|blocked/i.test(w)) return `O Google recusou: a API não está ativada ou a chave não tem permissão para ela. Ative a Routes API e a Geocoding API e inclua as duas nas restrições da chave. (${w.slice(0, 160)})`
+  if (/referer|IP address|API key not valid|API_KEY_INVALID|invalid/i.test(w)) return `O Google recusou a chave: confira se a chave está correta e sem restrição de sites/IPs. (${w.slice(0, 160)})`
+  return w ? `${fallback} (${w.slice(0, 200)})` : fallback
 }
 
 /* ---------- Google ---------- */
@@ -44,7 +55,11 @@ async function googleGeocode(q, cfg, fetchImpl) {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&region=br&language=pt-BR&key=${encodeURIComponent(cfg.key)}`
   const body = await getJson(fetchImpl, url)
   if (body.status === 'ZERO_RESULTS') return []
-  if (body.status !== 'OK') throw fail(502, 'O serviço de endereços recusou a consulta.')
+  if (body.status === 'OVER_QUERY_LIMIT' || body.status === 'OVER_DAILY_LIMIT') throw fail(429, 'Limite de consultas de endereço atingido (cota do dia). Tente mais tarde.')
+  if (body.status !== 'OK') {
+    console.error('Geocoding recusou:', body.status, body.error_message)
+    throw fail(502, explain(body.error_message || body.status, 'O serviço de endereços recusou a consulta.'))
+  }
   return body.results.slice(0, 5).map((r) => ({ formatted: r.formatted_address, lat: r.geometry.location.lat, lon: r.geometry.location.lng, partial: !!r.partial_match }))
 }
 

@@ -188,7 +188,7 @@ await tab(p, 'Agenda')
 for (const [label, v] of [['Banho', '15'], ['Vestir e organizar', '15'], ['Café da manhã (0 = sem)', '0'], ['Preparativos finais', '10']]) await typeIn(p, `input[aria-label="${label}"]`, v)
 await p.$eval('#arrive-at', (el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })) }, '06:15')
 await wait(200)
-await p.click('[data-testid=gen-agenda]')
+await p.$eval('[data-testid=gen-agenda]', (b) => b.click())
 await p.waitForSelector('[data-testid=timeline]')
 const tl = await p.$$eval('[data-testid=timeline] li', (lis) => lis.map((li) => li.querySelector('.tl-time').innerText + ' ' + li.querySelector('b').innerText))
 // 07:00 − 45 = 06:15 a pé; −10 estacionar = 06:05; −(12+15+29) trânsito −10 paradas = 04:59; −10 margem = 04:49 sair; −10 −15 −15 = 04:09 acordar

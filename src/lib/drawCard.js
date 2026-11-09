@@ -258,3 +258,111 @@ export function drawCard(canvas, info, format, photo = null) {
 export function canvasToBlob(canvas) {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Não foi possível gerar a imagem.'))), 'image/png'))
 }
+
+const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+
+/**
+ * Card da retrospectiva do ano. `data`: { year, athlete, stats: [{ value, label }] (até 4),
+ * highlight: { title, line } | null, months: [12], footer: string }.
+ */
+export function drawYearCard(canvas, data, format) {
+  const W = format.w
+  const H = format.h
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  const pad = 84
+  const inner = W - pad * 2
+  background(ctx, W, H, null)
+  ctx.textBaseline = 'alphabetic'
+  ctx.textAlign = 'left'
+
+  // Marca e nome
+  let y = pad + (H > 1500 ? 80 : 0)
+  if (logo) {
+    ctx.save()
+    roundRect(ctx, pad, y, 54, 54, 14)
+    ctx.clip()
+    ctx.drawImage(logo, pad, y, 54, 54)
+    ctx.restore()
+  }
+  const bx = logo ? pad + 70 : pad
+  ctx.font = `italic 800 34px ${TEXT}`
+  ctx.fillStyle = '#fff'
+  ctx.fillText('PACE', bx, y + 40)
+  ctx.fillStyle = BRAND
+  ctx.fillText('ON', bx + ctx.measureText('PACE').width, y + 40)
+  if (data.athlete) {
+    ctx.textAlign = 'right'
+    ctx.fillStyle = CREAM
+    fit(ctx, data.athlete, (n) => `800 ${n}px ${TEXT}`, 32, inner - 300, 20)
+    ctx.fillText(data.athlete, W - pad, y + 39)
+    ctx.textAlign = 'left'
+  }
+  y += 54 + 90
+
+  // Título
+  ctx.fillStyle = 'rgba(255,244,236,0.8)'
+  ctx.font = `800 34px ${TEXT}`
+  ctx.fillText('RETROSPECTIVA', pad, y)
+  y += 20 + (H > 1200 ? 200 : 170)
+  ctx.fillStyle = BRAND
+  ctx.font = `800 ${H > 1200 ? 230 : 190}px ${DISPLAY}`
+  ctx.fillText(String(data.year), pad - 6, y)
+  y += 40
+
+  // Números (grade 2×2)
+  const cols = 2
+  const cellW = inner / cols
+  const cellH = H > 1500 ? 210 : H > 1200 ? 185 : 150
+  data.stats.slice(0, 4).forEach((s, i) => {
+    const cx = pad + (i % cols) * cellW
+    const cy = y + Math.floor(i / cols) * cellH
+    ctx.fillStyle = '#fff'
+    fit(ctx, s.value, (n) => `800 ${n}px ${DISPLAY}`, H > 1200 ? 110 : 92, cellW - 24, 50)
+    ctx.fillText(s.value, cx, cy + (H > 1200 ? 100 : 84))
+    ctx.fillStyle = 'rgba(255,244,236,0.72)'
+    ctx.font = `800 26px ${TEXT}`
+    ctx.fillText(s.label.toUpperCase(), cx, cy + (H > 1200 ? 140 : 118))
+  })
+  y += Math.ceil(Math.min(4, data.stats.length) / cols) * cellH + 10
+
+  // Destaque
+  if (data.highlight && H > 1100) {
+    ctx.fillStyle = 'rgba(255,244,236,0.1)'
+    roundRect(ctx, pad, y, inner, 150, 26)
+    ctx.fill()
+    ctx.fillStyle = BRAND
+    ctx.font = `800 24px ${TEXT}`
+    ctx.fillText(data.highlight.title.toUpperCase(), pad + 30, y + 46)
+    ctx.fillStyle = '#fff'
+    ctx.font = `800 40px ${TEXT}`
+    const line = wrap(ctx, data.highlight.line, inner - 60, 2)
+    line.forEach((l, i) => ctx.fillText(l, pad + 30, y + 96 + i * 44))
+    y += 150 + 40
+  }
+
+  // Provas por mês
+  const bottom = H - pad - (H > 1500 ? 110 : 0)
+  const chartH = Math.max(90, Math.min(220, bottom - y - 60))
+  const maxM = Math.max(1, ...data.months)
+  const gap = 14
+  const bw = (inner - gap * 11) / 12
+  data.months.forEach((n, i) => {
+    const h = n ? Math.max(14, (n / maxM) * (chartH - 30)) : 6
+    ctx.fillStyle = n === maxM && n > 0 ? BRAND : n ? 'rgba(255,244,236,0.6)' : 'rgba(255,244,236,0.15)'
+    roundRect(ctx, pad + i * (bw + gap), bottom - 40 - h, bw, h, Math.min(8, bw / 2))
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,244,236,0.7)'
+    ctx.font = `800 22px ${TEXT}`
+    ctx.textAlign = 'center'
+    ctx.fillText(MONTHS[i], pad + i * (bw + gap) + bw / 2, bottom)
+    ctx.textAlign = 'left'
+  })
+  if (data.footer) {
+    ctx.fillStyle = 'rgba(255,244,236,0.75)'
+    ctx.font = `800 24px ${TEXT}`
+    ctx.fillText(data.footer.toUpperCase(), pad, bottom - 40 - chartH - 12)
+  }
+  return canvas
+}

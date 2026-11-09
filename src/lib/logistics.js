@@ -272,7 +272,8 @@ export function raceKitSchedule(race, profilePrep) {
   if (!log?.kit.enabled || !race.kitPickupTime) return null
   const kit = tripSummary(race, log, 'kit')
   if (!kit.complete) return null
-  return kitSchedule({ time: race.kitPickupTime, legs: kit.legs, stops: kit.points.filter((p) => p.role === 'stop'), bufferMin: normalizePrep(log.prep ?? profilePrep).bufferMin, roundTrip: log.kit.roundTrip })
+  const prep = normalizePrep(log.prep ?? profilePrep)
+  return kitSchedule({ time: race.kitPickupTime, legs: kit.legs, stops: kit.points.filter((p) => p.role === 'stop'), bufferMin: prep.bufferMin, roundTrip: log.kit.roundTrip, trafficExtraPct: prep.trafficExtraPct })
 }
 
 /** Data ISO deslocada em dias (sem fuso). */
@@ -298,6 +299,12 @@ export function scheduleEvents(race, profilePrep) {
   }
   const k = raceKitSchedule(race, profilePrep)
   if (k && race.kitPickupDate) out.push(toEvent('kit-sair', `Sair para retirar o kit – ${race.name}`, race.kitPickupDate, k.depart))
+  const log = race.logistics
+  const back = log?.back
+  if (back?.enabled && /^\d{2}:\d{2}$/.test(back.departTime || '')) {
+    const [h, m] = back.departTime.split(':').map(Number)
+    out.push(toEvent('volta', `Sair de volta para casa – ${race.name}`, race.date, h * 60 + m))
+  }
   return out
 }
 

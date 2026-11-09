@@ -216,7 +216,7 @@ function TripPanel({ which, race: r, log, update, cap }) {
   const saveManual = (legs) => update((l) => { l[tripKey].route = { provider: 'manual', legs, key: pointsKey(s.points), fetchedAt: new Date().toISOString() } })
   const links = s.points.length >= 2 ? navLinks(s.points) : null
   const coordsForMap = s.route?.points?.length ? s.route.points : s.points.every((p) => p.lat != null) ? s.points.map((p) => ({ lat: p.lat, lon: p.lon })) : []
-  const ret = which === 'volta' && s.complete ? returnSchedule({ departTime: log.back.departTime, legs: s.legs, stops: s.points.filter((p) => p.role === 'stop') }) : null
+  const ret = which === 'volta' && s.complete ? returnSchedule({ departTime: log.back.departTime, legs: s.legs, stops: s.points.filter((p) => p.role === 'stop'), trafficExtraPct: normalizePrep(log.prep ?? getProfile().data.prep).trafficExtraPct }) : null
   const kitS = which === 'kit' ? raceKitSchedule(r, getProfile().data.prep) : null
 
   return (
@@ -553,6 +553,9 @@ function AgendaPanel({ race: r, log, update, goTrip }) {
         <>
           <div className="section-title"><h2>Sua agenda</h2><span className="muted small">{r.date ? formatDateBR(r.date) : ''}</span></div>
           <Timeline schedule={schedule} />
+          {schedule.noTraffic && (
+            <div className="alert alert-info small" style={{ marginTop: 8 }} data-testid="no-traffic"><IconInfo /><div>{schedule.prep.trafficExtraPct ? `Trechos sem trânsito previsto: acréscimo de ${schedule.prep.trafficExtraPct}% aplicado.` : 'A rota não considera trânsito. Em horário de pico, use “Acréscimo por trânsito” (15 a 25%) ou aumente a margem.'}</div></div>
+          )}
           {schedule.warnings.map((w, i) => <div key={i} className="alert alert-warn small" style={{ marginTop: 8 }}><div>{w}</div></div>)}
           <p className="note">Recalcula sozinha quando você muda a largada, as paradas, a rota ou os tempos. Trajeto: {minLabel(schedule.travelMin)}{ida.trafficMin != null ? ' com trânsito previsto' : ''}{schedule.dwellMin ? ` + ${schedule.dwellMin} min de paradas` : ''}.</p>
           <div className="card" style={{ marginTop: 12 }}>

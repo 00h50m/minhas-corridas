@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { nextConfirmed } from './lib/stats.js'
 import { BottomNav, UIProvider } from './components/ui.jsx'
 import { useStore } from './services/store.js'
 import Home from './pages/Home.jsx'
@@ -23,6 +24,7 @@ const RaceDay = lazy(() => import('./pages/RaceDay.jsx'))
 const Decide = lazy(() => import('./pages/Decide.jsx'))
 const Profile = lazy(() => import('./pages/Profile.jsx'))
 const Logistics = lazy(() => import('./pages/Logistics.jsx'))
+const YearReview = lazy(() => import('./pages/YearReview.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
@@ -65,6 +67,8 @@ export default function App() {
                 <Route path="/historico" element={<History />} />
                 <Route path="/comparar" element={<Compare />} />
                 <Route path="/decidir" element={<Decide />} />
+                <Route path="/retrospectiva/:ano" element={<YearReview />} />
+                <Route path="/proxima" element={<NextRace />} />
                 <Route path="/objetivos" element={<Goals />} />
                 <Route path="/objetivos/novo" element={<GoalForm />} />
                 <Route path="/objetivos/:id" element={<GoalDetail />} />
@@ -85,6 +89,13 @@ export default function App() {
       <UpdatePrompt />
     </UIProvider>
   )
+}
+
+/** Atalho do ícone "Próxima prova": abre a próxima inscrição (ou o calendário). */
+function NextRace() {
+  const { races } = useStore()
+  const next = nextConfirmed(races)
+  return <Navigate to={next ? `/corridas/${next.id}` : '/corridas'} replace />
 }
 
 function NotFound() {

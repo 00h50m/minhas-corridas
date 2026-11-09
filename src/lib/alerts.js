@@ -61,17 +61,18 @@ export const PUSH_OPTIONS = {
 export const PUSH_TYPES = Object.keys(PUSH_OPTIONS)
 
 // Padrão de quem nunca mexeu nas preferências.
-export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false, orcamento: true }
+export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false, orcamento: true, resultado: true }
 
 /** Aceita preferências salvas (ou nada) e devolve um objeto válido. */
 export function normalizePushPrefs(raw) {
-  const out = { weekly: DEFAULT_PUSH_PREFS.weekly, orcamento: DEFAULT_PUSH_PREFS.orcamento }
+  const out = { weekly: DEFAULT_PUSH_PREFS.weekly, orcamento: DEFAULT_PUSH_PREFS.orcamento, resultado: DEFAULT_PUSH_PREFS.resultado }
   for (const t of PUSH_TYPES) {
     const v = raw && Array.isArray(raw[t]) ? raw[t] : DEFAULT_PUSH_PREFS[t]
     out[t] = [...new Set(v.filter((d) => PUSH_OPTIONS[t].includes(d)))].sort((a, b) => b - a)
   }
   if (raw && typeof raw.weekly === 'boolean') out.weekly = raw.weekly
   out.orcamento = raw && typeof raw.orcamento === 'boolean' ? raw.orcamento : DEFAULT_PUSH_PREFS.orcamento
+  out.resultado = raw && typeof raw.resultado === 'boolean' ? raw.resultado : DEFAULT_PUSH_PREFS.resultado
   return out
 }
 
@@ -139,6 +140,7 @@ export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null,
     const b = budgetAlert(goals, races, today)
     if (b) out.push(b)
   }
+  if (prefs.resultado) out.push(...resultReminders(races, today))
   return out
 }
 
@@ -162,4 +164,18 @@ export function budgetAlert(goals, races, today = todayISO()) {
       ? `${formatMoney(b.spent)} de ${formatMoney(b.target)} — ${formatMoney(b.spent - b.target)} acima.`
       : `${formatMoney(b.spent)} de ${formatMoney(b.target)}. Restam ${formatMoney(b.remaining)}.`
   }
+}
+
+/** "Como foi?": no dia seguinte à prova inscrita ainda sem resultado. */
+export function resultReminders(races, today = todayISO()) {
+  return races
+    .filter((r) => r.status === 'inscrita' && !r.result && r.date && daysBetween(r.date, today) === 1)
+    .map((r) => ({
+      key: `${r.id}:resultado:${r.date}`,
+      type: 'resultado',
+      raceId: r.id,
+      url: `/corridas/${r.id}/resultado`,
+      title: `Como foi a ${r.name}?`,
+      body: 'Registre o tempo enquanto está fresco na memória — e compartilhe o card.'
+    }))
 }

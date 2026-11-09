@@ -4,6 +4,7 @@ import { Avatar, AvatarButton } from '../components/Avatar.jsx'
 import { useProfile } from '../services/profile.js'
 import { greeting } from '../lib/profile.js'
 import { InstallBanner } from '../components/Install.jsx'
+import { reviewInviteYear, reviewYears } from '../lib/yearReview.js'
 import { installAvailable, useInstall } from '../services/install.js'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
@@ -123,6 +124,7 @@ export default function Home() {
   const undatedCount = races.filter((r) => !r.date && ['interesse', 'aberta', 'inscrita'].includes(r.status)).length
   const last = history(races)[0]
   const showLast = last && daysBetween(last.date, today) <= 60
+  const retroYear = reviewInviteYear(today)
 
   return (
     <>
@@ -174,6 +176,14 @@ export default function Home() {
               </ul>
             </div>
           </>
+        )}
+
+        {retroYear && reviewYears(races).includes(retroYear) && (
+          <Link to={`/retrospectiva/${retroYear}`} className="card decide-link retro-invite" data-testid="retro-invite">
+            <span style={{ fontSize: 26 }} aria-hidden="true">🎉</span>
+            <span style={{ flex: 1, minWidth: 0 }}><b>Sua retrospectiva {retroYear}</b><br /><span className="muted small">Provas, km, recordes e o card para compartilhar.</span></span>
+            <span aria-hidden="true">›</span>
+          </Link>
         )}
 
         {showLast && <LastRace race={last} races={races} />}

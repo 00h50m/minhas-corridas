@@ -8,3 +8,9 @@ export const DEFAULT_SUPABASE_ANON_KEY =
 export function cleanSupabaseUrl(u) {
   return String(u || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
 }
+
+// Política de privacidade (/privacidade). Preencha o responsável e o e-mail de contato
+// (exigidos pela LGPD e pelo programa de desenvolvedores da Garmin).
+export const PRIVACY_CONTROLLER = 'o responsável pelo PaceOn'
+export const PRIVACY_CONTACT = ''
+export const PRIVACY_UPDATED = '12/11/2026'

@@ -232,6 +232,7 @@ function SignIn() {
           </button>
           {mode === 'entrar' && <button type="button" className="link-btn" style={{ marginTop: 6 }} onClick={() => switchTo('recuperar')}>Esqueci minha senha</button>}
           {mode === 'recuperar' && <button type="button" className="link-btn" style={{ marginTop: 6 }} onClick={() => switchTo('entrar')}>Voltar para entrar</button>}
+          {mode === 'criar' && <p className="note">Ao criar a conta, você concorda com a <Link to="/privacidade">Política de privacidade</Link>.</p>}
         </div>
         <p className="note"><Link to="/">Continuar sem conta</Link></p>
       </form>

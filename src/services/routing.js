@@ -29,7 +29,31 @@ async function call(url, init) {
   return body
 }
 
-export const geocode = (q) => call(`/api/route?q=${encodeURIComponent(q)}`).then((b) => b.results ?? [])
+/** Busca de endereço. suggest: sugestões rápidas enquanto digita; near: {lat, lon} para priorizar a região. */
+export const geocode = (q, { suggest = false, near = null } = {}) =>
+  call(`/api/route?q=${encodeURIComponent(q)}${suggest ? '&modo=sugestao' : ''}${near?.lat != null ? `&perto_lat=${near.lat}&perto_lon=${near.lon}` : ''}`).then((b) => b.results ?? [])
+
+/** Endereço a partir das coordenadas atuais (botão "Usar minha localização"). */
+export function locateMe() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('Este navegador não informa a localização.'))
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lon } = pos.coords
+          const b = await call(`/api/route?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`)
+          resolve(b.results?.[0] ?? { formatted: '', lat, lon, partial: true })
+        } catch (e) {
+          reject(e)
+        }
+      },
+      (e) => reject(new Error(e.code === 1 ? 'Permissão de localização negada. Libere nas configurações do navegador.' : 'Não foi possível obter a localização.')),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    )
+  })
+}
+
+export const SOURCE_LABEL = { cep: 'CEP', osm: 'OpenStreetMap', google: 'Google', ors: 'OpenRouteService' }
 
 /** points: [{ address, lat, lon }]; departureAt: ISO (para trânsito previsto). */
 export const computeRoute = (points, departureAt) =>

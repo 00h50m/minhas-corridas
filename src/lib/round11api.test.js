@@ -5,12 +5,14 @@ import { decodePolyline } from './polyline.js'
 const req = (o) => ({ method: 'GET', query: {}, headers: { host: 'app.test' }, ...o })
 const pts = [{ address: 'Residencial Cenário, Jardim Tannus, Jundiaí' }, { address: 'Eloy Chaves, Jundiaí' }, { address: 'Av. Maria de Lourdes Abreu, 95, Itatiba/SP' }]
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status })
+/** Só o serviço configurado responde; as fontes gratuitas (OSM/CEP) não acham nada. */
+const onlyProvider = (fn) => async (url, init) => (/photon|nominatim|brasilapi|viacep/.test(String(url)) ? json(String(url).includes('nominatim') ? [] : { features: [] }) : fn(url, init))
 
 describe('função de rotas', () => {
   it('sem chave: avisa e não inventa rota', async () => {
     expect(routeEnv({})).toEqual({ provider: null, traffic: false, tolls: false })
     const cap = await handleRoute(req(), { env: {} })
-    expect(cap.body).toEqual({ provider: null, traffic: false, tolls: false })
+    expect(cap.body).toEqual({ provider: null, traffic: false, tolls: false, geocode: true })
     const r = await handleRoute(req({ method: 'POST', body: { points: pts } }), { env: {} })
     expect(r.status).toBe(503)
   })
@@ -63,15 +65,15 @@ describe('função de rotas', () => {
     expect(decodePolyline(r.body.polyline)).toEqual([[-23.2, -46.9], [-23.15, -46.95]])
   })
   it('endereço: sugestões e falhas tratadas', async () => {
-    const ok = await handleRoute(req({ query: { q: 'Av. Maria de Lourdes Abreu, 95, Itatiba' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: async () => json({ status: 'OK', results: [{ formatted_address: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', geometry: { location: { lat: -23.0, lng: -46.8 } }, partial_match: false }] }) })
-    expect(ok.body.results[0]).toEqual({ formatted: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', lat: -23.0, lon: -46.8, partial: false })
-    const down = await handleRoute(req({ query: { q: 'Rua Tal, 10, Jundiaí' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: async () => { throw new Error('rede') } })
+    const ok = await handleRoute(req({ query: { q: 'Av. Maria de Lourdes Abreu, 95, Itatiba' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => json({ status: 'OK', results: [{ formatted_address: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', geometry: { location: { lat: -23.0, lng: -46.8 } }, partial_match: false }] })) })
+    expect(ok.body.results[0]).toEqual({ formatted: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', lat: -23.0, lon: -46.8, partial: false, source: 'google' })
+    const down = await handleRoute(req({ query: { q: 'Rua Tal, 10, Jundiaí' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => { throw new Error('rede') }) })
     expect(down.status).toBe(504)
-    const quota = await handleRoute(req({ query: { q: 'Rua Tal, 10, Jundiaí' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: async () => json({}, 429) })
+    const quota = await handleRoute(req({ query: { q: 'Rua Tal, 10, Jundiaí' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => json({}, 429)) })
     expect(quota.status).toBe(429)
   })
   it('mostra o motivo da recusa do Google (sem expor a chave)', async () => {
-    const g = (body, status = 200) => ({ env: { GOOGLE_MAPS_API_KEY: 'SEGREDO' }, fetchImpl: async () => json(body, status) })
+    const g = (body, status = 200) => ({ env: { GOOGLE_MAPS_API_KEY: 'SEGREDO' }, fetchImpl: onlyProvider(async () => json(body, status)) })
     const notEnabled = await handleRoute(req({ query: { q: 'Residencial Cenário' } }), g({ status: 'REQUEST_DENIED', error_message: 'This API project is not authorized to use this API.' }))
     expect(notEnabled.status).toBe(502)
     expect(notEnabled.body.error).toContain('Ative a Routes API e a Geocoding API')

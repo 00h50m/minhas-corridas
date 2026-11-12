@@ -3,7 +3,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
-import { PROVIDER_LABEL, computeRoute, geocode, routeCapabilities } from '../services/routing.js'
+import { PROVIDER_LABEL, SOURCE_LABEL, computeRoute, geocode, locateMe, routeCapabilities } from '../services/routing.js'
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconExternal, IconInfo, IconPin, IconPlus, IconX } from '../components/Icons.jsx'
 import { FUELS, costItems, destinationPlace, fuelCost, kitPlace, navLinks, normalizeLogistics, pointsKey, raceSchedule, tripOf, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
@@ -79,44 +79,80 @@ export default function Logistics() {
 
 /* ---------- Endereços ---------- */
 
-function PlaceField({ label, name, place, onChange, cap, testid, hint }) {
+function PlaceField({ label, name, place, onChange, cap, testid, hint, locate = false, near = null }) {
   const prof = useProfile()
   const { notify } = useUI()
   const [text, setText] = useState(place?.address ?? '')
+  const [typed, setTyped] = useState(false) // só sugere depois que a pessoa digita
   const [results, setResults] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(null) // 'busca' | 'local'
   const [err, setErr] = useState(null)
+  const [notFound, setNotFound] = useState(false)
   const [favName, setFavName] = useState(null)
-  useEffect(() => setText(place?.address ?? ''), [place?.address])
+  useEffect(() => { setText(place?.address ?? ''); setTyped(false) }, [place?.address])
   const favs = prof.data.favorites
-  const check = async () => {
+  const asLabel = place?.label || name || label
+
+  // Sugestões enquanto digita (a partir de 5 letras, com uma pausa curta).
+  useEffect(() => {
+    if (!typed || text.trim().length < 5) return
+    let alive = true
+    const t = setTimeout(() => {
+      geocode(text.trim(), { suggest: true, near })
+        .then((list) => alive && list.length && setResults(list))
+        .catch(() => {})
+    }, 450)
+    return () => { alive = false; clearTimeout(t) }
+  }, [text, typed])
+
+  const search = async () => {
     setErr(null)
-    if (text.trim().length < 5) return setErr('Digite o endereço completo: rua, número, bairro e cidade.')
-    if (!cap?.provider) {
-      onChange({ label: place?.label || name || label, address: text.trim(), formatted: '', lat: null, lon: null })
-      return
-    }
-    setBusy(true)
+    setNotFound(false)
+    if (text.trim().length < 5) return setErr('Digite o CEP ou o endereço: rua, número, bairro e cidade.')
+    setBusy('busca')
     try {
-      const list = await geocode(text.trim())
-      if (!list.length) setErr('Não encontrei esse endereço. Complete com número, bairro e cidade.')
+      const list = await geocode(text.trim(), { near })
       setResults(list)
+      if (!list.length) { setNotFound(true); setErr('Não encontrei. Tente o CEP (ex.: 13214-000, 95) ou rua + cidade.') }
     } catch (e) {
+      setNotFound(true)
       setErr(e.message)
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
   const pick = (g) => {
-    onChange({ label: place?.label || name || label, address: text.trim(), formatted: g.formatted, lat: g.lat, lon: g.lon })
+    onChange({ label: asLabel, address: g.formatted || text.trim(), formatted: g.formatted, lat: g.lat, lon: g.lon })
     setResults(null)
+    setTyped(false)
+  }
+  const useTyped = () => {
+    if (text.trim().length < 5) return setErr('Digite o endereço completo.')
+    onChange({ label: asLabel, address: text.trim(), formatted: '', lat: null, lon: null })
+    setResults(null)
+    setErr(null)
+    setNotFound(false)
+  }
+  const useLocation = async () => {
+    setErr(null)
+    setBusy('local')
+    try {
+      const g = await locateMe()
+      setText(g.formatted || '')
+      pick(g)
+      notify('Localização usada')
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(null)
+    }
   }
   const saveFav = () => {
-    const name = (favName || '').trim()
-    if (!name) return
+    const nm = (favName || '').trim()
+    if (!nm) return
     const p = getProfile().data
-    const others = p.favorites.filter((f) => f.label.toLowerCase() !== name.toLowerCase())
-    saveProfile({ ...p, favorites: [...others, { ...place, label: name, id: newId() }].slice(-20) })
+    const others = p.favorites.filter((f) => f.label.toLowerCase() !== nm.toLowerCase())
+    saveProfile({ ...p, favorites: [...others, { ...place, label: nm, id: newId() }].slice(-20) })
     setFavName(null)
     notify('Endereço salvo nos favoritos')
   }
@@ -129,15 +165,26 @@ function PlaceField({ label, name, place, onChange, cap, testid, hint }) {
         </div>
       )}
       <div className="grid-2-1">
-        <input className="input" value={text} onChange={(e) => { setText(e.target.value); setErr(null) }} placeholder="Rua, número, bairro, cidade" aria-label={label} autoComplete="street-address" />
-        <button type="button" className="btn btn-dark" disabled={busy} onClick={check}>{busy ? '…' : cap?.provider ? 'Verificar' : 'Usar'}</button>
+        <input className="input" value={text} onChange={(e) => { setText(e.target.value); setTyped(true); setErr(null); setNotFound(false) }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search() } }} placeholder="CEP ou rua, número, bairro, cidade" aria-label={label} autoComplete="street-address" />
+        <button type="button" className="btn btn-dark" disabled={!!busy} onClick={search}>{busy === 'busca' ? '…' : 'Buscar'}</button>
       </div>
-      {hint && <div className="hint">{hint}</div>}
+      <div className="hint">{hint || 'Dica: o CEP acha qualquer rua. Ex.: “13214-000, 95”.'}</div>
+      {locate && <button type="button" className="link-btn" disabled={!!busy} onClick={useLocation}>{busy === 'local' ? 'Localizando…' : '📍 Usar minha localização'}</button>}
       {err && <div className="err" role="alert">{err}</div>}
       {results?.length > 0 && (
-        <ul className="geo-results">
-          {results.map((g, i) => <li key={i}><button type="button" onClick={() => pick(g)}>{g.formatted}{g.partial && <span className="muted"> · aproximado</span>}</button></li>)}
+        <ul className="geo-results" aria-label="Endereços encontrados">
+          {results.map((g, i) => (
+            <li key={i}>
+              <button type="button" onClick={() => pick(g)}>
+                {g.formatted}
+                <span className="geo-tags">{g.source && <span>{SOURCE_LABEL[g.source] || g.source}</span>}{g.partial && <span>aproximado</span>}</span>
+              </button>
+            </li>
+          ))}
         </ul>
+      )}
+      {(notFound || (text.trim().length >= 5 && !place && !results?.length && typed)) && (
+        <button type="button" className="link-btn muted-btn" onClick={useTyped}>Usar como digitado (sem verificar)</button>
       )}
       {place && (
         <div className="place-ok small">
@@ -258,8 +305,8 @@ function TripPanel({ which, race: r, log, update, cap }) {
         <>
           <div className="section-title"><h2>{which === 'volta' ? 'Trajeto da volta' : which === 'kit' ? 'Trajeto até o kit' : 'Trajeto da ida'}</h2></div>
           <div className="card">
-            {which === 'ida' && <PlaceField label="Saída (sua casa)" name="Casa" place={log.origin} cap={cap} testid="origin" onChange={(p) => update((l) => { l.origin = p })} />}
-            {which === 'kit' && <PlaceField label="Saída para o kit" name="Saída" place={log.kit.origin ?? log.origin} cap={cap} testid="kit-origin" hint={!log.kit.origin ? 'Igual à saída da ida. Altere se for sair de outro lugar.' : null} onChange={(p) => update((l) => { l.kit.origin = p })} />}
+            {which === 'ida' && <PlaceField label="Saída (sua casa)" name="Casa" place={log.origin} cap={cap} testid="origin" locate onChange={(p) => update((l) => { l.origin = p })} />}
+            {which === 'kit' && <PlaceField label="Saída para o kit" name="Saída" place={log.kit.origin ?? log.origin} cap={cap} testid="kit-origin" locate hint={!log.kit.origin ? 'Igual à saída da ida. Altere se for sair de outro lugar.' : null} onChange={(p) => update((l) => { l.kit.origin = p })} />}
             {which === 'volta' && <div className="trip-fixed"><span className="tf-k">Saída</span><span>{destinationPlace(r, log)?.address || 'Local da prova (cadastre o endereço)'}</span></div>}
 
             <div className="list-group-title">Paradas</div>
@@ -378,7 +425,7 @@ function DestinationField({ race: r, log, update, cap }) {
     <div className="trip-fixed" data-testid="destination">
       <span className="tf-k">Destino</span>
       <span>{dest.lat != null ? '✓ ' : ''}{dest.formatted || dest.address}</span>
-      {cap?.provider && dest.lat == null && (
+      {cap && dest.lat == null && (
         <PlaceField label="Confirmar o local da largada" place={dest} cap={cap} onChange={(p) => update((l) => { l.destination = { ...p, address: dest.address } })} />
       )}
       <Link to={`/corridas/${r.id}/editar`} className="link-btn">Mudar no cadastro</Link>
@@ -393,7 +440,7 @@ function KitDestinationField({ race: r, log, update, cap }) {
     <div className="trip-fixed">
       <span className="tf-k">Kit</span>
       <span>{dest.lat != null ? '✓ ' : ''}{dest.formatted || dest.address}</span>
-      {cap?.provider && dest.lat == null && <PlaceField label="Confirmar o local do kit" place={dest} cap={cap} onChange={(p) => update((l) => { l.kit.destination = { ...p, address: dest.address } })} />}
+      {cap && dest.lat == null && <PlaceField label="Confirmar o local do kit" place={dest} cap={cap} onChange={(p) => update((l) => { l.kit.destination = { ...p, address: dest.address } })} />}
     </div>
   )
 }

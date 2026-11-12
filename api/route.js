@@ -4,9 +4,11 @@
 // Sem nenhuma chave, o app usa distância e tempo informados à mão.
 //
 // GET  /api/route              → { provider, traffic, tolls }
-// GET  /api/route?q=endereço   → { results: [{ formatted, lat, lon, partial }] }
+// GET  /api/route?q=endereço[&modo=sugestao]   → { results: [{ formatted, lat, lon, partial, source }] }
+// GET  /api/route?lat=..&lon=..                → endereço do local (minha localização)
 // POST /api/route { points: [{ address, lat?, lon? }], departureAt? } → rota
 import { encodePolyline } from '../src/lib/polyline.js'
+import { geocodeAll, reverseGeocode } from './_geocode.js'
 
 const MAX_POINTS = 10
 const TIMEOUT_MS = 10000
@@ -156,12 +158,12 @@ export function validatePoints(raw) {
 
 // Proteção simples contra uso indevido da chave (por instância): 60 consultas a cada 10 min por IP.
 const hits = new Map()
-function limited(ip, now = Date.now()) {
-  const list = (hits.get(ip) ?? []).filter((t) => now - t < 600000)
+function limited(key, now = Date.now(), max = 60) {
+  const list = (hits.get(key) ?? []).filter((t) => now - t < 600000)
   list.push(now)
-  hits.set(ip, list)
+  hits.set(key, list)
   if (hits.size > 5000) hits.clear()
-  return list.length > 60
+  return list.length > max
 }
 
 function sameOrigin(req) {
@@ -176,16 +178,39 @@ function sameOrigin(req) {
 
 export async function handleRoute(req, { env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
   const cfg = routeEnv(env)
-  if (req.method === 'GET' && !req.query?.q) return { status: 200, body: { provider: cfg.provider, traffic: cfg.traffic, tolls: cfg.tolls } }
-  if (!cfg.provider) return { status: 503, body: { error: 'Cálculo de rotas não configurado. Informe distância e tempo à mão.' } }
+  const q = req.query ?? {}
+  const isGeo = req.method === 'GET' && (q.q || (q.lat && q.lon))
+  // Capacidades: a busca de endereço funciona sempre (fontes gratuitas); a rota depende da chave.
+  if (req.method === 'GET' && !isGeo) return { status: 200, body: { provider: cfg.provider, traffic: cfg.traffic, tolls: cfg.tolls, geocode: true } }
+  if (!isGeo && !cfg.provider) return { status: 503, body: { error: 'Cálculo de rotas não configurado. Informe distância e tempo à mão.' } }
   if (!sameOrigin(req)) return { status: 403, body: { error: 'Origem não permitida.' } }
   const ip = String(req.headers?.['x-forwarded-for'] ?? '').split(',')[0].trim() || 'local'
-  if (limited(ip, now)) return { status: 429, body: { error: 'Muitas consultas seguidas. Espere alguns minutos.' } }
+  const suggest = q.modo === 'sugestao'
+  if (limited(`${suggest ? 's' : 'f'}:${ip}`, now, suggest ? 240 : 60)) return { status: 429, body: { error: 'Muitas consultas seguidas. Espere alguns minutos.' } }
   try {
-    if (req.method === 'GET') {
-      const q = String(req.query.q).trim().slice(0, 240)
-      if (q.length < 4) return { status: 400, body: { error: 'Digite o endereço completo.' } }
-      const results = cfg.provider === 'google' ? await googleGeocode(q, cfg, fetchImpl) : await orsGeocode(q, cfg, fetchImpl)
+    if (isGeo && q.lat && q.lon) {
+      const lat = Number(q.lat)
+      const lon = Number(q.lon)
+      if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return { status: 400, body: { error: 'Coordenadas inválidas.' } }
+      const r = await reverseGeocode(lat, lon, fetchImpl)
+      return { status: 200, body: { results: r ? [r] : [] } }
+    }
+    if (isGeo) {
+      const text = String(q.q).trim().slice(0, 240)
+      if (text.length < 3) return { status: 400, body: { error: 'Digite o endereço completo ou o CEP.' } }
+      const near = Number.isFinite(Number(q.perto_lat)) && Number.isFinite(Number(q.perto_lon)) && q.perto_lat ? { lat: Number(q.perto_lat), lon: Number(q.perto_lon) } : null
+      let providerError = null
+      const provider = suggest || !cfg.provider ? null : async (t) => {
+        try {
+          return (await (cfg.provider === 'google' ? googleGeocode(t, cfg, fetchImpl) : orsGeocode(t, cfg, fetchImpl))).map((r) => ({ ...r, source: cfg.provider }))
+        } catch (e) {
+          providerError = e
+          return []
+        }
+      }
+      const results = await geocodeAll(text, { fetchImpl, mode: suggest ? 'suggest' : 'full', provider, near, now })
+      // Nenhuma fonte achou e o serviço configurado recusou: mostra o motivo (ex.: chave/API do Google).
+      if (!results.length && providerError) throw providerError
       return { status: 200, body: { results } }
     }
     if (req.method === 'POST') {

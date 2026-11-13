@@ -46,7 +46,7 @@ function memoryServer() {
 
 // Aparelho em memória.
 function device(server, userId) {
-  const data = { race: new Map(), goal: new Map(), file: new Map() }
+  const data = { race: new Map(), goal: new Map(), file: new Map(), workout: new Map() }
   const blobs = new Map()
   const meta = emptyMeta()
   const local = {

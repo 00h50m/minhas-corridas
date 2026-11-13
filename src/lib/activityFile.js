@@ -42,7 +42,8 @@ function parseTCX(xml) {
   const lapDist = laps.reduce((s, l) => s + (num(tag(l, 'DistanceMeters')) || 0), 0)
   const lapTime = laps.reduce((s, l) => s + (num(tag(l, 'TotalTimeSeconds')) || 0), 0)
   const sport = xml.match(/<Activity[^>]+Sport="([^"]+)"/i)?.[1] ?? null
-  return { pts, lapDist, lapTime, sport }
+  const lapList = laps.map((l) => ({ sec: num(tag(l, 'TotalTimeSeconds')), m: num(tag(l, 'DistanceMeters')) }))
+  return { pts, lapDist, lapTime, sport, lapList }
 }
 
 function parseGPX(xml) {
@@ -101,7 +102,7 @@ export function splitsFrom(pts) {
 }
 
 /** Monta o resumo a partir dos pontos {t, d, hr, alt} e dos totais do relógio (quando houver). */
-function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = {} }, source, fileName) {
+function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = {}, lapList = [] }, source, fileName) {
   const pts = all.filter((p) => isFinite(p.t) && p.d != null && isFinite(p.d))
   if (pts.length < 2) throw new Error('O arquivo não tem pontos de tempo e distância suficientes.')
   pts.sort((a, b) => a.t - b.t)
@@ -120,7 +121,9 @@ function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = 
     avgHr: totals.avgHr ?? (hrs.length ? Math.round(hrs.reduce((s, h) => s + h, 0) / hrs.length) : null),
     maxHr: totals.maxHr ?? (hrs.length ? Math.max(...hrs) : null),
     elevGainM: totals.ascent ?? (all.some((p) => p.alt != null) ? elevationGain(all.map((p) => p.alt)) : null),
-    splits: splitsFrom(pts)
+    splits: splitsFrom(pts),
+    // Voltas do relógio (num treino estruturado, uma por passo): para o planejado × executado.
+    laps: lapList.filter((l) => l.sec > 0).slice(0, 200).map((l) => ({ sec: Math.round(l.sec), distanceKm: Math.round(l.m || 0) / 1000 }))
   }
 }
 
@@ -154,7 +157,8 @@ export function parseFitActivity(bytes, fileName = '') {
       lapDist,
       lapTime,
       sport: s.sport != null ? FIT_SPORTS[s.sport] ?? String(s.sport) : null,
-      totals: { avgHr: s.avgHeartRate ?? null, maxHr: s.maxHeartRate ?? null, ascent: s.totalAscent ?? null }
+      totals: { avgHr: s.avgHeartRate ?? null, maxHr: s.maxHeartRate ?? null, ascent: s.totalAscent ?? null },
+      lapList: laps.map((l) => ({ sec: l.totalTimerTime ?? l.totalElapsedTime, m: l.totalDistance }))
     },
     'fit',
     fileName

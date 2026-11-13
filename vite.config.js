@@ -25,7 +25,8 @@ export default defineConfig({
         shortcuts: [
           { name: 'Nova corrida', short_name: 'Nova corrida', url: '/corridas/nova', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
           { name: 'Registrar resultado', short_name: 'Resultado', url: '/corridas?concluir=1', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
-          { name: 'Próxima prova', short_name: 'Próxima', url: '/proxima', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] }
+          { name: 'Próxima prova', short_name: 'Próxima', url: '/proxima', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] },
+          { name: 'Treinos', short_name: 'Treinos', url: '/treinos', icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] }
         ],
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },

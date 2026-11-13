@@ -39,12 +39,36 @@ function fail(error) {
 export function supabaseRemote(userId) {
   return {
     async push(rows) {
-      const { data, error } = await supabase
-        .from('records')
-        .upsert(rows.map((r) => ({ ...r, user_id: userId })), { onConflict: 'user_id,kind,id' })
-        .select('kind,id,updated_at,client_updated_at')
-      if (error) fail(error)
-      return data ?? []
+      const send = async (part) => {
+        if (!part.length) return []
+        const { data, error } = await supabase
+          .from('records')
+          .upsert(part.map((r) => ({ ...r, user_id: userId })), { onConflict: 'user_id,kind,id' })
+          .select('kind,id,updated_at,client_updated_at')
+        if (error) throw error
+        return data ?? []
+      }
+      // Tipos novos vão separados: se o banco ainda não os aceita (trecho do SQL não rodado),
+      // o resto sincroniza normalmente e eles esperam no aparelho.
+      const NEW_KINDS = ['workout']
+      let accepted
+      try {
+        accepted = await send(rows.filter((r) => !NEW_KINDS.includes(r.kind)))
+      } catch (e) {
+        fail(e)
+      }
+      const deferred = []
+      for (const kind of NEW_KINDS) {
+        const part = rows.filter((r) => r.kind === kind)
+        try {
+          accepted.push(...(await send(part)))
+        } catch (e) {
+          if (e?.code === '23514' || /records_kind_check/.test(e?.message || '')) deferred.push(kind)
+          else fail(e)
+        }
+      }
+      accepted.deferred = deferred
+      return accepted
     },
     async pull(since) {
       const out = []

@@ -2,14 +2,15 @@ import { SCHEMA_VERSION } from './store.js'
 import { normalizeGoal, normalizeRace, validateGoal, validateRace, validateResult } from '../lib/model.js'
 import { todayISO } from '../lib/dates.js'
 import { normalizeProfile } from '../lib/profile.js'
+import { normalizeWorkout, validateWorkout } from '../lib/workout.js'
 import { FILE_KIND_LABEL, base64ToBlob, blobToBase64 } from './files.js'
 
 /**
  * Monta o JSON do backup. `files` (opcional) são registros do IndexedDB;
  * quando presentes, vão em base64 dentro do próprio arquivo.
  */
-export async function buildBackup(races, goals = [], files = null, profile = null) {
-  const data = { app: 'minhas-corridas', version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), races, goals }
+export async function buildBackup(races, goals = [], files = null, profile = null, workouts = []) {
+  const data = { app: 'minhas-corridas', version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), races, goals, workouts }
   if (profile && (profile.updatedAt || profile.avatar)) data.profile = { data: profile.data, avatar: profile.avatar }
   if (files) {
     data.files = []
@@ -65,6 +66,21 @@ export function parseBackup(text) {
     return g
   })
 
+  // Backups antigos não têm treinos: null = manter os do aparelho.
+  let workouts = null
+  if (Array.isArray(data.workouts)) {
+    const wIds = new Set()
+    workouts = data.workouts.map((raw, i) => {
+      if (!raw || typeof raw !== 'object' || !raw.id) throw new Error(`Treino ${i + 1} do backup está incompleto.`)
+      if (wIds.has(raw.id)) throw new Error(`Treino duplicado no backup (${raw.name || raw.id}).`)
+      wIds.add(raw.id)
+      const w = { ...normalizeWorkout(raw), id: raw.id, createdAt: raw.createdAt ?? null }
+      const errs = validateWorkout(w)
+      if (Object.keys(errs).length) throw new Error(`Treino "${w.name || 'Sem nome'}": ${Object.values(errs)[0]}`)
+      return w
+    })
+  }
+
   let files = null
   if (Array.isArray(data.files)) {
     files = data.files.map((f, i) => {
@@ -82,7 +98,7 @@ export function parseBackup(text) {
   const profile = data.profile && typeof data.profile === 'object'
     ? { data: normalizeProfile(data.profile.data), avatar: typeof data.profile.avatar === 'string' && data.profile.avatar.startsWith('data:image/') ? data.profile.avatar : null }
     : null
-  return { races, goals, files, profile, exportedAt: data.exportedAt ?? null }
+  return { races, goals, workouts, files, profile, exportedAt: data.exportedAt ?? null }
 }
 
 export function downloadText(text, filename, mime) {

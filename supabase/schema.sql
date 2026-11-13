@@ -7,7 +7,7 @@
 --    para que os outros aparelhos fiquem sabendo.
 create table if not exists public.records (
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  kind text not null check (kind in ('race', 'goal', 'file')),
+  kind text not null check (kind in ('race', 'goal', 'file', 'workout')),
   id text not null check (char_length(id) between 1 and 80),
   data jsonb,
   deleted boolean not null default false,
@@ -270,3 +270,8 @@ create policy "perfil: dono apaga" on public.profiles
 -- 10) Mais espaço no perfil para "Pessoas e lugares" (até 30 lugares e 30 pessoas).
 alter table public.profiles drop constraint if exists profiles_data_check;
 alter table public.profiles add constraint profiles_data_check check (pg_column_size(data) < 32000);
+
+-- 11) Treinos estruturados (criados por você ou pelo seu treinador) sincronizados como registros.
+--     Enquanto este trecho não rodar, os treinos ficam guardados só no aparelho, sem se perder.
+alter table public.records drop constraint if exists records_kind_check;
+alter table public.records add constraint records_kind_check check (kind in ('race', 'goal', 'file', 'workout'));

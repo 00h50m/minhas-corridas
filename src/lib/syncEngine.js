@@ -11,7 +11,7 @@
 // local:  { get(kind, id), list(kind), applyRemote({ upserts, deletes }), getBlob(id), setBlob(id, blob), filesMissingBlob() }
 // meta:   { ownerId, cursor, dirty: { 'kind:id': true }, tombstones: { 'kind:id': iso } } + save()
 
-export const KINDS = ['race', 'goal', 'file']
+export const KINDS = ['race', 'goal', 'file', 'workout']
 const OVERLAP_MS = 10_000 // relê uma janela para não perder gravações que confirmaram fora de ordem
 const BATCH = 200
 
@@ -52,7 +52,7 @@ function localStamp(kind, rec) {
 
 /** Uma rodada completa. Retorna um resumo para a interface. */
 export async function syncOnce({ remote, local, meta, userId, saveMeta }) {
-  const summary = { pushed: 0, pulled: 0, downloaded: 0, rejected: 0, failedDownloads: 0 }
+  const summary = { pushed: 0, pulled: 0, downloaded: 0, rejected: 0, failedDownloads: 0, deferred: 0 }
 
   // 1) Enviar pendências
   const keys = Object.keys(meta.dirty)
@@ -90,6 +90,8 @@ export async function syncOnce({ remote, local, meta, userId, saveMeta }) {
     const batch = rows.slice(i, i + BATCH)
     const accepted = await remote.push(batch)
     const ok = new Set(accepted.map((r) => keyOf(r.kind, r.id)))
+    // Tipos que o banco ainda não aceita (falta rodar um trecho novo do SQL): ficam pendentes no aparelho.
+    const deferred = new Set(accepted.deferred ?? [])
     const rejected = []
     for (const r of batch) {
       const key = keyOf(r.kind, r.id)
@@ -103,6 +105,8 @@ export async function syncOnce({ remote, local, meta, userId, saveMeta }) {
           delete meta.dirty[key]
           delete meta.tombstones[key]
         }
+      } else if (deferred.has(r.kind)) {
+        summary.deferred++
       } else {
         rejected.push({ kind: r.kind, id: r.id })
       }

@@ -66,9 +66,9 @@ export default function Settings() {
   const onExport = async () => {
     setBusy('export')
     try {
-      const { races, goals } = getState()
+      const { races, goals, workouts } = getState()
       const files = withFiles ? await allFiles() : null
-      downloadText(await buildBackup(races, goals, files, getProfile()), backupFileName(withFiles), 'application/json')
+      downloadText(await buildBackup(races, goals, files, getProfile(), workouts), backupFileName(withFiles), 'application/json')
       notify('Backup baixado')
     } catch (err) {
       notify(err.message || 'Não foi possível gerar o backup.')
@@ -85,7 +85,7 @@ export default function Settings() {
     try {
       if (file.size > 400 * 1024 * 1024) throw new Error('Arquivo grande demais para um backup do app.')
       setBusy('import')
-      const { races, goals, files, profile, exportedAt } = parseBackup(await file.text())
+      const { races, goals, workouts, files, profile, exportedAt } = parseBackup(await file.text())
       setBusy(null)
       const when = exportedAt ? ` de ${formatDateBR(exportedAt.slice(0, 10))}` : ''
       const cur = store.races.length + store.goals.length
@@ -93,6 +93,7 @@ export default function Settings() {
         title: 'Restaurar backup?',
         message:
           `O backup${when} tem ${plural(races.length, 'corrida', 'corridas')}, ${plural(goals.length, 'objetivo', 'objetivos')}` +
+          (workouts ? `, ${plural(workouts.length, 'treino', 'treinos')}` : '') +
           (files ? ` e ${plural(files.length, 'anexo', 'anexos')}` : ' e não inclui anexos') +
           `. Os dados atuais deste aparelho serão substituídos.` +
           (cloud ? ' Com a conta conectada, isso vale também para a nuvem e os outros aparelhos.' : '') +
@@ -102,7 +103,7 @@ export default function Settings() {
       })
       if (!ok) return
       setBusy('import')
-      replaceAll(races, goals)
+      replaceAll(races, goals, workouts)
       if (profile) replaceProfile(profile)
       if (files) await replaceFiles(files)
       else await pruneFiles(races.map((r) => r.id))

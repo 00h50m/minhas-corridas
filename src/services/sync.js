@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { deleteAccountRemote, isConfigured, supabase, supabaseReady, supabaseRemote } from './supabase.js'
 import { getMeta, onLocalChange, pending, resetMeta, saveMeta } from './syncMeta.js'
 import { markAllLocal, syncOnce } from '../lib/syncEngine.js'
-import { applyRemote, getGoal, getRace, getState as getStore, wipeLocal } from './store.js'
+import { applyRemote, getGoal, getRace, getState as getStore, getWorkout, wipeLocal } from './store.js'
 import { disablePush } from './push.js'
 import { onProfileChange, syncProfile, wipeLocalProfile } from './profile.js'
 import { allFiles, applyRemoteFiles, filesMissingBlob, getFileRecord, setFileBlob, wipeLocalFiles } from './files.js'
@@ -40,11 +40,13 @@ const local = {
   async get(kind, id) {
     if (kind === 'race') return getRace(id)
     if (kind === 'goal') return getGoal(id)
+    if (kind === 'workout') return getWorkout(id)
     return getFileRecord(id)
   },
   async list(kind) {
     if (kind === 'race') return getStore().races
     if (kind === 'goal') return getStore().goals
+    if (kind === 'workout') return getStore().workouts
     return allFiles()
   },
   async applyRemote({ upserts, deletes }) {
@@ -84,8 +86,8 @@ export async function syncNow() {
   running = (async () => {
     try {
       const meta = getMeta()
-      await syncOnce({ remote: supabaseRemote(state.user.id), local, meta, userId: state.user.id, saveMeta })
-      set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending() })
+      const sum = await syncOnce({ remote: supabaseRemote(state.user.id), local, meta, userId: state.user.id, saveMeta })
+      set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending(), notice: sum.deferred ? 'Os treinos ainda não sobem para a nuvem: rode o trecho 11 do arquivo supabase/schema.sql no Supabase. Até lá, ficam guardados neste aparelho.' : null })
       syncProfile(state.user.id).catch(() => {})
     } catch (e) {
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false
@@ -103,7 +105,7 @@ export async function syncNow() {
 
 function hasLocalData() {
   const s = getStore()
-  return s.races.length > 0 || s.goals.length > 0
+  return s.races.length > 0 || s.goals.length > 0 || s.workouts.length > 0
 }
 
 async function wipeDevice(ownerId) {

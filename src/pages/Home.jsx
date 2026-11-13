@@ -8,7 +8,7 @@ import { reviewInviteYear, reviewYears } from '../lib/yearReview.js'
 import { installAvailable, useInstall } from '../services/install.js'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
-import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconTarget, IconTrophy } from '../components/Icons.jsx'
+import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconTarget, IconTrophy, IconWorkout } from '../components/Icons.jsx'
 import SyncBadge from '../components/SyncBadge.jsx'
 import { GoalCard } from './Goals.jsx'
 import { memo as historyMemo } from './History.jsx'
@@ -16,6 +16,7 @@ import { activeGoals, goalProgress } from '../lib/goals.js'
 import BudgetCard from '../components/Budget.jsx'
 import { currentBudget } from '../lib/budget.js'
 import { candidates } from '../lib/decision.js'
+import { estimate, fmtSec, summary as workoutSummary } from '../lib/workout.js'
 import { resultBadges } from '../lib/shareCard.js'
 import { compareToTarget } from '../lib/targetCompare.js'
 import { formatDiff } from '../lib/compare.js'
@@ -69,7 +70,7 @@ function ProfileInvite() {
 }
 
 export default function Home() {
-  const { races, goals } = useStore()
+  const { races, goals, workouts } = useStore()
   const prof = useProfile()
   const settings = (
     <>
@@ -85,6 +86,9 @@ export default function Home() {
   const showInstall = installAvailable(inst) && !inst.snoozed
   // Um convite por vez: primeiro instalar, depois o perfil.
   const invite = !showInstall && !prof.data.name && !prof.data.nickname
+  const plannedAhead = workouts.filter((w) => w.status === 'planejado' && w.date && w.date >= today).sort((a, b) => (a.date < b.date ? -1 : 1))
+  const todayWorkouts = plannedAhead.filter((w) => w.date === today)
+  const nextWorkout = plannedAhead.find((w) => daysBetween(today, w.date) <= 7) ?? null
 
   if (races.length === 0) {
     return (
@@ -100,6 +104,7 @@ export default function Home() {
             action={<Link to="/corridas/nova" className="btn btn-primary btn-block"><IconPlus /> Cadastrar primeira corrida</Link>}
           />
           <p className="note">Já usa o app em outro aparelho? <Link to="/conta">Entre na sua conta</Link> para trazer suas corridas.</p>
+          <p className="note">Quer montar os treinos da semana para o relógio? <Link to="/treinos">Treinos</Link></p>
         </div>
       </>
     )
@@ -153,9 +158,11 @@ export default function Home() {
             <IconStopwatch /><span>Resultado</span>{pending.length > 0 && <i>{pending.length}</i>}
           </Link>
           <Link to="/decidir" data-testid="decide-link"><IconScale /><span>Decidir</span>{cands.length > 0 && <i>{cands.length}</i>}</Link>
-          <Link to="/historico" onClick={() => { historyMemo.tab = 'recordes' }}><IconTrophy /><span>Recordes</span></Link>
+          <Link to="/treinos" data-testid="workouts-link"><IconWorkout /><span>Treinos</span>{todayWorkouts.length > 0 && <i>{todayWorkouts.length}</i>}</Link>
           <Link to="/lembretes"><IconBell /><span>Avisos</span></Link>
         </nav>
+
+        {nextWorkout && <NextWorkout w={nextWorkout} today={today} />}
 
         {alerts.length > 0 && (
           <>
@@ -291,6 +298,20 @@ function LastRace({ race: r, races }) {
         )}
         <Link to={`/corridas/${r.id}/compartilhar`} className="btn btn-primary btn-block" style={{ marginTop: 12 }}><IconShare /> Compartilhar resultado</Link>
       </div>
+    </>
+  )
+}
+
+function NextWorkout({ w, today }) {
+  const days = daysBetween(today, w.date)
+  return (
+    <>
+      <div className="section-title"><h2>{days === 0 ? 'Treino de hoje' : 'Próximo treino'}</h2><Link to="/treinos">Treinos</Link></div>
+      <Link to={`/treinos/${w.id}`} className="card wk-home" data-testid="home-workout">
+        <div className="t">{w.name}{days > 0 && <span className="muted"> · {days === 1 ? 'amanhã' : formatDateBR(w.date).slice(0, 5)}</span>}</div>
+        <div className="muted small">{workoutSummary(w.items)}</div>
+        <div className="muted small" style={{ marginTop: 4 }}>≈ {fmtSec(estimate(w.items).sec)}</div>
+      </Link>
     </>
   )
 }

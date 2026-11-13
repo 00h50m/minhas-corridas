@@ -71,6 +71,7 @@ function SignedIn({ s }) {
             </div>
           </div>
           {s.error && <div className="alert alert-error small" role="alert" style={{ marginTop: 12 }}>{s.error}</div>}
+          {s.notice && <div className="alert small" role="status" data-testid="sync-notice" style={{ marginTop: 12 }}>{s.notice}</div>}
           <button className="btn btn-dark btn-block" style={{ marginTop: 14 }} onClick={() => syncNow()} disabled={s.phase === 'syncing' || s.phase === 'needs-import'}>
             <IconCloud /> {s.phase === 'syncing' ? 'Sincronizando…' : 'Sincronizar agora'}
           </button>

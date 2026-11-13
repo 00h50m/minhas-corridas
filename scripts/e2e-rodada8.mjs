@@ -37,7 +37,7 @@ need('Faltam 9 dias'); need('Meta 1:48:00 · 5:07/km'); need('Peito 4821'); need
 ok('Destaque: contagem, meta com pace, peito, kit e barra de preparação')
 
 const tiles = await p.$$eval('.quick a', (as) => as.map((a) => a.innerText.replace(/\s+/g, ' ').trim()))
-if (tiles.join('|') !== 'Resultado|Decidir 2|Recordes|Avisos') throw new Error('Atalhos: ' + tiles.join('|'))
+if (tiles.join('|') !== 'Resultado|Decidir 2|Treinos|Avisos') throw new Error('Atalhos: ' + tiles.join('|'))
 not('+ Corrida')
 ok('Atalhos com contador (Decidir 2) no lugar dos botões repetidos')
 

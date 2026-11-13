@@ -63,7 +63,7 @@ await p.goto(BASE + '/proxima', { waitUntil: 'networkidle0' })
 await p.waitForFunction(() => location.pathname === '/corridas/d')
 const manifest = await (await fetch(BASE + '/manifest.webmanifest')).json()
 const names = (manifest.shortcuts || []).map((x) => `${x.short_name}→${x.url}`)
-if (names.join('|') !== 'Nova corrida→/corridas/nova|Resultado→/corridas?concluir=1|Próxima→/proxima') throw new Error('Atalhos: ' + names)
+if (names.join('|') !== 'Nova corrida→/corridas/nova|Resultado→/corridas?concluir=1|Próxima→/proxima|Treinos→/treinos') throw new Error('Atalhos: ' + names)
 ok('Atalhos do ícone no manifesto (Nova corrida, Resultado, Próxima) e /proxima abre a próxima prova')
 
 // 4. Acréscimo por trânsito numa rota sem trânsito previsto (40 min informados à mão)

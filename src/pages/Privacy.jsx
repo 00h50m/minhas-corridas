@@ -24,6 +24,7 @@ export default function Privacy() {
         <ul>
           <li><b>Conta:</b> e-mail e senha (guardada pelo provedor de autenticação de forma protegida; nós não vemos a senha).</li>
           <li><b>Provas e objetivos:</b> nomes, datas, locais, distâncias, status, metas, custos (estimados e pagos), checklist, resultados (tempos, classificação, esforço, relato) e o resumo do arquivo do relógio (distância, tempo, frequência cardíaca média e máxima, subida e parciais por km). O trajeto GPS do relógio <b>não</b> é guardado.</li>
+          <li><b>Treinos</b> (se você usar): os treinos que você monta (passos, durações, alvos de pace ou frequência cardíaca, datas e observações) e, quando importar o arquivo do relógio, o resumo da atividade (distância, tempo, frequência cardíaca média e o tempo e a distância de cada volta). O arquivo .FIT de treino é gerado no seu aparelho; nada é enviado à Garmin.</li>
           <li><b>Anexos e fotos</b> que você adicionar (comprovantes, regulamentos, fotos da prova).</li>
           <li><b>Logística</b> (se você usar): endereço de saída (por exemplo, sua casa), paradas, endereços favoritos, rotas calculadas, dados do veículo (consumo e preço do combustível) e os horários da agenda do dia.</li>
           <li><b>Pessoas e lugares</b> (opcional): nome, telefone e endereço de busca de pessoas que você leva às provas, e endereços que você usa com frequência. São dados de terceiros que <b>você</b> decide guardar, para uso pessoal; guarde só o necessário e apague quando não precisar mais. O telefone só é usado para abrir o WhatsApp com a mensagem que você vai enviar.</li>
@@ -31,7 +32,7 @@ export default function Privacy() {
           <li><b>Notificações</b> (se ativar): o endereço técnico de entrega do seu aparelho, o fuso horário, suas preferências de avisos e o registro dos avisos já enviados.</li>
           <li><b>Agenda por assinatura</b> (se ativar): um link secreto que permite ao seu app de calendário ler nome, data, horário e local das provas.</li>
         </ul>
-        <p><b>Dados sensíveis:</b> frequência cardíaca, tipo sanguíneo e esforço percebido são dados de saúde. Eles só existem no app se você os informar ou importar, são usados apenas para mostrar e analisar os seus próprios resultados e o seu modo dia da prova, e nunca são compartilhados para outros fins.</p>
+        <p><b>Dados sensíveis:</b> frequência cardíaca (de provas e treinos), tipo sanguíneo e esforço percebido são dados de saúde. Eles só existem no app se você os informar ou importar, são usados apenas para mostrar e analisar os seus próprios resultados e o seu modo dia da prova, e nunca são compartilhados para outros fins.</p>
 
         <h2>4. Para que os dados são usados</h2>
         <ul>
@@ -62,7 +63,7 @@ export default function Privacy() {
           <li>Os dados da conta ficam guardados enquanto a conta existir.</li>
           <li>O registro técnico de avisos enviados é apagado automaticamente após cerca de 45 dias.</li>
           <li>O link da agenda por assinatura vale até você trocá-lo ou desativá-lo.</li>
-          <li>Ao sair da conta, os dados saem do aparelho (continuam na conta). Ao <b>excluir a conta</b>, tudo é apagado da nuvem: provas, objetivos, anexos, perfil, preferências, inscrições de notificação e o link da agenda.</li>
+          <li>Ao sair da conta, os dados saem do aparelho (continuam na conta). Ao <b>excluir a conta</b>, tudo é apagado da nuvem: provas, objetivos, treinos, anexos, perfil, preferências, inscrições de notificação e o link da agenda.</li>
         </ul>
 
         <h2>7. Seus direitos e como exercê-los</h2>

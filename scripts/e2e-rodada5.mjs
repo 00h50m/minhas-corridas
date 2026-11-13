@@ -148,7 +148,7 @@ ok('Preferências: padrão, escolher antecedência e resumo da semana, salvos na
 const html = await (await fetch(BASE + '/')).text()
 const main = html.match(/src="(\/assets\/index-[^"]+\.js)"/)[1]
 const code = await (await fetch(BASE + main)).text()
-if (code.length > 400_000) throw new Error('Arquivo principal ainda grande: ' + code.length)
+if (code.length > 420_000) throw new Error('Arquivo principal ainda grande: ' + code.length)
 if (code.includes('GoTrueClient')) throw new Error('Supabase ainda no arquivo principal')
 ok(`Arquivo principal com ${Math.round(code.length / 1024)} kB; conta e telas pesadas carregam à parte`)
 

@@ -15,6 +15,7 @@ import { navLinks, raceSchedule, tripSummary } from '../lib/logistics.js'
 import { minToHm } from '../lib/schedule.js'
 import Timeline from '../components/Timeline.jsx'
 import Pickups from '../components/Pickups.jsx'
+import DayGuide from '../components/DayGuide.jsx'
 
 /** Minutos até HH:MM de hoje (negativo se já passou). */
 function minutesUntil(hm, now = new Date()) {
@@ -97,7 +98,9 @@ export default function RaceDay() {
           {r.startTime && <div className="meta">Largada às {r.startTime}{leaveLabel ? ` · sair de casa às ${leaveLabel}${isToday && toLeaveSched > 0 ? ` (${untilLabel(toLeaveSched)})` : ''}` : ''}</div>}
         </div>
 
-        {nextAct && !started && (
+        {isToday && sched && ida?.complete && !started && <div style={{ marginTop: 12 }}><DayGuide race={r} schedule={sched} points={ida.points} nowMin={nowMin} live /></div>}
+
+        {nextAct && !started && !(isToday && sched && ida?.complete) && (
           <div className="card next-act" style={{ marginTop: 12 }} data-testid="next-activity">
             <div>
               <div className="list-group-title" style={{ marginTop: 0 }}>{isToday ? 'Próxima atividade' : 'Primeira atividade do dia'}</div>

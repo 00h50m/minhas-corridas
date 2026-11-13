@@ -113,7 +113,7 @@ export function buildICS(races, { deadlines = true, feed = false, schedule = fal
   if (deadlines) for (const r of races) events.push(...deadlineVEvents(r))
   // Agenda do dia: calculada na hora (exportação) ou a salva para a assinatura (só se a pessoa pediu).
   for (const r of races) {
-    const evs = schedule ? scheduleEvents(r) : r.scheduleFeed ?? []
+    const evs = schedule ? scheduleEvents(r, undefined, { stops: true }) : r.scheduleFeed ?? []
     for (const e of evs) events.push(scheduleVEvent(r, e))
   }
   const head = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PaceOn//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:PaceOn']
@@ -139,6 +139,8 @@ function scheduleVEvent(r, e) {
     'DURATION:PT10M',
     `SUMMARY:${esc(e.title)}`,
     'TRANSP:TRANSPARENT',
+    // Saídas (de casa e de cada parada): também 10 min antes.
+    ...(e.key.startsWith('sair') ? alarm('-PT10M', `Em 10 min: ${e.title}`) : []),
     ...alarm('PT0M', e.title),
     'END:VEVENT'
   ]

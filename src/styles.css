@@ -937,3 +937,21 @@ details.link-import { margin-top: 0; }
 .stops li .st-actions { grid-column: 1 / -1; }
 /* O mapa (Leaflet usa z-index alto) não passa por cima da barra do topo nem dos avisos. */
 .route-map { position: relative; isolation: isolate; }
+
+/* Dia da prova: passo a passo */
+.day-guide .dg-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dg-status { font-size: 12.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+.dg-status.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.dg-status.late { background: var(--danger-soft); color: var(--danger); }
+.dg-status.early { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.dg-now { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 10px 0; }
+.dg-label { font-weight: 800; font-size: 18px; }
+.dg-time { font-family: var(--display); font-size: 28px; font-weight: 800; text-align: right; }
+.dg-time .small { display: block; font-family: var(--font, inherit); font-size: 12px; font-weight: 600; }
+.dg-steps { list-style: none; padding: 0; margin: 12px 0 0; }
+.dg-steps li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.dg-steps li.done { color: var(--ink-3); }
+.dg-steps li.done .dg-at { text-decoration: line-through; }
+.dg-steps li.cur { font-weight: 800; }
+.dg-at { font-variant-numeric: tabular-nums; font-weight: 700; }
+.wa-wide { margin-top: 8px; background: #25d366; color: #fff; border-color: #25d366; }

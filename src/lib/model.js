@@ -56,6 +56,7 @@ export function emptyRace() {
     bibNumber: '',
     companions: '', // texto livre (antigo); quem vai junto cadastrado fica em companionIds
     companionIds: [], // ids das pessoas do perfil
+    dayLog: null, // dia da prova: { date, marks: { passo: 'HH:MM' } } (saí de casa, cheguei na parada…)
     leaveHomeTime: '',
     targetTime: null, // meta de tempo para esta prova, em segundos
     wish: null, // quanto quero fazer esta prova: 1 (talvez), 2 (quero), 3 (quero muito)
@@ -175,6 +176,7 @@ export function normalizeRace(raw) {
   if (typeof r.otherDesc !== 'string') r.otherDesc = ''
   if (![1, 2, 3].includes(r.wish)) r.wish = null
   r.logistics = normalizeLogistics(r.logistics)
+  r.dayLog = normalizeDayLog(r.dayLog)
   r.companionIds = Array.isArray(r.companionIds) ? [...new Set(r.companionIds.filter((x) => typeof x === 'string' && x).map((x) => x.slice(0, 20)))].slice(0, 20) : []
   r.scheduleFeed = Array.isArray(r.scheduleFeed)
     ? r.scheduleFeed.filter((e) => e && typeof e.title === 'string' && isValidISODate(e.date) && isValidTimeHM(e.time)).slice(0, 6).map((e) => ({ key: String(e.key || '').slice(0, 20), title: e.title.slice(0, 120), date: e.date, time: e.time }))
@@ -270,4 +272,12 @@ export function normalizeGoal(raw) {
   if (g.budgetScope !== 'total') g.budgetScope = 'inscricoes'
   if (!(Number.isInteger(g.alertPct) && g.alertPct >= 50 && g.alertPct <= 100)) g.alertPct = 80
   return g
+}
+
+/** Marcações do dia da prova (horário real de cada passo). */
+export function normalizeDayLog(raw) {
+  if (!raw || typeof raw !== 'object' || !isValidISODate(raw.date)) return null
+  const marks = {}
+  for (const [k, v] of Object.entries(raw.marks ?? {}).slice(0, 40)) if (/^[a-z0-9-]{1,20}$/.test(k) && /^\d{2}:\d{2}$/.test(v)) marks[k] = v
+  return { date: raw.date, marks }
 }

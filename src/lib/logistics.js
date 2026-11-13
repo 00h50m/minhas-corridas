@@ -386,6 +386,7 @@ function shiftDate(iso, days) {
   const dt = new Date(y, m - 1, d + days)
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
 }
+const minToHmPlain = (min) => { const r = ((min % 1440) + 1440) % 1440; return `${String(Math.floor(r / 60)).padStart(2, '0')}:${String(r % 60).padStart(2, '0')}` }
 const toEvent = (key, title, date, min) => {
   const day = Math.floor(min / 1440)
   const r = ((min % 1440) + 1440) % 1440
@@ -393,13 +394,21 @@ const toEvent = (key, title, date, min) => {
 }
 
 /** Horários-chave para a agenda (.ics): acordar, sair de casa e sair para o kit. Sem endereços. */
-export function scheduleEvents(race, profilePrep) {
+export function scheduleEvents(race, profilePrep, { stops = false } = {}) {
   if (!race.date || !['inscrita', 'interesse', 'aberta'].includes(race.status)) return []
   const out = []
   const s = raceSchedule(race, profilePrep)
   if (s) {
     out.push(toEvent('acordar', `Acordar – ${race.name}`, race.date, s.wake))
     out.push(toEvent('sair', `Sair de casa – ${race.name} (largada ${race.startTime})`, race.date, s.depart))
+    // Saída de cada parada (só no arquivo baixado: os nomes das pessoas não vão para a agenda por assinatura).
+    if (stops) {
+      const pts = tripSummary(race, race.logistics, 'ida').points.filter((p) => p.role === 'stop')
+      s.items.filter((it) => it.key.startsWith('parada-')).forEach((it) => {
+        const p = pts[it.stop]
+        out.push(toEvent(`sair-parada-${it.stop}`, `Sair de ${p?.label || `parada ${it.stop + 1}`} – ${race.name} (chegada ${minToHmPlain(it.at)})`, race.date, it.leaveAt))
+      })
+    }
   }
   const k = raceKitSchedule(race, profilePrep)
   if (k && race.kitPickupDate) out.push(toEvent('kit-sair', `Sair para retirar o kit – ${race.name}`, race.kitPickupDate, k.depart))

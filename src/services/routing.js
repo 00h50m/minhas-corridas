@@ -42,7 +42,8 @@ export function locateMe() {
         try {
           const { latitude: lat, longitude: lon } = pos.coords
           const b = await call(`/api/route?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`)
-          resolve(b.results?.[0] ?? { formatted: '', lat, lon, partial: true })
+          // O ponto é o do GPS (exato); o endereço do serviço serve só de nome.
+          resolve({ formatted: b.results?.[0]?.formatted || `${lat.toFixed(6)}, ${lon.toFixed(6)}`, lat, lon, partial: false, precision: 'gps' })
         } catch (e) {
           reject(e)
         }
@@ -53,7 +54,7 @@ export function locateMe() {
   })
 }
 
-export const SOURCE_LABEL = { cep: 'CEP', osm: 'OpenStreetMap', google: 'Google', ors: 'OpenRouteService' }
+export const SOURCE_LABEL = { cep: 'CEP', osm: 'OpenStreetMap', google: 'Google', ors: 'OpenRouteService', coords: 'Coordenadas' }
 
 /** points: [{ address, lat, lon }]; departureAt: ISO (para trânsito previsto). */
 export const computeRoute = (points, departureAt) =>

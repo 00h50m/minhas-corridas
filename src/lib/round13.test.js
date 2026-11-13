@@ -32,14 +32,14 @@ describe('busca de endereço', () => {
     expect(houseNumber('Rua X, Itatiba 13253-500')).toBe(null)
   })
 
-  it('CEP com coordenadas (BrasilAPI) vem primeiro, com o número digitado', async () => {
+  it('CEP com coordenadas só da BrasilAPI (sem confirmar a rua): aproximado, nunca “exato”', async () => {
     const fetchImpl = router({
       'brasilapi.com.br/api/cep/v2/13253500': { cep: '13253500', state: 'SP', city: 'Itatiba', neighborhood: 'Centro', street: 'Avenida Maria de Lourdes Abreu', location: { coordinates: { latitude: '-23.0059', longitude: '-46.8389' } } },
       'photon.komoot.io': { features: [] },
       nominatim: []
     })
     const r = await geocodeAll('13253-500, 95', { fetchImpl, now: 1e12 })
-    expect(r[0]).toEqual({ formatted: 'Avenida Maria de Lourdes Abreu, 95, Centro, Itatiba - SP, 13253-500', lat: -23.0059, lon: -46.8389, partial: false, source: 'cep' })
+    expect(r[0]).toEqual({ formatted: 'Avenida Maria de Lourdes Abreu, 95, Centro, Itatiba - SP, 13253-500', lat: -23.0059, lon: -46.8389, partial: true, precision: 'cep', source: 'cep' })
   })
 
   it('CEP sem coordenadas: ViaCEP de reserva e a rua localizada no OpenStreetMap', async () => {

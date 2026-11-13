@@ -42,7 +42,7 @@ describe('função de rotas', () => {
     const r = await handleRoute(req({ method: 'POST', body: { points: [pts[0], pts[1], pts[2]], departureAt: '2026-11-08T07:51:00Z' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl, now })
     expect(r.status).toBe(200)
     expect(r.body).toMatchObject({ provider: 'google', traffic: true, tolls: { amount: 9.8, currency: 'BRL' } })
-    expect(r.body.legs).toEqual([{ distanceKm: 6.2, durationMin: 11, trafficMin: 12 }, { distanceKm: 33.1, durationMin: 41, trafficMin: 43 }])
+    expect(r.body.legs).toEqual([{ distanceKm: 6.2, durationMin: 11, trafficMin: 12, distanceM: 6200, durationSec: 660, trafficSec: 700 }, { distanceKm: 33.1, durationMin: 41, trafficMin: 43, distanceM: 33100, durationSec: 2460, trafficSec: 2580 }])
     expect(r.body.points).toHaveLength(3)
   })
   it('Google: saída no passado → sem trânsito; sem tarifa → pedágio desconhecido', async () => {
@@ -56,17 +56,20 @@ describe('função de rotas', () => {
   })
   it('OpenRouteService: geocodifica, calcula e devolve o traçado codificado', async () => {
     const fetchImpl = vi.fn(async (url) => {
-      if (String(url).includes('/geocode/search')) return json({ features: [{ properties: { label: 'X', confidence: 1 }, geometry: { coordinates: [-46.9, -23.2] } }] })
+      if (String(url).includes('/geocode/search')) return json({ features: [{ properties: { label: String(url).includes('Eloy') ? 'Y' : 'X', confidence: 1, layer: 'address', housenumber: '1' }, geometry: { coordinates: String(url).includes('Eloy') ? [-46.95, -23.15] : [-46.9, -23.2] } }] })
       return json({ features: [{ properties: { segments: [{ distance: 6200, duration: 660 }] }, geometry: { coordinates: [[-46.9, -23.2], [-46.95, -23.15]] } }] })
     })
     const r = await handleRoute(req({ method: 'POST', body: { points: pts.slice(0, 2) } }), { env: { ORS_API_KEY: 'O' }, fetchImpl })
     expect(r.body).toMatchObject({ provider: 'ors', traffic: false, tolls: null })
-    expect(r.body.legs).toEqual([{ distanceKm: 6.2, durationMin: 11, trafficMin: null }])
+    expect(r.body.legs).toEqual([{ distanceKm: 6.2, durationMin: 11, trafficMin: null, distanceM: 6200, durationSec: 660 }])
     expect(decodePolyline(r.body.polyline)).toEqual([[-23.2, -46.9], [-23.15, -46.95]])
   })
   it('endereço: sugestões e falhas tratadas', async () => {
     const ok = await handleRoute(req({ query: { q: 'Av. Maria de Lourdes Abreu, 95, Itatiba' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => json({ status: 'OK', results: [{ formatted_address: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', geometry: { location: { lat: -23.0, lng: -46.8 } }, partial_match: false }] })) })
-    expect(ok.body.results[0]).toEqual({ formatted: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', lat: -23.0, lon: -46.8, partial: false, source: 'google' })
+    expect(ok.body.results[0]).toEqual({ formatted: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', lat: -23.0, lon: -46.8, partial: true, precision: 'area', source: 'google' })
+    // Com location_type ROOFTOP o Google confirma o número
+    const roof = await handleRoute(req({ query: { q: 'Av. Maria de Lourdes Abreu, 95, Itatiba' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => json({ status: 'OK', results: [{ formatted_address: 'Av. Maria de Lourdes Abreu, 95 - Itatiba/SP', geometry: { location: { lat: -23.0, lng: -46.8 }, location_type: 'ROOFTOP' } }] })) })
+    expect(roof.body.results[0]).toMatchObject({ partial: false, precision: 'numero' })
     const down = await handleRoute(req({ query: { q: 'Rua Tal, 10, Jundiaí' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => { throw new Error('rede') }) })
     expect(down.status).toBe(504)
     const quota = await handleRoute(req({ query: { q: 'Rua Tal, 10, Jundiaí' } }), { env: { GOOGLE_MAPS_API_KEY: 'G' }, fetchImpl: onlyProvider(async () => json({}, 429)) })

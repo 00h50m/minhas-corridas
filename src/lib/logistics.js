@@ -2,6 +2,7 @@
 // Fica em race.logistics (sincroniza e entra no backup junto com a prova). Os custos
 // alimentam a categoria Transporte existente (transportEst/transportPaid), sem duplicar.
 import { buildSchedule, kitSchedule, normalizePrep } from './schedule.js'
+import { collapsedPoints, isPrecise } from './geo.js'
 
 const round2 = (n) => Math.round(n * 100) / 100
 const num = (v, min = 0, max = 1e6) => (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null)
@@ -23,7 +24,9 @@ export function normalizePlace(raw) {
   if (!address) return null
   const lat = num(raw.lat, -90, 90)
   const lon = num(raw.lon, -180, 180)
-  return { label: str(raw.label, 60), address, formatted: str(raw.formatted, 240), lat: lat != null && lon != null ? lat : null, lon: lat != null && lon != null ? lon : null }
+  const has = lat != null && lon != null
+  const precision = has && ['numero', 'rua', 'cep', 'area', 'ponto', 'gps', 'manual'].includes(raw.precision) ? raw.precision : null
+  return { label: str(raw.label, 60), address, formatted: str(raw.formatted, 240), lat: has ? lat : null, lon: has ? lon : null, ...(precision ? { precision } : {}) }
 }
 
 function normalizeStop(raw) {
@@ -37,7 +40,11 @@ function normalizeRoute(raw) {
   const legs = raw.legs.map((l) => ({
     distanceKm: num(Number(l?.distanceKm), 0, 5000),
     durationMin: num(Number(l?.durationMin), 0, 6000),
-    trafficMin: l?.trafficMin == null ? null : num(Number(l.trafficMin), 0, 6000)
+    trafficMin: l?.trafficMin == null ? null : num(Number(l.trafficMin), 0, 6000),
+    // Valores brutos do serviço (metros e segundos), para somar sem arredondar antes.
+    ...(num(Number(l?.distanceM), 0, 5e6) != null && l?.distanceM != null ? { distanceM: Number(l.distanceM) } : {}),
+    ...(num(Number(l?.durationSec), 0, 360000) != null && l?.durationSec != null ? { durationSec: Number(l.durationSec) } : {}),
+    ...(num(Number(l?.trafficSec), 0, 360000) != null && l?.trafficSec != null ? { trafficSec: Number(l.trafficSec) } : {})
   }))
   if (legs.some((l) => l.distanceKm == null || l.durationMin == null)) return null
   const tolls = raw.tolls && num(Number(raw.tolls.amount), 0, 100000) != null ? { amount: Number(raw.tolls.amount), currency: str(raw.tolls.currency, 3) || 'BRL' } : null
@@ -163,7 +170,9 @@ export function tripPoints(race, log, which) {
 }
 
 /** Identifica o conjunto de pontos de uma rota (para saber se ela ficou desatualizada). */
-export const pointsKey = (points) => points.map((p) => p.address.toLowerCase()).join(' | ')
+export const pointsKey = (points) => points.map((p) => `${p.address.toLowerCase()}${p.lat != null ? `@${p.lat.toFixed(5)},${p.lon.toFixed(5)}` : ''}`).join(' | ')
+/** Chave antiga (só endereços), de rotas calculadas antes das coordenadas entrarem na chave. */
+const legacyKey = (points) => points.map((p) => p.address.toLowerCase()).join(' | ')
 
 export function tripOf(log, which) {
   return which === 'ida' ? log.outbound : which === 'volta' ? log.back : log.kit
@@ -178,13 +187,24 @@ export function tripSummary(race, log, which) {
   const trip = log ? tripOf(log, which) : null
   const route = trip?.route ?? null
   const legsNeeded = Math.max(0, points.length - 1)
-  const stale = !!route && (route.key !== pointsKey(points) || route.legs.length !== legsNeeded)
+  // Rota calculada com algum trecho de 0 km: pontos caíram no mesmo lugar (geocodificação errada). Não vale.
+  const invalid = !!route && route.provider !== 'manual' && route.legs.some((l) => !(l.distanceKm > 0))
+  const stale = !!route && (invalid || (route.key !== pointsKey(points) && route.key !== legacyKey(points)) || route.legs.length !== legsNeeded)
   const legs = route && !stale ? route.legs : []
   const complete = legs.length > 0 && legs.length === legsNeeded
-  const distanceKm = complete ? round2(legs.reduce((s, l) => s + l.distanceKm, 0)) : null
-  const durationMin = complete ? Math.round(legs.reduce((s, l) => s + l.durationMin, 0)) : null
-  const trafficMin = complete && legs.every((l) => l.trafficMin != null) ? Math.round(legs.reduce((s, l) => s + l.trafficMin, 0)) : null
-  return { points, route: stale ? null : route, stale, legs, distanceKm, durationMin, trafficMin, complete, enabled: which === 'volta' ? log?.back.enabled !== false : which === 'kit' ? !!log?.kit.enabled : true }
+  // Totais a partir dos valores brutos (metros/segundos) quando o serviço os forneceu.
+  const raw = complete && legs.every((l) => l.distanceM != null && l.durationSec != null)
+  const distanceKm = complete ? (raw ? round2(legs.reduce((s, l) => s + l.distanceM, 0) / 1000) : round2(legs.reduce((s, l) => s + l.distanceKm, 0))) : null
+  const durationMin = complete ? (raw ? Math.round(legs.reduce((s, l) => s + l.durationSec, 0) / 60) : Math.round(legs.reduce((s, l) => s + l.durationMin, 0))) : null
+  const trafficMin = complete && legs.every((l) => l.trafficMin != null) ? (legs.every((l) => l.trafficSec != null) ? Math.round(legs.reduce((s, l) => s + l.trafficSec, 0) / 60) : Math.round(legs.reduce((s, l) => s + l.trafficMin, 0))) : null
+  // Paradas: tempo parado em cada uma (não muda a rota; só os totais).
+  const dwellMin = points.filter((p) => p.role === 'stop').reduce((s, p) => s + Math.max(0, Math.round(p.dwellMin || 0)), 0)
+  const totalMin = durationMin == null ? null : (trafficMin ?? durationMin) + dwellMin
+  // Problemas de localização: endereços diferentes no mesmo ponto; pontos aproximados ou sem verificação.
+  const collapsed = collapsedPoints(points)
+  const approx = points.map((p, i) => ({ p, i })).filter(({ p }) => p.lat != null && !isPrecise(p)).map(({ i }) => i)
+  const unverified = points.map((p, i) => ({ p, i })).filter(({ p }) => p.lat == null).map(({ i }) => i)
+  return { points, route: stale ? null : route, stale, invalid, legs, distanceKm, durationMin, trafficMin, dwellMin, totalMin, complete, collapsed, approx, unverified, key: pointsKey(points), enabled: which === 'volta' ? log?.back.enabled !== false : which === 'kit' ? !!log?.kit.enabled : true }
 }
 
 /* ---------- Custos ---------- */

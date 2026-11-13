@@ -896,3 +896,6 @@ details.link-import { margin-top: 0; }
 .wk-table tr.off td:last-child { color: var(--danger, #d33); }
 .wk-home { display: block; text-decoration: none; color: var(--ink); }
 .wk-home .t { font-weight: 800; font-size: 16px; margin-bottom: 4px; }
+.place-approx { color: var(--warn); }
+.btn-inline { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+.route-dwell { margin: 4px 0 0; }

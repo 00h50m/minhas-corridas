@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
 import { SOURCE_LABEL, geocode, locateMe } from '../services/routing.js'
 import { useUI } from './ui.jsx'
+import { PRECISION_LABEL, isPrecise } from '../lib/geo.js'
 
 const newId = () => Math.random().toString(36).slice(2, 10)
 
@@ -50,7 +51,7 @@ export default function PlaceField({ label, name, place, onChange, cap, testid, 
     }
   }
   const pick = (g) => {
-    onChange({ label: asLabel, address: g.formatted || text.trim(), formatted: g.formatted, lat: g.lat, lon: g.lon })
+    onChange({ label: asLabel, address: g.formatted || text.trim(), formatted: g.formatted, lat: g.lat, lon: g.lon, precision: g.precision || (g.partial ? 'area' : 'numero') })
     setResults(null)
     setTyped(false)
   }
@@ -93,7 +94,7 @@ export default function PlaceField({ label, name, place, onChange, cap, testid, 
         </div>
       )}
       <div className="grid-2-1">
-        <input className="input" value={text} onChange={(e) => { setText(e.target.value); setTyped(true); setErr(null); setNotFound(false) }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search() } }} placeholder="CEP ou rua, número, bairro, cidade" aria-label={label} autoComplete="street-address" />
+        <input className="input" value={text} onChange={(e) => { setText(e.target.value); setTyped(true); setErr(null); setNotFound(false) }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search() } }} placeholder="CEP, rua e número, ou coordenadas" aria-label={label} autoComplete="street-address" />
         <button type="button" className="btn btn-dark" disabled={!!busy} onClick={search}>{busy === 'busca' ? '…' : 'Buscar'}</button>
       </div>
       <div className="hint">{hint || 'Dica: o CEP acha qualquer rua. Ex.: “13214-000, 95”.'}</div>
@@ -105,7 +106,7 @@ export default function PlaceField({ label, name, place, onChange, cap, testid, 
             <li key={i}>
               <button type="button" onClick={() => pick(g)}>
                 {g.formatted}
-                <span className="geo-tags">{g.source && <span>{SOURCE_LABEL[g.source] || g.source}</span>}{g.partial && <span>aproximado</span>}</span>
+                <span className="geo-tags">{g.source && <span>{SOURCE_LABEL[g.source] || g.source}</span>}{g.partial && <span>aproximado{PRECISION_LABEL[g.precision] ? `: ${PRECISION_LABEL[g.precision]}` : ''}</span>}</span>
               </button>
             </li>
           ))}
@@ -116,7 +117,9 @@ export default function PlaceField({ label, name, place, onChange, cap, testid, 
       )}
       {place && (
         <div className="place-ok small">
-          {place.lat != null ? <span className="delta-good">✓ {place.formatted || place.address}</span> : <span className="muted">Endereço sem verificação: {place.address}</span>}
+          {isPrecise(place) ? <span className="delta-good">✓ {place.formatted || place.address}</span>
+            : place.lat != null ? <span className="place-approx" data-testid="place-approx">≈ {place.formatted || place.address} <b>· localização aproximada ({PRECISION_LABEL[place.precision] || 'sem confirmar o número'}).</b> Para o ponto exato, busque com o número ou cole as coordenadas do mapa (ex.: -23.0512, -46.9734).</span>
+            : <span className="muted">Endereço sem verificação: {place.address}</span>}
           {noFav ? null : favName == null ? (
             <button type="button" className="link-btn" onClick={() => setFavName(place.label || '')}>☆ Salvar nos favoritos</button>
           ) : (

@@ -1,15 +1,16 @@
 // Logística da prova: trajetos (ida, volta, kit), paradas, rota, custos e agenda do dia.
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
-import { PROVIDER_LABEL, computeRoute, routeCapabilities } from '../services/routing.js'
+import { PROVIDER_LABEL, computeRoute, geocode, routeCapabilities } from '../services/routing.js'
+import { PRECISION_LABEL, isPrecise } from '../lib/geo.js'
 import PlaceField from '../components/PlaceField.jsx'
 import { firstName } from '../lib/people.js'
 import Pickups from '../components/Pickups.jsx'
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconExternal, IconInfo, IconPin, IconPlus, IconX } from '../components/Icons.jsx'
-import { FUELS, costItems, destinationPlace, fuelCost, kitPlace, navLinks, normalizeLogistics, pointsKey, raceSchedule, tripOf, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
+import { FUELS, costItems, destinationPlace, fuelCost, kitPlace, navLinks, normalizeLogistics, pointsKey, raceSchedule, tripOf, tripPoints, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
 import { PREP_FIELDS, minToHm, normalizePrep, returnSchedule } from '../lib/schedule.js'
 import { raceKitSchedule } from '../lib/logistics.js'
 import { formatDateBR } from '../lib/dates.js'
@@ -114,13 +115,23 @@ function TripPanel({ which, race: r, log, update, cap }) {
     return localIso(r.kitPickupDate, hm(r.kitPickupTime) != null ? hm(r.kitPickupTime) - 45 : null)
   }
 
+  // Cada cálculo recebe um número; só o mais recente pode gravar (respostas antigas são descartadas).
+  const seq = useRef(0)
+  const failedKey = useRef(null)
   const calc = async () => {
+    if (s.collapsed.length) return setErr(collapseMessage(s))
+    const my = ++seq.current
+    const key = s.key
     setErr(null)
     setBusy(true)
     try {
       const res = await computeRoute(s.points, departureAt())
-      update((l) => {
-        l[tripKey].route = { ...res, key: pointsKey(s.points) }
+      if (my !== seq.current) return
+      failedKey.current = null
+      update((l, fresh) => {
+        // Os pontos mudaram enquanto calculava: esta resposta já não vale.
+        if (pointsKey(tripPoints(fresh, l, which)) !== key) return
+        l[tripKey].route = { ...res, key }
         // Guarda as coordenadas devolvidas nos pontos ainda sem verificação.
         const coords = res.points ?? []
         if (coords.length === s.points.length) {
@@ -133,10 +144,57 @@ function TripPanel({ which, race: r, log, update, cap }) {
       })
       notify('Rota calculada')
     } catch (e) {
+      if (my !== seq.current) return
+      failedKey.current = key
       setErr(e.message)
     } finally {
-      setBusy(false)
+      if (my === seq.current) setBusy(false)
     }
+  }
+
+  // Recalcula sozinha quando endereços, paradas ou a ordem mudam (mudar só a permanência não chama o serviço).
+  const autoKey = cap?.provider && s.enabled && s.points.length >= 2 && !s.complete && !s.collapsed.length && !s.unverified.length ? s.key : null
+  useEffect(() => {
+    if (!autoKey || failedKey.current === autoKey) return
+    const t = setTimeout(() => calc(), 600)
+    return () => clearTimeout(t)
+  }, [autoKey])
+
+  // Localiza de novo os pontos que caíram no mesmo lugar ou estão aproximados.
+  const [fixing, setFixing] = useState(false)
+  const relocate = async () => {
+    const idx = [...new Set([...s.collapsed.flatMap((c) => [c.i, c.j]), ...s.approx])]
+    setFixing(true)
+    setErr(null)
+    const missing = []
+    const found = []
+    for (const i of idx) {
+      const p = s.points[i]
+      const list = await geocode(p.formatted || p.address).catch(() => [])
+      const g = list.find((x) => x.precision === 'numero' || x.precision === 'ponto')
+      if (g) found.push({ p, g })
+      else missing.push(p.label || p.address)
+    }
+    if (found.length) {
+      const fix = (pl) => {
+        if (!pl) return pl
+        const hit = found.find(({ p }) => (p.id && pl.id === p.id) || pl.address === p.address)
+        return hit ? { ...pl, formatted: hit.g.formatted, lat: hit.g.lat, lon: hit.g.lon, precision: hit.g.precision } : pl
+      }
+      update((l) => {
+        l.origin = fix(l.origin)
+        l.destination = fix(l.destination)
+        l.kit.origin = fix(l.kit.origin)
+        l.kit.destination = fix(l.kit.destination)
+        for (const t of [l.outbound, l.back, l.kit]) t.stops = t.stops.map(fix)
+      })
+      // Os favoritos com o mesmo endereço também são corrigidos (senão o erro volta ao escolher o favorito).
+      const pd = getProfile().data
+      saveProfile({ ...pd, favorites: pd.favorites.map((f) => ({ ...fix(f), id: f.id, label: f.label, dwellMin: f.dwellMin })) })
+    }
+    setFixing(false)
+    if (missing.length) setErr(`Não consegui confirmar o número de: ${missing.join(', ')}. Busque de novo com o CEP e o número, ou cole as coordenadas do ponto (do Google Maps: toque e segure no local).`)
+    else notify(`${found.length} ${found.length === 1 ? 'endereço localizado' : 'endereços localizados'} de novo`)
   }
 
   const saveManual = (legs) => update((l) => { l[tripKey].route = { provider: 'manual', legs, key: pointsKey(s.points), fetchedAt: new Date().toISOString() } })
@@ -205,14 +263,32 @@ function TripPanel({ which, race: r, log, update, cap }) {
             <div className="card muted small">Informe a saída e o destino para calcular a rota.</div>
           ) : (
             <div className="card" data-testid={`route-${which}`}>
-              {s.stale && <div className="alert alert-warn small" style={{ marginBottom: 10 }}><div>Os endereços mudaram desde o último cálculo. Recalcule a rota.</div></div>}
+              {s.collapsed.length > 0 && (
+                <div className="alert alert-error small" role="alert" style={{ marginBottom: 10 }} data-testid="collapsed">
+                  <div>
+                    {collapseMessage(s)}
+                    <button type="button" className="btn btn-block" style={{ marginTop: 8 }} disabled={fixing} onClick={relocate} data-testid="relocate">{fixing ? 'Localizando…' : 'Localizar de novo'}</button>
+                  </div>
+                </div>
+              )}
+              {!s.collapsed.length && s.approx.length > 0 && (
+                <div className="alert alert-warn small" style={{ marginBottom: 10 }} data-testid="approx">
+                  <div>
+                    Localização aproximada: {s.approx.map((i) => `${s.points[i].label || 'Destino'} (${PRECISION_LABEL[s.points[i].precision] || 'sem número'})`).join(', ')}. A rota usa esse ponto e pode variar; confirme o ponto exato (busque com o número ou cole as coordenadas do mapa).
+                    <button type="button" className="link-btn" disabled={fixing} onClick={relocate}>{fixing ? 'Localizando…' : 'Tentar localizar o número'}</button>
+                  </div>
+                </div>
+              )}
+              {s.invalid && !s.collapsed.length && <div className="alert alert-warn small" style={{ marginBottom: 10 }}><div>A rota salva tinha trechos de 0 km (pontos no mesmo lugar do mapa) e foi descartada.</div></div>}
+              {s.stale && !s.invalid && !busy && <div className="alert alert-warn small" style={{ marginBottom: 10 }}><div>Os endereços ou a ordem mudaram desde o último cálculo.{cap?.provider ? ' A rota será recalculada.' : ' Informe os trechos de novo.'}</div></div>}
               {s.complete ? (
                 <>
                   <LegsTable points={s.points} legs={s.legs} />
                   <div className="route-total">
                     <b>{formatKm(s.distanceKm)}</b>
-                    <span>{minLabel(s.trafficMin ?? s.durationMin)}{s.trafficMin != null ? ' com trânsito previsto' : ''}</span>
+                    <span>{minLabel(s.trafficMin ?? s.durationMin)} dirigindo{s.trafficMin != null ? ' com trânsito previsto' : ''}</span>
                   </div>
+                  {s.dwellMin > 0 && <p className="small route-dwell" data-testid="route-dwell">+ {minLabel(s.dwellMin)} nas paradas = <b>{minLabel(s.totalMin)}</b> de deslocamento</p>}
                   <p className="note">
                     Fonte: {PROVIDER_LABEL[s.route.provider]}
                     {s.route.provider === 'google' && (s.route.traffic ? ' · trânsito previsto para o horário de saída' : ' · sem previsão de trânsito (data no passado)')}
@@ -222,11 +298,11 @@ function TripPanel({ which, race: r, log, update, cap }) {
                   </p>
                 </>
               ) : (
-                <p className="small muted" style={{ marginTop: 0 }}>{s.points.length - 1} {s.points.length - 1 === 1 ? 'trecho' : 'trechos'} a calcular.</p>
+                <p className="small muted" style={{ marginTop: 0 }} data-testid="route-pending">{busy ? 'Calculando a rota…' : `${s.points.length - 1} ${s.points.length - 1 === 1 ? 'trecho' : 'trechos'} a calcular.`}</p>
               )}
               {err && <div className="alert alert-error small" role="alert" style={{ marginBottom: 10 }}><div>{err}</div></div>}
               <div className="btn-row">
-                {cap?.provider ? <button type="button" className="btn btn-primary" disabled={busy} onClick={calc}>{busy ? 'Calculando…' : s.complete ? 'Recalcular rota' : 'Calcular rota'}</button> : <span />}
+                {cap?.provider ? <button type="button" className="btn btn-primary" disabled={busy || s.collapsed.length > 0} onClick={calc}>{busy ? 'Calculando…' : s.complete ? 'Recalcular rota' : 'Calcular rota'}</button> : <span />}
                 <button type="button" className="btn" onClick={() => setManual((v) => !v)}>{manual ? 'Fechar' : 'Informar à mão'}</button>
               </div>
               {(manual || (!cap?.provider && !s.complete)) && <ManualLegs points={s.points} legs={s.complete ? s.legs : null} onSave={(legs) => { saveManual(legs); setManual(false); notify('Trechos salvos') }} />}
@@ -283,7 +359,7 @@ function StopsEditor({ stops, setStops, cap }) {
           <li key={st.id}>
             <div className="st-main">
               <b>{i + 1}. {st.label || 'Parada'}</b>
-              <span className="muted small">{st.lat != null ? '✓ ' : ''}{st.formatted || st.address}</span>
+              <span className="muted small">{isPrecise(st) ? '✓ ' : st.lat != null ? '≈ ' : ''}{st.formatted || st.address}{st.lat != null && !isPrecise(st) ? ' (aproximado)' : ''}</span>
             </div>
             <label className="st-dwell">
               <MinutesInput value={st.dwellMin} max={600} label={`Minutos em ${st.label || 'parada'}`} onChange={(v) => setStops((list) => list.map((x) => (x.id === st.id ? { ...x, dwellMin: v } : x)))} />
@@ -345,17 +421,21 @@ function StopsEditor({ stops, setStops, cap }) {
 
 function DestinationField({ race: r, log, update, cap }) {
   const dest = destinationPlace(r, log)
+  const [adjust, setAdjust] = useState(false)
   if (!dest) {
     return <PlaceField label="Local da largada" place={null} cap={cap} testid="destination" hint="Fica salvo no cadastro da prova." onChange={(p) => update((l, fresh) => { l.destination = { ...p, address: venueAddress({ ...fresh, venueAddress: p.address }) }; return { venueAddress: p.address } })} />
   }
   return (
     <div className="trip-fixed" data-testid="destination">
       <span className="tf-k">Destino</span>
-      <span>{dest.lat != null ? '✓ ' : ''}{dest.formatted || dest.address}</span>
-      {cap && dest.lat == null && (
-        <PlaceField label="Confirmar o local da largada" place={dest} cap={cap} onChange={(p) => update((l) => { l.destination = { ...p, address: dest.address } })} />
+      <span>{isPrecise(dest) ? '✓ ' : dest.lat != null ? '≈ ' : ''}{dest.formatted || dest.address}{dest.lat != null && !isPrecise(dest) ? ' (aproximado)' : ''}</span>
+      {cap && (!isPrecise(dest) || adjust) && (
+        <PlaceField label={dest.lat == null ? 'Confirmar o local da largada' : 'Ponto exato do destino (busque com o número ou cole as coordenadas do mapa)'} place={dest} cap={cap} testid="destination-fix" noFav onChange={(p) => { update((l) => { l.destination = { ...p, address: dest.address } }); setAdjust(false) }} />
       )}
-      <Link to={`/corridas/${r.id}/editar`} className="link-btn">Mudar no cadastro</Link>
+      <div className="btn-inline">
+        {cap && isPrecise(dest) && !adjust && <button type="button" className="link-btn" onClick={() => setAdjust(true)}>Ajustar o ponto</button>}
+        <Link to={`/corridas/${r.id}/editar`} className="link-btn">Mudar no cadastro</Link>
+      </div>
     </div>
   )
 }
@@ -543,4 +623,17 @@ function AgendaPanel({ race: r, log, update, goTrip }) {
       )}
     </>
   )
+}
+
+/** “Casa, Dani e Eloy Chaves estão no mesmo ponto do mapa…” */
+function collapseMessage(s) {
+  // Agrupa os pontos que coincidem entre si.
+  const groups = []
+  for (const { i, j } of s.collapsed) {
+    const g = groups.find((x) => x.has(i) || x.has(j))
+    if (g) { g.add(i); g.add(j) } else groups.push(new Set([i, j]))
+  }
+  const name = (i) => s.points[i].label || (i === 0 ? 'Saída' : 'Destino')
+  const list = (g) => { const n = [...g].sort((a, b) => a - b).map(name); return n.length > 1 ? `${n.slice(0, -1).join(', ')} e ${n.at(-1)}` : n[0] }
+  return `${groups.map(list).join('; ')} estão no mesmo ponto do mapa: a localização veio aproximada (provavelmente o centro da cidade ou do CEP), e a rota daria 0 km entre eles. Localize esses endereços de novo.`
 }

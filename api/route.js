@@ -9,6 +9,8 @@
 // POST /api/route { points: [{ address, lat?, lon? }], departureAt? } → rota
 import { encodePolyline } from '../src/lib/polyline.js'
 import { geocodeAll, reverseGeocode } from './_geocode.js'
+import { collapsedPoints } from '../src/lib/geo.js'
+export { collapsedPoints }
 
 const MAX_POINTS = 10
 const TIMEOUT_MS = 10000
@@ -62,13 +64,19 @@ async function googleGeocode(q, cfg, fetchImpl) {
     console.error('Geocoding recusou:', body.status, body.error_message)
     throw fail(502, explain(body.error_message || body.status, 'O serviço de endereços recusou a consulta.'))
   }
-  return body.results.slice(0, 5).map((r) => ({ formatted: r.formatted_address, lat: r.geometry.location.lat, lon: r.geometry.location.lng, partial: !!r.partial_match }))
+  return body.results.slice(0, 5).map((r) => {
+    const comp = (t) => r.address_components?.find((c) => c.types.includes(t))?.long_name ?? ''
+    const lt = r.geometry.location_type
+    const precision = lt === 'ROOFTOP' || lt === 'RANGE_INTERPOLATED' ? 'numero' : comp('route') ? 'rua' : 'area'
+    return { formatted: r.formatted_address, lat: r.geometry.location.lat, lon: r.geometry.location.lng, partial: !!r.partial_match || precision !== 'numero', precision, _street: comp('route'), _city: comp('administrative_area_level_2') || comp('locality'), _hn: comp('street_number') }
+  })
 }
 
 const secs = (d) => (typeof d === 'string' ? Number(d.replace(/s$/, '')) : null)
 const wp = (p) => (p.lat != null && p.lon != null ? { location: { latLng: { latitude: p.lat, longitude: p.lon } } } : { address: p.address })
 
 async function googleRoute(points, departureAt, cfg, fetchImpl, now = Date.now()) {
+  assertDistinct(points)
   // Trânsito previsto só vale para saídas no futuro.
   const future = departureAt && Date.parse(departureAt) > now + 60000
   const body = {
@@ -94,10 +102,12 @@ async function googleRoute(points, departureAt, cfg, fetchImpl, now = Date.now()
   })
   const r = res.routes?.[0]
   if (!r?.legs?.length) throw fail(422, 'Não encontrei rota entre esses endereços. Confira se estão completos.')
+  if (r.legs.length !== points.length - 1) throw fail(502, `O serviço de rotas devolveu ${r.legs.length} trechos para ${points.length} pontos. Recalcule a rota.`)
+  if (r.legs.some((l) => !(l.distanceMeters > 0))) throw fail(422, 'Um dos trechos ficou com distância zero: dois pontos caíram no mesmo lugar do mapa. Busque os endereços de novo.')
   const legs = r.legs.map((l) => {
     const stat = secs(l.staticDuration) ?? secs(l.duration)
     const dur = secs(l.duration)
-    return { distanceKm: Math.round((l.distanceMeters ?? 0) / 10) / 100, durationMin: Math.round(stat / 60), trafficMin: future && dur != null ? Math.round(dur / 60) : null }
+    return { distanceKm: Math.round(l.distanceMeters / 10) / 100, durationMin: Math.round(stat / 60), trafficMin: future && dur != null ? Math.round(dur / 60) : null, distanceM: l.distanceMeters, durationSec: Math.round(stat), trafficSec: future && dur != null ? Math.round(dur) : null }
   })
   const pts = [r.legs[0].startLocation, ...r.legs.map((l) => l.endLocation)].map((x) => x?.latLng).filter(Boolean).map((x) => ({ lat: x.latitude, lon: x.longitude }))
   // Pedágio: só quando o Google informa a tarifa (em reais).
@@ -111,30 +121,49 @@ async function googleRoute(points, departureAt, cfg, fetchImpl, now = Date.now()
 async function orsGeocode(q, cfg, fetchImpl) {
   const url = `https://api.openrouteservice.org/geocode/search?api_key=${encodeURIComponent(cfg.key)}&text=${encodeURIComponent(q)}&boundary.country=BR&size=5`
   const body = await getJson(fetchImpl, url)
-  return (body.features ?? []).map((f) => ({ formatted: f.properties.label, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], partial: (f.properties.confidence ?? 1) < 0.8 }))
+  return (body.features ?? []).map((f) => {
+    const p = f.properties ?? {}
+    // A camada diz a precisão: 'address' = número na rua; 'street' = só a rua; o resto (bairro, cidade…) é área.
+    const precision = p.layer === 'address' && p.housenumber ? 'numero' : p.layer === 'street' || p.layer === 'address' ? 'rua' : 'area'
+    return { formatted: p.label, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], partial: precision !== 'numero' || (p.confidence ?? 1) < 0.8, precision, _street: p.street || '', _city: p.locality || p.county || '', _hn: p.housenumber || '' }
+  })
 }
 
 async function orsRoute(points, cfg, fetchImpl) {
-  const coords = []
+  const resolved = []
   for (const p of points) {
-    if (p.lat != null && p.lon != null) coords.push([p.lon, p.lat])
+    if (p.lat != null && p.lon != null) resolved.push(p)
     else {
-      const [g] = await orsGeocode(p.address, cfg, fetchImpl)
-      if (!g) throw fail(422, `Não encontrei o endereço “${p.address}”. Complete com número, bairro e cidade.`)
-      coords.push([g.lon, g.lat])
+      // Ponto sem coordenada confirmada: só aceita se o serviço achar o número na rua.
+      const g = (await orsGeocode(p.address, cfg, fetchImpl)).find((x) => x.precision === 'numero')
+      if (!g) throw fail(422, `Não consegui confirmar o endereço “${p.address}”. Busque e escolha o endereço com número, bairro e cidade.`)
+      resolved.push({ ...p, lat: g.lat, lon: g.lon })
     }
   }
+  assertDistinct(resolved)
+  // OpenRouteService usa [longitude, latitude], na ordem informada (sem otimizar as paradas).
+  const coords = resolved.map((p) => [p.lon, p.lat])
   const body = await getJson(fetchImpl, 'https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: cfg.key },
-    body: JSON.stringify({ coordinates: coords, language: 'pt' })
+    body: JSON.stringify({ coordinates: coords, language: 'pt', instructions: false })
   })
   const f = body.features?.[0]
   const segs = f?.properties?.segments
   if (!segs?.length) throw fail(422, 'Não encontrei rota entre esses endereços.')
+  if (segs.length !== coords.length - 1) throw fail(502, `O serviço de rotas devolveu ${segs.length} trechos para ${coords.length} pontos. Recalcule a rota.`)
+  // Sem arredondar antes: metros e segundos brutos, conferidos com o total da própria resposta.
+  const raw = segs.map((s) => ({ m: Number(s.distance) || 0, s: Number(s.duration) || 0 }))
+  if (raw.some((x) => x.m <= 0)) throw fail(422, 'Um dos trechos ficou com distância zero: dois pontos caíram no mesmo lugar do mapa. Busque os endereços de novo.')
+  const sumM = raw.reduce((a, x) => a + x.m, 0)
+  const sum = f.properties.summary
+  if (sum?.distance > 0 && Math.abs(sum.distance - sumM) > Math.max(50, sum.distance * 0.01)) {
+    console.error('ORS: soma dos trechos difere do total', sumM, sum.distance)
+    throw fail(502, 'O serviço de rotas devolveu trechos que não somam o total. Recalcule a rota.')
+  }
   return {
     provider: 'ors',
-    legs: segs.map((s) => ({ distanceKm: Math.round(s.distance / 10) / 100, durationMin: Math.round(s.duration / 60), trafficMin: null })),
+    legs: raw.map((x) => ({ distanceKm: Math.round(x.m / 10) / 100, durationMin: Math.round(x.s / 60), trafficMin: null, distanceM: Math.round(x.m), durationSec: Math.round(x.s) })),
     polyline: encodePolyline((f.geometry?.coordinates ?? []).map(([lon, lat]) => [lat, lon])),
     points: coords.map(([lon, lat]) => ({ lat, lon })),
     tolls: null,
@@ -144,6 +173,13 @@ async function orsRoute(points, cfg, fetchImpl) {
 }
 
 /* ---------- Entrada ---------- */
+
+function assertDistinct(points) {
+  const c = collapsedPoints(points)
+  if (!c.length) return
+  const { i, j } = c[0]
+  throw Object.assign(fail(422, `“${points[i].address}” e “${points[j].address}” caíram no mesmo ponto do mapa. Um deles foi localizado de forma aproximada (provavelmente o centro da cidade): busque o endereço de novo.`), { collapsed: c })
+}
 
 export function validatePoints(raw) {
   if (!Array.isArray(raw) || raw.length < 2 || raw.length > MAX_POINTS) throw fail(400, `Informe de 2 a ${MAX_POINTS} pontos.`)
@@ -221,7 +257,7 @@ export async function handleRoute(req, { env = process.env, fetchImpl = fetch, n
     }
     return { status: 405, body: { error: 'Método não permitido.' } }
   } catch (e) {
-    return { status: e.status ?? 500, body: { error: e.status ? e.message : 'Não foi possível calcular a rota agora.' } }
+    return { status: e.status ?? 500, body: { error: e.status ? e.message : 'Não foi possível calcular a rota agora.', ...(e.collapsed ? { collapsed: e.collapsed } : {}) } }
   }
 }
 

@@ -63,7 +63,8 @@ function fromPhoton(f) {
   const named = p.name && p.name !== p.street ? p.name : null
   const head = named && street ? `${named} - ${street}` : named || street || ''
   const cityUf = [p.city || p.locality || p.county, uf(p.state)].filter(Boolean).join(' - ')
-  return { formatted: join(head, p.district || (p.city ? p.locality : null), cityUf, p.postcode), lat, lon, partial: !p.housenumber && !['house', 'building'].includes(p.type), source: 'osm' }
+  const precision = p.housenumber || ['house', 'building'].includes(p.type) ? 'numero' : p.type === 'street' ? 'rua' : 'area'
+  return { formatted: join(head, p.district || (p.city ? p.locality : null), cityUf, p.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: p.street || (p.type === 'street' ? p.name : ''), _city: p.city || p.locality || p.county || '', _hn: p.housenumber || '' }
 }
 
 async function photonSearch(q, fetchImpl, near) {
@@ -81,7 +82,8 @@ function fromNominatim(r) {
   const named = r.name && r.name !== a.road ? r.name : null
   const head = named && street ? `${named} - ${street}` : named || street || r.display_name?.split(',')[0] || ''
   const city = a.city || a.town || a.village || a.municipality
-  return { formatted: join(head, a.suburb || a.neighbourhood || a.quarter, [city, uf(a.state)].filter(Boolean).join(' - '), a.postcode), lat, lon, partial: !a.house_number, source: 'osm' }
+  const precision = a.house_number ? 'numero' : a.road ? 'rua' : 'area'
+  return { formatted: join(head, a.suburb || a.neighbourhood || a.quarter, [city, uf(a.state)].filter(Boolean).join(' - '), a.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: a.road || '', _city: city || '', _hn: a.house_number || '' }
 }
 
 let lastNominatim = 0
@@ -102,7 +104,7 @@ export function score(r, q) {
   const n = houseNumber(q)
   if (n && new RegExp(`\\b${n}\\b`).test(text)) s += 0.5
   if (!r.partial) s += 0.2
-  if (r.source === 'cep') s += 1
+  if (r.source === 'cep') s += r.precision === 'numero' ? 1 : 0.3
   if (r.source === 'google') s += 0.3
   return s
 }
@@ -127,20 +129,11 @@ export function mergeResults(lists, q, limit = 6) {
 export async function geocodeAll(q, { fetchImpl = fetch, mode = 'full', provider = null, near = null, now = Date.now() } = {}) {
   const cep = findCep(q)
   const tasks = []
-  if (cep) {
-    tasks.push((async () => {
-      const c = await cepLookup(cep, fetchImpl)
-      if (!c) return []
-      const n = houseNumber(q)
-      const street = c.street ? join(c.street, n) : null
-      let { lat, lon } = c
-      if (lat == null) {
-        // CEP sem coordenadas: localiza a rua na cidade pelo OpenStreetMap.
-        const [hit] = await photonSearch(join(c.street, n, c.city, c.uf), fetchImpl)
-        if (hit) ({ lat, lon } = hit)
-      }
-      return [{ formatted: join(street, c.district, `${c.city} - ${c.uf}`, `${cep.slice(0, 5)}-${cep.slice(5)}`), lat, lon, partial: !n, source: 'cep' }]
-    })())
+  const coords = parseCoords(q)
+  if (coords) {
+    // Coordenadas coladas do mapa (ex.: o acesso exato a um estacionamento): ponto exato.
+    const r = await reverseGeocode(coords.lat, coords.lon, fetchImpl).catch(() => null)
+    return [{ formatted: `${r?.formatted ? `${r.formatted} · ` : ''}${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`, lat: coords.lat, lon: coords.lon, partial: false, precision: 'ponto', source: 'coords' }]
   }
   const text = q.replace(/\b\d{5}-?\d{3}\b/, '').trim()
   if (text.length >= 3) {
@@ -150,15 +143,63 @@ export async function geocodeAll(q, { fetchImpl = fetch, mode = 'full', provider
       if (provider) tasks.push(provider(text).catch(() => []))
     }
   }
-  const lists = await Promise.all(tasks)
-  return mergeResults(lists, q).filter((r) => r.lat != null)
+  const cepTask = cep ? cepLookup(cep, fetchImpl) : Promise.resolve(null)
+  const [c, ...lists] = await Promise.all([cepTask, ...tasks])
+  if (c) {
+    const n = houseNumber(q)
+    // Coordenadas do CEP só valem se um serviço de mapas achar ESTA rua NESTA cidade.
+    let hits = lists.flat()
+    if (c.street) hits = hits.concat(await photonSearch(join(c.street, n, c.city, c.uf), fetchImpl))
+    const loc = locateCep(c, n, hits)
+    lists.push([{ formatted: join(c.street ? join(c.street, n) : null, c.district, `${c.city} - ${c.uf}`, `${cep.slice(0, 5)}-${cep.slice(5)}`), lat: loc.lat, lon: loc.lon, partial: loc.precision !== 'numero' || !n, precision: loc.precision, source: 'cep' }])
+  }
+  return mergeResults(lists, q).filter((r) => r.lat != null).map(publicResult)
+}
+
+/** Tira os campos internos usados na validação. */
+const publicResult = ({ _street, _city, _hn, ...r }) => ({ precision: r.partial ? 'area' : 'numero', ...r })
+
+const STREET_TYPES = new Set(['rua', 'r', 'avenida', 'av', 'travessa', 'tv', 'alameda', 'al', 'estrada', 'est', 'rodovia', 'rod', 'praca', 'pc', 'largo', 'via', 'viela', 'de', 'da', 'do', 'das', 'dos', 'e'])
+const streetWords = (s) => norm(s).split(/[^a-z0-9]+/).filter((w) => w && !STREET_TYPES.has(w))
+/** A rua do resultado é a mesma do CEP? (todas as palavras do nome, ignorando "Rua", "Avenida", "de"…) */
+export function sameStreet(a, b) {
+  const wa = streetWords(a)
+  const wb = new Set(streetWords(b))
+  return wa.length > 0 && wa.every((w) => wb.has(w))
+}
+export const sameCity = (a, b) => !!a && !!b && norm(a).trim() === norm(b).trim()
+
+/**
+ * Coordenadas do endereço de um CEP, validadas: { lat, lon, precision }.
+ *   'numero' — um serviço de mapas achou o número nesta rua e cidade;
+ *   'rua'    — achou a rua nesta cidade, sem o número (aproximado);
+ *   'cep'    — só a coordenada do próprio CEP (pode ser o centro da cidade: aproximado).
+ */
+export function locateCep(c, n, hits) {
+  const ok = hits.filter((h) => h && h.lat != null && sameCity(h._city, c.city) && c.street && sameStreet(c.street, h._street))
+  const exact = ok.find((h) => h.precision === 'numero' && n && String(h._hn).split(/[^0-9]/)[0] === String(n))
+  if (exact) return { lat: exact.lat, lon: exact.lon, precision: 'numero' }
+  const street = ok.find((h) => h.precision === 'rua' || h.precision === 'numero')
+  if (street) return { lat: street.lat, lon: street.lon, precision: 'rua' }
+  if (c.lat != null) return { lat: c.lat, lon: c.lon, precision: 'cep' }
+  return { lat: null, lon: null, precision: 'area' }
+}
+
+/** "-23.1234, -46.9876" (como o Google Maps copia) → { lat, lon } dentro do Brasil, ou null. */
+export function parseCoords(q) {
+  const m = /^\s*(-?\d{1,2}\.\d{3,})\s*[,;\s]\s*(-?\d{1,3}\.\d{3,})\s*$/.exec(q)
+  if (!m) return null
+  const lat = Number(m[1])
+  const lon = Number(m[2])
+  return lat >= -34 && lat <= 5.4 && lon >= -74 && lon <= -34.7 ? { lat, lon } : null
 }
 
 /** Endereço a partir de coordenadas (botão "Usar minha localização"). */
 export async function reverseGeocode(lat, lon, fetchImpl = fetch) {
   const b = await getJson(fetchImpl, `https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&limit=1`)
   const hit = (b?.features ?? []).map(fromPhoton).filter(Boolean)[0]
-  if (hit) return hit
+  if (hit) return publicResult(hit)
   const n = await getJson(fetchImpl, `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&accept-language=pt-BR&lat=${lat}&lon=${lon}`)
-  return n ? fromNominatim(n) : null
+  const r = n ? fromNominatim(n) : null
+  return r ? publicResult(r) : null
 }

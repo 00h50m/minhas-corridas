@@ -7,6 +7,9 @@ import PlaceField from '../components/PlaceField.jsx'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
 import { routeCapabilities } from '../services/routing.js'
 import { firstName, phoneForWhatsapp } from '../lib/people.js'
+import { isPrecise, precisionLabel } from '../lib/geo.js'
+import { getState, saveRace } from '../services/store.js'
+import { todayISO } from '../lib/dates.js'
 
 const newId = () => Math.random().toString(36).slice(2, 10)
 const save = (patch) => saveProfile({ ...getProfile().data, ...patch })
@@ -29,7 +32,7 @@ export default function PeoplePlaces() {
 
         <div className="section-title"><h2>Lugares</h2></div>
         {places.length === 0 && <div className="card muted small">Nenhum lugar salvo. Exemplos: Casa, Academia, Posto da esquina.</div>}
-        {places.map((pl) => <PlaceCard key={pl.id} place={pl} people={people} />)}
+        {places.map((pl) => <PlaceCard key={pl.id} place={pl} people={people} cap={cap} />)}
         <PlaceForm cap={cap} />
 
         <p className="note">Ficam no aparelho e na sua conta, como o resto do app. São dados de outras pessoas: guarde só o necessário. <Link to="/privacidade">Privacidade</Link></p>
@@ -112,11 +115,19 @@ function PersonForm({ person = null, places, cap, onDone }) {
   )
 }
 
-function PlaceCard({ place: pl, people }) {
+/** Provas futuras cuja logística usa este endereço (saída, destino, paradas, kit). */
+function racesUsing(address) {
+  const today = todayISO()
+  return getState().races.filter((r) => r.logistics && (!r.date || r.date >= today) && placesOf(r.logistics).some((x) => x?.address === address))
+}
+const placesOf = (l) => [l.origin, l.destination, l.kit?.origin, l.kit?.destination, ...(l.outbound?.stops ?? []), ...(l.back?.stops ?? []), ...(l.kit?.stops ?? [])]
+
+function PlaceCard({ place: pl, people, cap }) {
   const { confirm, notify } = useUI()
   const [editing, setEditing] = useState(false)
   const [label, setLabel] = useState(pl.label)
   const [dwell, setDwell] = useState(pl.dwellMin ?? '')
+  const [newPlace, setNewPlace] = useState(null)
   const users = people.filter((p) => p.placeId === pl.id)
   const remove = async () => {
     if (!(await confirm({ title: `Remover ${pl.label}?`, message: users.length ? `${users.map((u) => u.name).join(', ')} ficará sem endereço de busca.` : 'O endereço sai dos favoritos.', confirmLabel: 'Remover', danger: true }))) return
@@ -124,12 +135,32 @@ function PlaceCard({ place: pl, people }) {
     save({ favorites: data.favorites.filter((x) => x.id !== pl.id), people: data.people.map((p) => (p.placeId === pl.id ? { ...p, placeId: null } : p)) })
     notify('Lugar removido')
   }
-  const submit = () => {
+  const submit = async () => {
     if (!label.trim()) return
     const d = String(dwell).trim() === '' ? null : Math.max(0, Math.min(600, Number(dwell) || 0))
-    save({ favorites: getProfile().data.favorites.map((x) => (x.id === pl.id ? { ...x, label: label.trim(), dwellMin: d } : x)) })
+    const moved = newPlace && (newPlace.address !== pl.address || newPlace.lat !== pl.lat || newPlace.lon !== pl.lon)
+    const loc = moved ? { address: newPlace.address, formatted: newPlace.formatted, lat: newPlace.lat, lon: newPlace.lon, precision: newPlace.precision } : {}
+    save({ favorites: getProfile().data.favorites.map((x) => (x.id === pl.id ? { ...x, ...loc, label: label.trim(), dwellMin: d } : x)) })
     setEditing(false)
+    setNewPlace(null)
     notify('Lugar atualizado')
+    // Rotas já planejadas não mudam sozinhas: pergunta antes de atualizar as provas que usam o endereço antigo.
+    if (moved) {
+      const used = racesUsing(pl.address)
+      if (used.length && (await confirm({ title: 'Atualizar nas provas?', message: `${used.map((r) => r.name).join(', ')} ${used.length === 1 ? 'usa' : 'usam'} o endereço antigo de ${pl.label}. Atualizar para o novo? As rotas dessas provas serão recalculadas.`, confirmLabel: 'Atualizar' }))) {
+        for (const r of used) {
+          const l = structuredClone(r.logistics)
+          const fix = (x) => (x?.address === pl.address ? { ...x, ...loc } : x)
+          l.origin = fix(l.origin)
+          l.destination = fix(l.destination)
+          l.kit.origin = fix(l.kit.origin)
+          l.kit.destination = fix(l.kit.destination)
+          for (const t of [l.outbound, l.back, l.kit]) t.stops = t.stops.map(fix)
+          saveRace({ ...r, logistics: l })
+        }
+        notify(`${used.length} ${used.length === 1 ? 'prova atualizada' : 'provas atualizadas'}`)
+      }
+    }
   }
   return (
     <div className="card pp-card" data-testid="place">
@@ -139,13 +170,14 @@ function PlaceCard({ place: pl, people }) {
             <div className="field"><label htmlFor={`ln-${pl.id}`}>Nome</label><input id={`ln-${pl.id}`} className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} /></div>
             <div className="field"><label htmlFor={`ld-${pl.id}`}>Parada (min)</label><input id={`ld-${pl.id}`} className="input" inputMode="numeric" value={dwell} onChange={(e) => setDwell(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="5" /></div>
           </div>
-          <div className="btn-row"><button type="button" className="btn" onClick={() => setEditing(false)}>Cancelar</button><button type="button" className="btn btn-primary" onClick={submit}>Salvar</button></div>
+          <PlaceField label="Endereço (busque de novo para mudar o local ou o ponto)" place={newPlace ?? pl} cap={cap} testid={`place-edit-${pl.id}`} noFav onChange={setNewPlace} />
+          <div className="btn-row"><button type="button" className="btn" onClick={() => { setEditing(false); setNewPlace(null) }}>Cancelar</button><button type="button" className="btn btn-primary" onClick={submit}>Salvar</button></div>
         </div>
       ) : (
         <>
           <div className="pp-main">
             <b>★ {pl.label}</b>
-            <span className="muted small">{pl.formatted || pl.address}{pl.dwellMin != null ? ` · parada de ${pl.dwellMin} min` : ''}{users.length ? ` · ${users.map((u) => u.name).join(', ')}` : ''}</span>
+            <span className="muted small">{isPrecise(pl) ? '✓ ' : pl.lat != null ? '≈ ' : ''}{pl.formatted || pl.address}{pl.lat != null && !isPrecise(pl) ? ` (${precisionLabel(pl)})` : ''}{pl.reference ? ` · ${pl.reference}` : ''}{pl.dwellMin != null ? ` · parada de ${pl.dwellMin} min` : ''}{users.length ? ` · ${users.map((u) => u.name).join(', ')}` : ''}</span>
           </div>
           <div className="pp-actions">
             <button type="button" className="link-btn" onClick={() => setEditing(true)}>Editar</button>

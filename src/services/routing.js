@@ -57,7 +57,12 @@ export function locateMe() {
 export const SOURCE_LABEL = { cep: 'CEP', osm: 'OpenStreetMap', google: 'Google', ors: 'OpenRouteService', coords: 'Coordenadas' }
 
 /** points: [{ address, lat, lon }]; departureAt: ISO (para trânsito previsto). */
-export const computeRoute = (points, departureAt) =>
-  call('/api/route', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ points: points.map((p) => ({ address: p.formatted || p.address, lat: p.lat, lon: p.lon })), departureAt }) })
+/** points: [{ address, lat, lon }]; departureAt: ISO (para trânsito previsto); choices: caminho de cada trecho (null = mais rápido). */
+export const computeRoute = (points, departureAt, choices = []) =>
+  call('/api/route', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ points: points.map((p) => ({ address: p.formatted || p.address, lat: p.lat, lon: p.lon })), departureAt, choices }) })
+
+/** Caminhos possíveis para um trecho (a → b), com pontos de passagem opcionais. */
+export const routeAlternatives = (a, b, vias = []) =>
+  call('/api/route', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ points: [a, b].map((p) => ({ address: p.formatted || p.address, lat: p.lat, lon: p.lon })), alternativas: true, vias }) }).then((r) => r.options ?? [])
 
 export const PROVIDER_LABEL = { google: 'Google Maps', ors: 'OpenRouteService', manual: 'informado por você' }

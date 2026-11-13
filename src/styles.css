@@ -899,3 +899,41 @@ details.link-import { margin-top: 0; }
 .place-approx { color: var(--warn); }
 .btn-inline { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
 .route-dwell { margin: 4px 0 0; }
+
+/* Logística: trechos, caminhos, edição de parada */
+.legs-list { margin: 0 -4px; }
+.legs-head { display: grid; grid-template-columns: 1fr 64px 76px; gap: 8px; padding: 0 4px 6px; font-size: 12px; font-weight: 800; color: var(--ink-3); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--line); }
+.legs-head span:not(:first-child) { text-align: right; }
+.leg-row { border-bottom: 1px solid var(--line); }
+.leg-row.sel { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.leg-main { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 1fr 64px 76px; gap: 8px; width: 100%; padding: 10px 4px; align-items: center; font-size: 14.5px; }
+.leg-main:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: 8px; }
+.leg-name { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.leg-km, .leg-min { text-align: right; font-variant-numeric: tabular-nums; }
+.leg-tag { display: inline-block; margin-left: 6px; font-size: 11.5px; font-weight: 800; color: var(--brand-ink); background: color-mix(in srgb, var(--brand) 14%, transparent); border-radius: 999px; padding: 1px 8px; vertical-align: 1px; }
+.leg-detail { padding: 0 4px 10px; display: grid; gap: 4px; }
+.route-options { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+.route-option { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 2px; width: 100%; padding: 10px 12px; border-radius: var(--radius-sm); border: 2px solid var(--line); background: var(--surface); }
+.route-option.on { border-color: var(--brand); }
+.route-option .ro-val { font-weight: 800; font-variant-numeric: tabular-nums; }
+.route-option .ro-roads, .route-option .ro-diff { font-size: 12.5px; }
+.via-list { padding-left: 18px; margin: 0 0 8px; font-size: 13px; }
+.via-pin span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #111; border: 2px solid var(--brand); font-size: 11px; font-weight: 800; }
+.route-pin.dim { opacity: .45; }
+.pin-label { font-size: 11.5px; font-weight: 700; padding: 1px 6px; }
+.map-leg-info { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 6px; }
+.trip-times .tt-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.trip-times .tt-list li { display: grid; grid-template-columns: 58px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.trip-times .tt-at { font-weight: 800; font-variant-numeric: tabular-nums; }
+.stop-edit .unsaved { color: var(--warn); font-weight: 800; margin-bottom: 6px; }
+.point-picker { height: 240px; }
+.stops li { position: relative; }
+.drag-handle { all: unset; cursor: grab; touch-action: none; user-select: none; font-size: 18px; line-height: 1; padding: 8px 4px; color: var(--ink-3); grid-row: 1; grid-column: 1; align-self: start; }
+.stops li.dragging { opacity: .6; }
+.stops li.drop-here { box-shadow: inset 0 3px 0 var(--brand); }
+.stops li { grid-template-columns: auto 1fr auto; }
+.stops li .st-main { grid-column: 2; }
+.stops li .st-dwell { grid-column: 3; }
+.stops li .st-actions { grid-column: 1 / -1; }
+/* O mapa (Leaflet usa z-index alto) não passa por cima da barra do topo nem dos avisos. */
+.route-map { position: relative; isolation: isolate; }

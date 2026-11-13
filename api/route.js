@@ -129,7 +129,76 @@ async function orsGeocode(q, cfg, fetchImpl) {
   })
 }
 
-async function orsRoute(points, cfg, fetchImpl) {
+/**
+ * Uma consulta ao ORS. coords: [[lon, lat], …] na ordem. opts: { preference, avoid: ['highways'|'tollways'], alternatives }.
+ * Devolve as rotas como { segments: [{ m, s }], line: [[lat, lon]], wayPoints, steps }.
+ */
+async function orsDirections(coords, opts, cfg, fetchImpl) {
+  const body = { coordinates: coords, language: 'pt' } // instruções ligadas: sem elas o ORS não devolve os trechos
+  if (opts.preference === 'shortest') body.preference = 'shortest'
+  if (opts.avoid?.length) body.options = { avoid_features: opts.avoid }
+  if (opts.alternatives && coords.length === 2) body.alternative_routes = { target_count: 3, weight_factor: 1.6, share_factor: 0.6 }
+  const res = await getJson(fetchImpl, 'https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: cfg.key },
+    body: JSON.stringify(body)
+  })
+  const routes = (res.features ?? []).map((f) => {
+    const segs = f?.properties?.segments
+    if (!segs?.length) throw fail(502, 'O serviço de rotas não devolveu os trechos da rota. Tente de novo.')
+    if (segs.length !== coords.length - 1) throw fail(502, `O serviço de rotas devolveu ${segs.length} trechos para ${coords.length} pontos. Recalcule a rota.`)
+    // Sem arredondar antes: metros e segundos brutos, conferidos com o total da própria resposta.
+    const raw = segs.map((x) => ({ m: Number(x.distance) || 0, s: Number(x.duration) || 0, steps: x.steps ?? [] }))
+    if (raw.some((x) => x.m <= 0)) throw fail(422, 'Um dos trechos ficou com distância zero: dois pontos caíram no mesmo lugar do mapa. Busque os endereços de novo.')
+    const sumM = raw.reduce((a, x) => a + x.m, 0)
+    const sum = f.properties.summary
+    if (sum?.distance > 0 && Math.abs(sum.distance - sumM) > Math.max(50, sum.distance * 0.01)) {
+      console.error('ORS: soma dos trechos difere do total', sumM, sum.distance)
+      throw fail(502, 'O serviço de rotas devolveu trechos que não somam o total. Recalcule a rota.')
+    }
+    return { segments: raw, line: (f.geometry?.coordinates ?? []).map(([lon, lat]) => [lat, lon]), wayPoints: f.properties.way_points ?? [] }
+  })
+  if (!routes.length) throw fail(422, 'Não encontrei rota entre esses endereços.')
+  return routes
+}
+
+/** Principais vias de um caminho: as que somam mais distância (até 3). */
+export function mainRoads(steps) {
+  const by = new Map()
+  for (const st of steps) {
+    const name = String(st.name || '').trim()
+    if (!name || name === '-') continue
+    by.set(name, (by.get(name) ?? 0) + (Number(st.distance) || 0))
+  }
+  return [...by.entries()].filter(([, m]) => m >= 150).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n]) => n)
+}
+
+const DEFAULT_CHOICE = { preference: 'fastest', avoid: [], vias: [] }
+/** Escolha de caminho de um trecho, validada. */
+export function normalizeChoice(raw) {
+  if (!raw || typeof raw !== 'object') return DEFAULT_CHOICE
+  const preference = raw.preference === 'shortest' ? 'shortest' : 'fastest'
+  const avoid = (Array.isArray(raw.avoid) ? raw.avoid : []).filter((a) => a === 'highways' || a === 'tollways')
+  const vias = (Array.isArray(raw.vias) ? raw.vias : []).filter((v) => Number.isFinite(v?.lat) && Number.isFinite(v?.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180).slice(0, 5).map((v) => ({ lat: v.lat, lon: v.lon }))
+  return { preference, avoid: [...new Set(avoid)], vias }
+}
+const isDefault = (c) => c.preference === 'fastest' && !c.avoid.length && !c.vias.length
+
+/** Um trecho a partir de uma rota do ORS que cobre [a, …vias, b] (vários segmentos somados). */
+function legFrom(route, from = 0, to = route.segments.length) {
+  const segs = route.segments.slice(from, to)
+  const m = segs.reduce((a, x) => a + x.m, 0)
+  const sec = segs.reduce((a, x) => a + x.s, 0)
+  const wp = route.wayPoints
+  const line = wp.length ? route.line.slice(wp[from], wp[to] + 1) : route.line
+  return { distanceKm: Math.round(m / 10) / 100, durationMin: Math.round(sec / 60), trafficMin: null, distanceM: Math.round(m), durationSec: Math.round(sec), roads: mainRoads(segs.flatMap((x) => x.steps)), line }
+}
+
+/**
+ * Rota completa com escolha de caminho por trecho. choices[i] vale para o trecho i (pontos i → i+1).
+ * Trechos no padrão (mais rápido, sem restrições nem pontos de passagem) vão juntos numa consulta só.
+ */
+async function orsRoute(points, cfg, fetchImpl, choices = []) {
   const resolved = []
   for (const p of points) {
     if (p.lat != null && p.lon != null) resolved.push(p)
@@ -141,36 +210,97 @@ async function orsRoute(points, cfg, fetchImpl) {
     }
   }
   assertDistinct(resolved)
-  // OpenRouteService usa [longitude, latitude], na ordem informada (sem otimizar as paradas).
-  const coords = resolved.map((p) => [p.lon, p.lat])
-  const body = await getJson(fetchImpl, 'https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: cfg.key },
-    // Não desligar as instruções: sem elas o ORS não devolve os trechos (segments).
-    body: JSON.stringify({ coordinates: coords, language: 'pt' })
-  })
-  const f = body.features?.[0]
-  const segs = f?.properties?.segments
-  if (!segs?.length) throw fail(502, 'O serviço de rotas não devolveu os trechos da rota. Tente de novo.')
-  if (segs.length !== coords.length - 1) throw fail(502, `O serviço de rotas devolveu ${segs.length} trechos para ${coords.length} pontos. Recalcule a rota.`)
-  // Sem arredondar antes: metros e segundos brutos, conferidos com o total da própria resposta.
-  const raw = segs.map((s) => ({ m: Number(s.distance) || 0, s: Number(s.duration) || 0 }))
-  if (raw.some((x) => x.m <= 0)) throw fail(422, 'Um dos trechos ficou com distância zero: dois pontos caíram no mesmo lugar do mapa. Busque os endereços de novo.')
-  const sumM = raw.reduce((a, x) => a + x.m, 0)
-  const sum = f.properties.summary
-  if (sum?.distance > 0 && Math.abs(sum.distance - sumM) > Math.max(50, sum.distance * 0.01)) {
-    console.error('ORS: soma dos trechos difere do total', sumM, sum.distance)
-    throw fail(502, 'O serviço de rotas devolveu trechos que não somam o total. Recalcule a rota.')
+  const ch = resolved.slice(1).map((_, i) => normalizeChoice(choices[i]))
+  const legs = new Array(ch.length)
+  // Grupos de trechos seguidos no padrão: uma consulta por grupo, na ordem informada (sem otimizar).
+  let i = 0
+  const tasks = []
+  while (i < ch.length) {
+    if (isDefault(ch[i])) {
+      let j = i
+      while (j < ch.length && isDefault(ch[j])) j++
+      const from = i
+      const to = j
+      tasks.push(orsDirections(resolved.slice(from, to + 1).map((p) => [p.lon, p.lat]), {}, cfg, fetchImpl).then(([r]) => {
+        for (let k = from; k < to; k++) legs[k] = { ...legFrom(r, k - from, k - from + 1), choice: ch[k] }
+      }))
+      i = j
+    } else {
+      const k = i
+      const c = ch[k]
+      const coords = [resolved[k], ...c.vias, resolved[k + 1]].map((p) => [p.lon, p.lat])
+      tasks.push(orsDirections(coords, c, cfg, fetchImpl).then(([r]) => { legs[k] = { ...legFrom(r), choice: c } }))
+      i++
+    }
   }
+  await Promise.all(tasks)
+  if (legs.some((l) => !(l.distanceM > 0))) throw fail(422, 'Um dos trechos ficou com distância zero: dois pontos caíram no mesmo lugar do mapa. Busque os endereços de novo.')
+  const line = legs.flatMap((l, k) => (k ? l.line.slice(1) : l.line))
   return {
     provider: 'ors',
-    legs: raw.map((x) => ({ distanceKm: Math.round(x.m / 10) / 100, durationMin: Math.round(x.s / 60), trafficMin: null, distanceM: Math.round(x.m), durationSec: Math.round(x.s) })),
-    polyline: encodePolyline((f.geometry?.coordinates ?? []).map(([lon, lat]) => [lat, lon])),
-    points: coords.map(([lon, lat]) => ({ lat, lon })),
+    legs: legs.map(({ line: l, ...rest }) => ({ ...rest, polyline: encodePolyline(l) })),
+    polyline: encodePolyline(line),
+    points: resolved.map((p) => ({ lat: p.lat, lon: p.lon })),
     tolls: null,
     hasTolls: null,
     traffic: false
   }
+}
+
+/** Pontos de passagem que reproduzem um caminho: dois pontos no meio do traçado (a 35% e 65%). */
+export function viasAlong(line) {
+  if (line.length < 3) return []
+  if (line.length < 6) return [line[Math.floor((line.length - 1) / 2)]].map(([lat, lon]) => ({ lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 }))
+  return [0.35, 0.65].map((f) => line[Math.floor(f * (line.length - 1))]).map(([lat, lon]) => ({ lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 }))
+}
+
+/**
+ * Alternativas para um trecho (a → b): mais rápida (+ alternativas do próprio ORS), menor distância,
+ * evitar rodovias, evitar pedágios e, se houver, o caminho personalizado pelos pontos de passagem.
+ * Só devolve o que o serviço calculou; caminhos iguais são juntados.
+ */
+async function orsAlternatives(a, b, vias, cfg, fetchImpl) {
+  assertDistinct([a, b])
+  const ab = [[a.lon, a.lat], [b.lon, b.lat]]
+  const variants = [
+    { id: 'fastest', label: 'Mais rápida', choice: DEFAULT_CHOICE, opts: { alternatives: true } },
+    { id: 'shortest', label: 'Menor distância', choice: { ...DEFAULT_CHOICE, preference: 'shortest' }, opts: { preference: 'shortest' } },
+    { id: 'highways', label: 'Evitar rodovias', choice: { ...DEFAULT_CHOICE, avoid: ['highways'] }, opts: { avoid: ['highways'] } },
+    { id: 'tollways', label: 'Evitar pedágios', choice: { ...DEFAULT_CHOICE, avoid: ['tollways'] }, opts: { avoid: ['tollways'] } }
+  ]
+  const out = []
+  const settled = await Promise.allSettled(variants.map((v) => orsDirections(ab, v.opts, cfg, fetchImpl)))
+  settled.forEach((r, k) => {
+    if (r.status !== 'fulfilled') return
+    r.value.forEach((route, n) => {
+      const leg = legFrom(route)
+      const v = variants[k]
+      // Alternativas do ORS não se repetem por si: viram pontos de passagem para recalcular igual.
+      if (n === 0) out.push({ id: v.id, label: v.label, choice: v.choice, ...leg })
+      else out.push({ id: `alt${n}`, label: `Alternativa ${n}`, choice: { ...DEFAULT_CHOICE, vias: viasAlong(leg.line) }, ...leg })
+    })
+  })
+  if (vias.length) {
+    const c = { ...DEFAULT_CHOICE, vias }
+    try {
+      const [route] = await orsDirections([[a.lon, a.lat], ...vias.map((v) => [v.lon, v.lat]), [b.lon, b.lat]], c, cfg, fetchImpl)
+      out.push({ id: 'custom', label: 'Personalizada', choice: c, ...legFrom(route) })
+    } catch (e) {
+      if (!out.length) throw e
+    }
+  }
+  if (!out.length) {
+    const err = settled.find((r) => r.status === 'rejected')
+    throw err ? err.reason : fail(422, 'Não encontrei rota entre esses pontos.')
+  }
+  // Junta caminhos praticamente iguais (mesma distância e tempo), mantendo os nomes.
+  const merged = []
+  for (const o of out) {
+    const same = merged.find((x) => Math.abs(x.distanceM - o.distanceM) <= Math.max(20, x.distanceM * 0.003) && Math.abs(x.durationSec - o.durationSec) <= 15)
+    if (same && o.id !== 'custom') same.also = [...(same.also ?? []), o.label]
+    else merged.push(o)
+  }
+  return merged.map(({ line, ...o }) => ({ ...o, polyline: encodePolyline(line) }))
 }
 
 /* ---------- Entrada ---------- */
@@ -253,7 +383,15 @@ export async function handleRoute(req, { env = process.env, fetchImpl = fetch, n
     if (req.method === 'POST') {
       const points = validatePoints(req.body?.points)
       const departureAt = typeof req.body?.departureAt === 'string' ? req.body.departureAt : null
-      const route = cfg.provider === 'google' ? await googleRoute(points, departureAt, cfg, fetchImpl, now) : await orsRoute(points, cfg, fetchImpl)
+      const choices = Array.isArray(req.body?.choices) ? req.body.choices.slice(0, MAX_POINTS) : []
+      if (req.body?.alternativas) {
+        // Alternativas de UM trecho (2 pontos) — por enquanto com o OpenRouteService.
+        if (points.length !== 2 || points.some((p) => p.lat == null)) return { status: 400, body: { error: 'Escolha o trecho (dois pontos localizados).' } }
+        if (cfg.provider !== 'ors') return { status: 501, body: { error: 'A comparação de caminhos está disponível com o OpenRouteService.' } }
+        const options = await orsAlternatives(points[0], points[1], normalizeChoice({ vias: req.body.vias }).vias, cfg, fetchImpl)
+        return { status: 200, body: { provider: 'ors', options, fetchedAt: new Date(now).toISOString() } }
+      }
+      const route = cfg.provider === 'google' ? await googleRoute(points, departureAt, cfg, fetchImpl, now) : await orsRoute(points, cfg, fetchImpl, choices)
       return { status: 200, body: { ...route, fetchedAt: new Date(now).toISOString() } }
     }
     return { status: 405, body: { error: 'Método não permitido.' } }

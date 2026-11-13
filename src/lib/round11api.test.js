@@ -61,7 +61,7 @@ describe('função de rotas', () => {
     })
     const r = await handleRoute(req({ method: 'POST', body: { points: pts.slice(0, 2) } }), { env: { ORS_API_KEY: 'O' }, fetchImpl })
     expect(r.body).toMatchObject({ provider: 'ors', traffic: false, tolls: null })
-    expect(r.body.legs).toEqual([{ distanceKm: 6.2, durationMin: 11, trafficMin: null, distanceM: 6200, durationSec: 660 }])
+    expect(r.body.legs).toMatchObject([{ distanceKm: 6.2, durationMin: 11, trafficMin: null, distanceM: 6200, durationSec: 660, choice: { preference: 'fastest', avoid: [], vias: [] } }])
     expect(decodePolyline(r.body.polyline)).toEqual([[-23.2, -46.9], [-23.15, -46.95]])
   })
   it('endereço: sugestões e falhas tratadas', async () => {

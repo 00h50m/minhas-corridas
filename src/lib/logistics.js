@@ -26,7 +26,23 @@ export function normalizePlace(raw) {
   const lon = num(raw.lon, -180, 180)
   const has = lat != null && lon != null
   const precision = has && ['numero', 'rua', 'cep', 'area', 'local', 'ponto', 'gps', 'manual'].includes(raw.precision) ? raw.precision : null
-  return { label: str(raw.label, 60), address, formatted: str(raw.formatted, 240), lat: has ? lat : null, lon: has ? lon : null, ...(precision ? { precision } : {}) }
+  // Partes do endereço digitado (rua, número…), referência e quando a pessoa marcou o ponto à mão.
+  const pr = raw.parts && typeof raw.parts === 'object' ? raw.parts : null
+  const parts = pr ? Object.fromEntries(PART_KEYS.map((k) => [k, str(pr[k], k === 'street' ? 120 : 60)]).filter(([, v]) => v)) : null
+  const reference = str(raw.reference, 120)
+  return {
+    label: str(raw.label, 60), address, formatted: str(raw.formatted, 240), lat: has ? lat : null, lon: has ? lon : null,
+    ...(precision ? { precision } : {}),
+    ...(parts && Object.keys(parts).length ? { parts } : {}),
+    ...(reference ? { reference } : {})
+  }
+}
+export const PART_KEYS = ['street', 'number', 'complement', 'district', 'city', 'cep']
+
+/** Endereço para busca a partir das partes (rua, número, bairro, cidade, CEP). O complemento não ajuda a localizar. */
+export function partsToQuery(p) {
+  if (!p) return ''
+  return [p.street && p.number ? `${p.street}, ${p.number}` : p.street, p.district, p.city, p.cep].filter(Boolean).join(', ')
 }
 
 function normalizeStop(raw) {
@@ -44,7 +60,9 @@ function normalizeRoute(raw) {
     // Valores brutos do serviço (metros e segundos), para somar sem arredondar antes.
     ...(num(Number(l?.distanceM), 0, 5e6) != null && l?.distanceM != null ? { distanceM: Number(l.distanceM) } : {}),
     ...(num(Number(l?.durationSec), 0, 360000) != null && l?.durationSec != null ? { durationSec: Number(l.durationSec) } : {}),
-    ...(num(Number(l?.trafficSec), 0, 360000) != null && l?.trafficSec != null ? { trafficSec: Number(l.trafficSec) } : {})
+    ...(num(Number(l?.trafficSec), 0, 360000) != null && l?.trafficSec != null ? { trafficSec: Number(l.trafficSec) } : {}),
+    ...(typeof l?.polyline === 'string' && l.polyline ? { polyline: l.polyline.slice(0, 20000) } : {}),
+    ...(Array.isArray(l?.roads) && l.roads.length ? { roads: l.roads.filter((x) => typeof x === 'string').slice(0, 3).map((x) => x.slice(0, 80)) } : {})
   }))
   if (legs.some((l) => l.distanceKm == null || l.durationMin == null)) return null
   const tolls = raw.tolls && num(Number(raw.tolls.amount), 0, 100000) != null ? { amount: Number(raw.tolls.amount), currency: str(raw.tolls.currency, 3) || 'BRL' } : null
@@ -65,7 +83,7 @@ const money = (raw) => ({ est: num(Number(raw?.est ?? NaN), 0, 1e6), paid: num(N
 
 function normalizeTrip(raw, { withMode = false, withDepart = false, withKit = false } = {}) {
   const t = raw && typeof raw === 'object' ? raw : {}
-  const out = { stops: (Array.isArray(t.stops) ? t.stops : []).map(normalizeStop).filter(Boolean).slice(0, 8), route: normalizeRoute(t.route) }
+  const out = { stops: (Array.isArray(t.stops) ? t.stops : []).map(normalizeStop).filter(Boolean).slice(0, 8), route: normalizeRoute(t.route), legChoices: normalizeChoices(t.legChoices) }
   if (withMode) {
     out.enabled = t.enabled !== false
     out.mode = t.mode === 'custom' ? 'custom' : 'reverse'
@@ -169,6 +187,62 @@ export function tripPoints(race, log, which) {
   return [{ ...dest, role: 'origin' }, ...stops.map((s) => ({ ...s, role: 'stop' })), { ...home, role: 'dest', dwellMin: 0 }]
 }
 
+/* ---------- Escolha de caminho por trecho ---------- */
+
+/**
+ * Escolha de caminho de um trecho, guardada pelo par de pontos (sobrevive a reordenar as paradas
+ * enquanto o par existir): { label, preference: 'fastest'|'shortest', avoid: ['highways'|'tollways'], vias: [{lat, lon}] }.
+ * Pontos de passagem só desenham o caminho: não são paradas e não têm permanência.
+ */
+export function normalizeChoice(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const preference = raw.preference === 'shortest' ? 'shortest' : 'fastest'
+  const avoid = [...new Set((Array.isArray(raw.avoid) ? raw.avoid : []).filter((a) => a === 'highways' || a === 'tollways'))]
+  const vias = (Array.isArray(raw.vias) ? raw.vias : []).filter((v) => num(v?.lat, -90, 90) != null && num(v?.lon, -180, 180) != null).slice(0, 5).map((v) => ({ lat: v.lat, lon: v.lon }))
+  if (preference === 'fastest' && !avoid.length && !vias.length) return null // padrão
+  return { label: str(raw.label, 40) || 'Personalizada', preference, avoid, vias }
+}
+function normalizeChoices(raw) {
+  if (!raw || typeof raw !== 'object') return {}
+  const out = {}
+  for (const [k, v] of Object.entries(raw).slice(0, 30)) {
+    const c = normalizeChoice(v)
+    if (c && k.length <= 2000) out[k] = c
+  }
+  return out
+}
+/** Identificador de um trecho: o par de pontos (endereço + coordenada). */
+export const legKey = (a, b) => pointsKey([a, b])
+/** Escolha de cada trecho do trajeto (null = mais rápida, o padrão). */
+export function tripChoices(trip, points) {
+  return points.slice(1).map((b, i) => trip?.legChoices?.[legKey(points[i], b)] ?? null)
+}
+const choiceSig = (c) => (c ? `${c.preference}/${c.avoid.join('+')}/${c.vias.map((v) => `${v.lat.toFixed(5)},${v.lon.toFixed(5)}`).join(';')}` : '')
+/** Chave da rota: pontos + escolhas (mudar o caminho de um trecho desatualiza a rota). */
+export function routeKey(points, choices = []) {
+  const base = pointsKey(points)
+  return choices.some(Boolean) ? `${base} #${choices.map(choiceSig).join('|')}` : base
+}
+
+/**
+ * Arredondamento que fecha a conta: cada trecho arredondado de modo que a soma dê o total
+ * arredondado (maiores restos). Evita "6 + 16 + 20 + 20 = 62" com total de 61.
+ */
+export function roundToTotal(values, unit = 1) {
+  const exact = values.map((v) => v / unit)
+  const total = Math.round(exact.reduce((a, v) => a + v, 0))
+  const floors = exact.map(Math.floor)
+  let rest = total - floors.reduce((a, v) => a + v, 0)
+  const order = exact.map((v, i) => ({ i, f: v - Math.floor(v) })).sort((a, b) => b.f - a.f)
+  const out = [...floors]
+  for (const { i } of order) {
+    if (rest <= 0) break
+    out[i]++
+    rest--
+  }
+  return { parts: out, total }
+}
+
 /** Identifica o conjunto de pontos de uma rota (para saber se ela ficou desatualizada). */
 export const pointsKey = (points) => points.map((p) => `${p.address.toLowerCase()}${p.lat != null ? `@${p.lat.toFixed(5)},${p.lon.toFixed(5)}` : ''}`).join(' | ')
 /** Chave antiga (só endereços), de rotas calculadas antes das coordenadas entrarem na chave. */
@@ -189,13 +263,21 @@ export function tripSummary(race, log, which) {
   const legsNeeded = Math.max(0, points.length - 1)
   // Rota calculada com algum trecho de 0 km: pontos caíram no mesmo lugar (geocodificação errada). Não vale.
   const invalid = !!route && route.provider !== 'manual' && route.legs.some((l) => !(l.distanceKm > 0))
-  const stale = !!route && (invalid || (route.key !== pointsKey(points) && route.key !== legacyKey(points)) || route.legs.length !== legsNeeded)
+  const choices = tripChoices(trip, points)
+  const rkey = routeKey(points, choices)
+  const noChoices = !choices.some(Boolean)
+  const stale = !!route && (invalid || (route.key !== rkey && !(noChoices && route.key === legacyKey(points))) || route.legs.length !== legsNeeded)
   const legs = route && !stale ? route.legs : []
   const complete = legs.length > 0 && legs.length === legsNeeded
   // Totais a partir dos valores brutos (metros/segundos) quando o serviço os forneceu.
   const raw = complete && legs.every((l) => l.distanceM != null && l.durationSec != null)
-  const distanceKm = complete ? (raw ? round2(legs.reduce((s, l) => s + l.distanceM, 0) / 1000) : round2(legs.reduce((s, l) => s + l.distanceKm, 0))) : null
-  const durationMin = complete ? (raw ? Math.round(legs.reduce((s, l) => s + l.durationSec, 0) / 60) : Math.round(legs.reduce((s, l) => s + l.durationMin, 0))) : null
+  // Apresentação: trechos arredondados para fechar com o total (que vem da soma dos valores brutos).
+  const kmR = complete ? (raw ? roundToTotal(legs.map((l) => l.distanceM), 10) : roundToTotal(legs.map((l) => l.distanceKm * 100))) : null
+  const minR = complete ? (raw ? roundToTotal(legs.map((l) => l.durationSec), 60) : roundToTotal(legs.map((l) => l.durationMin))) : null
+  const legKm = kmR ? kmR.parts.map((v) => v / 100) : []
+  const legMin = minR ? minR.parts : []
+  const distanceKm = kmR ? kmR.total / 100 : null
+  const durationMin = minR ? minR.total : null
   const trafficMin = complete && legs.every((l) => l.trafficMin != null) ? (legs.every((l) => l.trafficSec != null) ? Math.round(legs.reduce((s, l) => s + l.trafficSec, 0) / 60) : Math.round(legs.reduce((s, l) => s + l.trafficMin, 0))) : null
   // Paradas: tempo parado em cada uma (não muda a rota; só os totais).
   const dwellMin = points.filter((p) => p.role === 'stop').reduce((s, p) => s + Math.max(0, Math.round(p.dwellMin || 0)), 0)
@@ -204,7 +286,7 @@ export function tripSummary(race, log, which) {
   const collapsed = collapsedPoints(points)
   const approx = points.map((p, i) => ({ p, i })).filter(({ p }) => p.lat != null && !isPrecise(p)).map(({ i }) => i)
   const unverified = points.map((p, i) => ({ p, i })).filter(({ p }) => p.lat == null).map(({ i }) => i)
-  return { points, route: stale ? null : route, stale, invalid, legs, distanceKm, durationMin, trafficMin, dwellMin, totalMin, complete, collapsed, approx, unverified, key: pointsKey(points), enabled: which === 'volta' ? log?.back.enabled !== false : which === 'kit' ? !!log?.kit.enabled : true }
+  return { points, route: stale ? null : route, stale, invalid, legs, legKm, legMin, choices, routeKey: rkey, distanceKm, durationMin, trafficMin, dwellMin, totalMin, complete, collapsed, approx, unverified, key: rkey, enabled: which === 'volta' ? log?.back.enabled !== false : which === 'kit' ? !!log?.kit.enabled : true }
 }
 
 /* ---------- Custos ---------- */
@@ -284,7 +366,9 @@ export function raceSchedule(race, profilePrep) {
   const ida = tripSummary(race, log, 'ida')
   if (!ida.complete) return null
   const stops = ida.points.filter((p) => p.role === 'stop')
-  return buildSchedule({ startTime: race.startTime, prep: log.prep ?? profilePrep, legs: ida.legs, stops, destLabel: ida.points.at(-1)?.label || 'Local da prova' })
+  // Mesmos minutos por trecho que a tela mostra (arredondados para fechar com o total).
+  const legs = ida.legs.map((l, i) => ({ ...l, durationMin: ida.legMin[i] }))
+  return buildSchedule({ startTime: race.startTime, prep: log.prep ?? profilePrep, legs, stops, destLabel: ida.points.at(-1)?.label || 'Local da prova' })
 }
 
 export function raceKitSchedule(race, profilePrep) {

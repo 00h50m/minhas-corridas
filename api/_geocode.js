@@ -66,7 +66,7 @@ function fromPhoton(f) {
   // Lugar com nome e sem número (escola, prédio, condomínio): é um ponto exato DESSE lugar;
   // só vale para o endereço buscado se o nome ou a rua baterem (conferido em geocodeAll).
   const precision = p.housenumber ? 'numero' : ['house', 'building'].includes(p.type) ? 'local' : p.type === 'street' ? 'rua' : 'area'
-  return { formatted: join(head, p.district || (p.city ? p.locality : null), cityUf, p.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: p.street || (p.type === 'street' ? p.name : ''), _city: p.city || p.locality || p.county || '', _hn: p.housenumber || '', _name: p.name || '' }
+  return { formatted: join(head, p.district || (p.city ? p.locality : null), cityUf, p.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: p.street || (p.type === 'street' ? p.name : ''), _city: p.city || p.locality || p.county || '', _hn: p.housenumber || '', _name: p.name || '', _district: [p.district, p.locality].filter(Boolean).join(' ') }
 }
 
 async function photonSearch(q, fetchImpl, near) {
@@ -85,7 +85,7 @@ function fromNominatim(r) {
   const head = named && street ? `${named} - ${street}` : named || street || r.display_name?.split(',')[0] || ''
   const city = a.city || a.town || a.village || a.municipality
   const precision = a.house_number ? 'numero' : a.road ? 'rua' : 'area'
-  return { formatted: join(head, a.suburb || a.neighbourhood || a.quarter, [city, uf(a.state)].filter(Boolean).join(' - '), a.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: a.road || '', _city: city || '', _hn: a.house_number || '' }
+  return { formatted: join(head, a.suburb || a.neighbourhood || a.quarter, [city, uf(a.state)].filter(Boolean).join(' - '), a.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: a.road || '', _city: city || '', _hn: a.house_number || '', _district: [a.suburb, a.neighbourhood, a.quarter].filter(Boolean).join(' ') }
 }
 
 let lastNominatim = 0
@@ -169,15 +169,38 @@ export function placeMatch(r, q) {
 }
 
 /** Tira os campos internos usados na validação. */
-const publicResult = ({ _street, _city, _hn, _name, ...r }) => ({ precision: r.partial ? 'area' : 'numero', ...r })
+const publicResult = ({ _street, _city, _hn, _name, _district, ...r }) => ({ precision: r.partial ? 'area' : 'numero', ...r })
 
 const STREET_TYPES = new Set(['rua', 'r', 'avenida', 'av', 'travessa', 'tv', 'alameda', 'al', 'estrada', 'est', 'rodovia', 'rod', 'praca', 'pc', 'largo', 'via', 'viela', 'de', 'da', 'do', 'das', 'dos', 'e'])
 const streetWords = (s) => norm(s).split(/[^a-z0-9]+/).filter((w) => w && !STREET_TYPES.has(w))
-/** A rua do resultado é a mesma do CEP? (todas as palavras do nome, ignorando "Rua", "Avenida", "de"…) */
+/** Diferença de no máximo uma letra (ex.: "Cotrim" × "Contrim", grafia do OpenStreetMap). */
+function oneEdit(a, b) {
+  if (a === b) return true
+  if (Math.abs(a.length - b.length) > 1 || Math.min(a.length, b.length) < 5) return false
+  let i = 0
+  let j = 0
+  let edits = 0
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue }
+    if (++edits > 1) return false
+    if (a.length > b.length) i++
+    else if (b.length > a.length) j++
+    else { i++; j++ }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1
+}
+/** A rua do resultado é a mesma do CEP? (todas as palavras do nome, ignorando "Rua", "Avenida", "de"… e uma letra de diferença) */
 export function sameStreet(a, b) {
   const wa = streetWords(a)
-  const wb = new Set(streetWords(b))
-  return wa.length > 0 && wa.every((w) => wb.has(w))
+  const wb = streetWords(b)
+  return wa.length > 0 && wa.every((w) => wb.some((x) => oneEdit(w, x)))
+}
+/** Quanto o bairro do resultado combina com o bairro do CEP (0 a 1). */
+export function districtScore(cepDistrict, hitDistrict) {
+  const wa = streetWords(cepDistrict)
+  const wb = streetWords(hitDistrict)
+  if (!wa.length || !wb.length) return 0
+  return wa.filter((w) => wb.some((x) => oneEdit(w, x))).length / wa.length
 }
 export const sameCity = (a, b) => !!a && !!b && norm(a).trim() === norm(b).trim()
 
@@ -188,7 +211,11 @@ export const sameCity = (a, b) => !!a && !!b && norm(a).trim() === norm(b).trim(
  *   'cep'    — só a coordenada do próprio CEP (pode ser o centro da cidade: aproximado).
  */
 export function locateCep(c, n, hits) {
+  // A mesma rua pode existir em mais de um bairro (ex.: duas "Rua Beija-Flor" em Jundiaí): o bairro do CEP decide.
   const ok = hits.filter((h) => h && h.lat != null && sameCity(h._city, c.city) && c.street && sameStreet(c.street, h._street))
+    .map((h, i) => ({ h, i, d: districtScore(c.district, h._district) }))
+    .sort((x, y) => y.d - x.d || x.i - y.i)
+    .map((x) => x.h)
   const exact = ok.find((h) => h.precision === 'numero' && n && String(h._hn).split(/[^0-9]/)[0] === String(n))
   if (exact) return { lat: exact.lat, lon: exact.lon, precision: 'numero' }
   const street = ok.find((h) => ['rua', 'numero', 'local'].includes(h.precision))

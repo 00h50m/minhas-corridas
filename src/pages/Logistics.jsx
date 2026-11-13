@@ -3,14 +3,14 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
-import { PROVIDER_LABEL, computeRoute, geocode, routeCapabilities } from '../services/routing.js'
+import { PROVIDER_LABEL, computeRoute, geocode, locateMe, routeAlternatives, routeCapabilities } from '../services/routing.js'
 import { PRECISION_LABEL, isPrecise, precisionLabel } from '../lib/geo.js'
 import PlaceField from '../components/PlaceField.jsx'
 import { firstName } from '../lib/people.js'
 import Pickups from '../components/Pickups.jsx'
-import { TopBar, useUI } from '../components/ui.jsx'
-import { IconExternal, IconInfo, IconPin, IconPlus, IconX } from '../components/Icons.jsx'
-import { FUELS, costItems, destinationPlace, fuelCost, kitPlace, navLinks, normalizeLogistics, pointsKey, raceSchedule, tripOf, tripPoints, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
+import { Sheet, TopBar, useUI } from '../components/ui.jsx'
+import { IconEdit, IconExternal, IconInfo, IconPin, IconPlus, IconX } from '../components/Icons.jsx'
+import { FUELS, PART_KEYS, costItems, destinationPlace, fuelCost, kitPlace, legKey, navLinks, normalizeChoice, normalizeLogistics, partsToQuery, raceSchedule, routeKey, tripChoices, tripOf, tripPoints, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
 import { PREP_FIELDS, minToHm, normalizePrep, returnSchedule } from '../lib/schedule.js'
 import { raceKitSchedule } from '../lib/logistics.js'
 import { formatDateBR } from '../lib/dates.js'
@@ -20,6 +20,7 @@ import { buildICS } from '../lib/ics.js'
 import Timeline from '../components/Timeline.jsx'
 
 const RouteMap = lazy(() => import('../components/RouteMap.jsx'))
+const PointPicker = lazy(() => import('../components/RouteMap.jsx').then((m) => ({ default: m.PointPicker })))
 export const logisticsMemo = { tab: 'ida' }
 const TABS = [
   { id: 'ida', label: 'Ida' },
@@ -125,12 +126,13 @@ function TripPanel({ which, race: r, log, update, cap }) {
     setErr(null)
     setBusy(true)
     try {
-      const res = await computeRoute(s.points, departureAt())
+      // Cada trecho com o caminho escolhido (padrão: mais rápido); pontos de passagem não são paradas.
+      const res = await computeRoute(s.points, departureAt(), s.choices.map((c) => (c ? { preference: c.preference, avoid: c.avoid, vias: c.vias } : null)))
       if (my !== seq.current) return
       failedKey.current = null
       update((l, fresh) => {
-        // Os pontos mudaram enquanto calculava: esta resposta já não vale.
-        if (pointsKey(tripPoints(fresh, l, which)) !== key) return
+        // Os pontos (ou os caminhos escolhidos) mudaram enquanto calculava: esta resposta já não vale.
+        if (tripSummary(fresh, l, which).routeKey !== key) return
         l[tripKey].route = { ...res, key }
         // Guarda as coordenadas devolvidas nos pontos ainda sem verificação.
         const coords = res.points ?? []
@@ -197,7 +199,38 @@ function TripPanel({ which, race: r, log, update, cap }) {
     else notify(`${found.length} ${found.length === 1 ? 'endereço localizado' : 'endereços localizados'} de novo`)
   }
 
-  const saveManual = (legs) => update((l) => { l[tripKey].route = { provider: 'manual', legs, key: pointsKey(s.points), fetchedAt: new Date().toISOString() } })
+  const saveManual = (legs) => update((l) => { l[tripKey].route = { provider: 'manual', legs, key: s.key, fetchedAt: new Date().toISOString() } })
+
+  // Trecho em destaque no mapa, trecho com o seletor de caminho aberto e parada em edição.
+  const [legSel, setLegSel] = useState(null)
+  const [pickLeg, setPickLeg] = useState(null)
+  const [editStop, setEditStop] = useState(null)
+  const mapRef = useRef(null)
+  const showLeg = (i) => { setLegSel(i); mapRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) }
+  /** Guarda o caminho escolhido para o trecho i e, se a rota atual estiver em dia, troca só esse trecho (sem nova consulta). */
+  const applyChoice = (i, option) => {
+    const a = s.points[i]
+    const b = s.points[i + 1]
+    const c = normalizeChoice({ ...option.choice, label: option.label })
+    update((l, fresh) => {
+      const before = tripSummary(fresh, l, which)
+      const t = l[tripKey]
+      t.legChoices = { ...(t.legChoices ?? {}) }
+      if (c) t.legChoices[legKey(a, b)] = c
+      else delete t.legChoices[legKey(a, b)]
+      if (before.complete && t.route) {
+        const pts = tripPoints(fresh, l, which)
+        const legs = [...t.route.legs]
+        legs[i] = { distanceKm: option.distanceKm, durationMin: option.durationMin, trafficMin: null, distanceM: option.distanceM, durationSec: option.durationSec, polyline: option.polyline, roads: option.roads }
+        t.route = { ...t.route, legs, key: routeKey(pts, tripChoices(t, pts)), polyline: legs.every((x) => x.polyline) ? '' : t.route.polyline }
+      }
+    })
+    setPickLeg(null)
+    setLegSel(i)
+    notify(`Caminho de ${a.label || 'Saída'} → ${b.label || 'Destino'}: ${option.label}`)
+  }
+  const stopIdAt = (i) => (editableStops && s.points[i]?.role === 'stop' ? s.points[i].id : null)
+  const times = which === 'ida' && s.complete ? legTimes(schedule, s) : null
   const links = s.points.length >= 2 ? navLinks(s.points) : null
   const coordsForMap = s.route?.points?.length ? s.route.points : s.points.every((p) => p.lat != null) ? s.points.map((p) => ({ lat: p.lat, lon: p.lon })) : []
   const ret = which === 'volta' && s.complete ? returnSchedule({ departTime: log.back.departTime, legs: s.legs, stops: s.points.filter((p) => p.role === 'stop'), trafficExtraPct: normalizePrep(log.prep ?? getProfile().data.prep).trafficExtraPct }) : null
@@ -248,7 +281,7 @@ function TripPanel({ which, race: r, log, update, cap }) {
 
             <div className="list-group-title">Paradas</div>
             {editableStops ? (
-              <StopsEditor stops={editableStops} setStops={setStops} cap={cap} />
+              <StopsEditor stops={editableStops} setStops={setStops} cap={cap} onEdit={setEditStop} />
             ) : (
               <p className="small muted" style={{ margin: '4px 0 10px' }}>{log.outbound.stops.length ? `As mesmas da ida, ao contrário: ${[...log.outbound.stops].reverse().map((x) => x.label || x.address).join(' → ')}.` : 'Sem paradas na ida.'}</p>
             )}
@@ -283,7 +316,7 @@ function TripPanel({ which, race: r, log, update, cap }) {
               {s.stale && !s.invalid && !busy && <div className="alert alert-warn small" style={{ marginBottom: 10 }}><div>Os endereços ou a ordem mudaram desde o último cálculo.{cap?.provider ? ' A rota será recalculada.' : ' Informe os trechos de novo.'}</div></div>}
               {s.complete ? (
                 <>
-                  <LegsTable points={s.points} legs={s.legs} />
+                  <LegsTable s={s} selected={legSel} onShow={showLeg} onPick={cap?.provider === 'ors' ? setPickLeg : null} />
                   <div className="route-total">
                     <b>{formatKm(s.distanceKm)}</b>
                     <span>{minLabel(s.trafficMin ?? s.durationMin)} dirigindo{s.trafficMin != null ? ' com trânsito previsto' : ''}</span>
@@ -313,10 +346,28 @@ function TripPanel({ which, race: r, log, update, cap }) {
 
           {coordsForMap.length >= 2 && (
             <Suspense fallback={<div className="route-map placeholder" />}>
-              <RouteMap polyline={s.route?.polyline} points={coordsForMap} labels={s.points.map((p) => p.label)} />
+              <div ref={mapRef}>
+                <RouteMap polyline={s.route?.polyline} points={coordsForMap} labels={s.points.map((p) => p.label || (p.role === 'origin' ? 'Saída' : 'Destino'))} legs={s.complete && s.legs.some((l) => l.polyline) ? s.legs : null} selected={legSel} onMarker={(i) => stopIdAt(i) && setEditStop(stopIdAt(i))} />
+                {legSel != null && s.complete && (
+                  <div className="map-leg-info small" data-testid="map-leg-info">
+                    <b>{s.points[legSel].label || 'Saída'} → {s.points[legSel + 1].label || 'Destino'}</b> · {formatKm(s.legKm[legSel])} · {s.legMin[legSel]} min
+                    <button type="button" className="link-btn" onClick={() => setLegSel(null)}>Ver a rota inteira</button>
+                  </div>
+                )}
+              </div>
             </Suspense>
           )}
           {s.complete && coordsForMap.length < 2 && <p className="note">O mapa aparece quando os endereços são verificados ou a rota é calculada pelo serviço de mapas.</p>}
+
+          {times && <TripTimes times={times} provider={s.route?.provider} />}
+          {pickLeg != null && s.points[pickLeg + 1] && (
+            <RoutePicker a={s.points[pickLeg]} b={s.points[pickLeg + 1]} current={s.complete ? { ...s.legs[pickLeg], choice: s.choices[pickLeg] } : null} onClose={() => setPickLeg(null)} onApply={(o) => applyChoice(pickLeg, o)} />
+          )}
+          {editStop && editableStops?.some((x) => x.id === editStop) && (
+            <StopEditSheet stop={editableStops.find((x) => x.id === editStop)} cap={cap} near={s.points[0]} onClose={() => setEditStop(null)}
+              onSave={(st) => { setStops((list) => list.map((x) => (x.id === st.id ? st : x))); setEditStop(null); notify('Parada atualizada') }}
+              onDelete={() => { setStops((list) => list.filter((x) => x.id !== editStop)); setEditStop(null); notify('Parada excluída') }} />
+          )}
 
           {links && (
             <div className="nav-links">
@@ -333,7 +384,7 @@ function TripPanel({ which, race: r, log, update, cap }) {
   )
 }
 
-function StopsEditor({ stops, setStops, cap }) {
+function StopsEditor({ stops, setStops, cap, onEdit }) {
   const prof = useProfile()
   const { people, favorites: places } = prof.data
   const [adding, setAdding] = useState(false)
@@ -352,14 +403,33 @@ function StopsEditor({ stops, setStops, cap }) {
     else setPickFor(pe)
   }
   const move = (i, d) => setStops((list) => { const a = [...list]; const [x] = a.splice(i, 1); a.splice(i + d, 0, x); return a })
+  // Arrastar e soltar pela alça (funciona com o dedo): a ordem definida por você é a referência.
+  const listRef = useRef(null)
+  const [drag, setDrag] = useState(null) // { from, over }
+  const onHandleDown = (i) => (e) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    setDrag({ from: i, over: i })
+  }
+  const onHandleMove = (e) => {
+    if (!drag) return
+    const items = [...(listRef.current?.querySelectorAll(':scope > li') ?? [])]
+    const over = items.findIndex((li) => { const r = li.getBoundingClientRect(); return e.clientY >= r.top && e.clientY <= r.bottom })
+    if (over >= 0 && over !== drag.over) setDrag({ ...drag, over })
+  }
+  const onHandleUp = () => {
+    if (drag && drag.over !== drag.from) move(drag.from, drag.over - drag.from)
+    setDrag(null)
+  }
   return (
     <>
-      <ol className="stops" data-testid="stops">
+      <ol className="stops" data-testid="stops" ref={listRef}>
         {stops.map((st, i) => (
-          <li key={st.id}>
+          <li key={st.id} className={drag?.over === i && drag.from !== i ? 'drop-here' : drag?.from === i ? 'dragging' : ''}>
+            <button type="button" className="drag-handle" aria-label={`Arrastar ${st.label || 'parada'} para mudar a ordem`} onPointerDown={onHandleDown(i)} onPointerMove={onHandleMove} onPointerUp={onHandleUp} onPointerCancel={() => setDrag(null)}>⠿</button>
             <div className="st-main">
               <b>{i + 1}. {st.label || 'Parada'}</b>
-              <span className="muted small">{isPrecise(st) ? '✓ ' : st.lat != null ? '≈ ' : ''}{st.formatted || st.address}{st.lat != null && !isPrecise(st) ? ' (aproximado)' : ''}</span>
+              <span className="muted small">{isPrecise(st) ? '✓ ' : st.lat != null ? '≈ ' : ''}{st.formatted || st.address}{st.lat != null && !isPrecise(st) ? ' (aproximado)' : ''}{st.reference ? ` · ${st.reference}` : ''}</span>
             </div>
             <label className="st-dwell">
               <MinutesInput value={st.dwellMin} max={600} label={`Minutos em ${st.label || 'parada'}`} onChange={(v) => setStops((list) => list.map((x) => (x.id === st.id ? { ...x, dwellMin: v } : x)))} />
@@ -368,6 +438,7 @@ function StopsEditor({ stops, setStops, cap }) {
             <div className="st-actions">
               <button type="button" className="icon-btn" aria-label="Subir" disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
               <button type="button" className="icon-btn" aria-label="Descer" disabled={i === stops.length - 1} onClick={() => move(i, 1)}>↓</button>
+              {onEdit && <button type="button" className="icon-btn" aria-label={`Editar ${st.label || 'parada'}`} onClick={() => onEdit(st.id)} data-testid="stop-edit-btn"><IconEdit /></button>}
               <button type="button" className="icon-btn" aria-label={`Remover ${st.label}`} onClick={() => setStops((list) => list.filter((x) => x.id !== st.id))}><IconX /></button>
             </div>
           </li>
@@ -452,20 +523,305 @@ function KitDestinationField({ race: r, log, update, cap }) {
   )
 }
 
-function LegsTable({ points, legs }) {
+const PRECISE_TXT = (p) => (p.precision === 'manual' ? '✓ ponto marcado por você' : p.precision === 'gps' ? '✓ localização do GPS' : isPrecise(p) ? '✓ localização confirmada' : p.lat != null ? `≈ ${precisionLabel(p)}` : 'sem localização')
+const AVOID_TXT = { highways: 'evitar rodovias', tollways: 'evitar pedágios' }
+const choiceText = (c) => (!c ? 'Mais rápida' : c.label || [c.preference === 'shortest' ? 'Menor distância' : null, ...c.avoid.map((a) => AVOID_TXT[a])].filter(Boolean).join(', '))
+
+/** Trechos: compacto por padrão (nome → nome, km, min); tocar abre os detalhes e as ações. */
+function LegsTable({ s, selected, onShow, onPick }) {
+  const [open, setOpen] = useState(null)
+  const { points, legs, legKm, legMin, choices } = s
   return (
-    <table className="legs" data-testid="legs">
-      <thead><tr><th scope="col">Trecho</th><th scope="col">km</th><th scope="col">Tempo</th></tr></thead>
-      <tbody>
-        {legs.map((l, i) => (
-          <tr key={i}>
-            <th scope="row">{points[i].label || 'Saída'} → {points[i + 1].label || 'Destino'}</th>
-            <td>{formatKm(l.distanceKm, { unit: false })}</td>
-            <td>{l.trafficMin != null && l.trafficMin !== l.durationMin ? <><b>{l.trafficMin}</b> <span className="muted">({l.durationMin})</span></> : l.durationMin} min</td>
-          </tr>
+    <div className="legs-list" data-testid="legs" role="list">
+      <div className="legs-head" aria-hidden="true"><span>Trecho</span><span>km</span><span>Tempo</span></div>
+      {legs.map((l, i) => {
+        const a = points[i]
+        const b = points[i + 1]
+        const isOpen = open === i
+        const traffic = l.trafficMin != null && l.trafficMin !== l.durationMin
+        return (
+          <div key={i} className={`leg-row${isOpen ? ' open' : ''}${selected === i ? ' sel' : ''}`} role="listitem" data-testid="leg">
+            <button type="button" className="leg-main" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : i)}>
+              <span className="leg-name">{a.label || 'Saída'} → {b.label || 'Destino'}{choices[i] && <span className="leg-tag">{choiceText(choices[i])}</span>}</span>
+              <span className="leg-km">{formatKm(legKm[i], { unit: false })}</span>
+              <span className="leg-min">{traffic ? <><b>{l.trafficMin}</b> <span className="muted">({legMin[i]})</span></> : legMin[i]} min</span>
+            </button>
+            {isOpen && (
+              <div className="leg-detail small" data-testid="leg-detail">
+                <div><span className="muted">Caminho:</span> {choiceText(choices[i])}{choices[i]?.vias?.length ? ` · ${choices[i].vias.length} ${choices[i].vias.length === 1 ? 'ponto' : 'pontos'} de passagem` : ''}</div>
+                {l.roads?.length > 0 && <div><span className="muted">Principais vias:</span> {l.roads.join(' · ')}</div>}
+                <div><span className="muted">{a.label || 'Saída'}:</span> {PRECISE_TXT(a)}</div>
+                <div><span className="muted">{b.label || 'Destino'}:</span> {PRECISE_TXT(b)}</div>
+                <div className="btn-inline">
+                  <button type="button" className="link-btn" onClick={() => onShow(i)}>Ver no mapa</button>
+                  {onPick && <button type="button" className="link-btn" onClick={() => onPick(i)} data-testid="leg-pick">Alterar caminho</button>}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+const diffTxt = (d, unit, fmt = (x) => x) => (Math.abs(d) < (unit === 'km' ? 0.05 : 1) ? 'igual' : `${d > 0 ? '+' : '−'}${fmt(Math.abs(d))} ${unit}`)
+
+/**
+ * Caminhos para um trecho: os que o serviço calcular (mais rápida, menor distância, evitar rodovias,
+ * evitar pedágios, alternativas) e o personalizado por pontos de passagem tocados no mapa.
+ */
+function RoutePicker({ a, b, current, onClose, onApply }) {
+  const [options, setOptions] = useState(null)
+  const [err, setErr] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [chosen, setChosen] = useState(null)
+  const [vias, setVias] = useState(() => current?.choice?.vias ?? [])
+  const [custom, setCustom] = useState(false)
+  const seq = useRef(0)
+  const load = async (v = vias) => {
+    const my = ++seq.current
+    setBusy(true)
+    setErr(null)
+    try {
+      const list = await routeAlternatives(a, b, v)
+      if (my !== seq.current) return
+      setOptions(list)
+      setChosen((c) => (v.length && list.some((o) => o.id === 'custom') ? 'custom' : c ?? list[0]?.id ?? null))
+    } catch (e) {
+      if (my === seq.current) setErr(e.message)
+    } finally {
+      if (my === seq.current) setBusy(false)
+    }
+  }
+  useEffect(() => { load() }, [])
+  const opt = options?.find((o) => o.id === chosen)
+  const fmtKm = (x) => String(Math.round(x * 100) / 100).replace('.', ',')
+  return (
+    <Sheet title={`${a.label || 'Saída'} → ${b.label || 'Destino'}`} onClose={onClose}>
+      <div data-testid="route-picker">
+        <p className="muted small" style={{ marginTop: 0 }}>Escolha o caminho deste trecho. Só aparecem as opções que o serviço de mapas conseguiu calcular; “evitar rodovias” é uma preferência, não uma garantia.</p>
+        {busy && <p className="small" data-testid="picker-busy">Calculando caminhos…</p>}
+        {err && <div className="alert alert-error small" role="alert"><div>{err}</div></div>}
+        {options && (
+          <ul className="route-options" aria-label="Caminhos possíveis">
+            {options.map((o) => {
+              const dKm = current?.distanceM != null ? (o.distanceM - current.distanceM) / 1000 : null
+              const dMin = current?.durationSec != null ? (o.durationSec - current.durationSec) / 60 : null
+              return (
+                <li key={o.id}>
+                  <button type="button" className={`route-option${chosen === o.id ? ' on' : ''}`} aria-pressed={chosen === o.id} onClick={() => setChosen(o.id)} data-testid={`opt-${o.id}`}>
+                    <span className="ro-top"><b>{o.label}</b>{o.also?.length ? <span className="muted"> = {o.also.join(', ')}</span> : null}</span>
+                    <span className="ro-val">{fmtKm(o.distanceM / 1000)} km · {Math.round(o.durationSec / 60)} min</span>
+                    {o.roads?.length > 0 && <span className="ro-roads muted">{o.roads.join(' · ')}</span>}
+                    {dKm != null && <span className="ro-diff">vs. atual: {diffTxt(dKm, 'km', fmtKm)} · {diffTxt(dMin, 'min', Math.round)}</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {options?.length > 0 && (
+          <Suspense fallback={<div className="route-map placeholder" />}>
+            <RouteMap points={[a, b]} labels={[a.label || 'Saída', b.label || 'Destino']} alternatives={options} altSelected={chosen} vias={custom ? vias : null}
+              onMapClick={custom ? (lat, lon) => setVias((v) => (v.length >= 5 ? v : [...v, { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 }])) : null}
+              onViaMove={custom ? (i, lat, lon) => setVias((v) => v.map((x, k) => (k === i ? { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6 } : x))) : null}
+              height={260} testid="picker-map" />
+          </Suspense>
+        )}
+        <div className="card custom-route" style={{ marginTop: 10 }}>
+          {!custom ? (
+            <button type="button" className="link-btn" onClick={() => setCustom(true)} data-testid="custom-start">+ Rota personalizada (pontos de passagem)</button>
+          ) : (
+            <>
+              <b className="small">Rota personalizada</b>
+              <p className="muted small" style={{ margin: '4px 0 8px' }}>Toque no mapa por onde você quer passar (ex.: na Av. Guilherme Porcari). Pontos de passagem só orientam o caminho: não são paradas e não somam tempo de permanência. Arraste para ajustar.</p>
+              {vias.length === 0 && <p className="small muted">Nenhum ponto ainda.</p>}
+              <ol className="via-list">
+                {vias.map((v, i) => <li key={i}><span>Ponto {i + 1}: {v.lat.toFixed(5)}, {v.lon.toFixed(5)}</span> <button type="button" className="link-btn muted-btn" onClick={() => setVias((x) => x.filter((_, k) => k !== i))}>Remover</button></li>)}
+              </ol>
+              <button type="button" className="btn btn-block" disabled={!vias.length || busy} onClick={() => load(vias)} data-testid="custom-calc">{busy ? 'Calculando…' : 'Calcular por esses pontos'}</button>
+            </>
+          )}
+        </div>
+        <div className="btn-row" style={{ marginTop: 12 }}>
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn btn-primary" disabled={!opt} onClick={() => onApply(opt)} data-testid="picker-apply">Usar este caminho</button>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
+
+/** Horários do trajeto da ida (a partir da agenda): sair de casa, chegar e sair de cada parada, chegar ao destino. */
+function legTimes(schedule, s) {
+  if (!schedule) return null
+  const out = [{ key: 'sair', label: `Sair de ${s.points[0].label || 'casa'}`, at: schedule.depart }]
+  s.points.slice(1, -1).forEach((p, i) => {
+    const it = schedule.items.find((x) => x.key === `parada-${i}`)
+    if (it) out.push({ key: `p${i}`, label: p.label || `Parada ${i + 1}`, at: it.at, leave: it.leaveAt })
+  })
+  const park = schedule.items.find((x) => x.key === 'estacionar')
+  if (park) out.push({ key: 'dest', label: `Chegar a ${s.points.at(-1).label || 'destino'}`, at: park.at })
+  return { list: out, buffer: schedule.prep.bufferMin, arrival: schedule.arrivalTarget, noTraffic: schedule.noTraffic }
+}
+
+function TripTimes({ times, provider }) {
+  return (
+    <div className="card trip-times" data-testid="trip-times" style={{ marginTop: 12 }}>
+      <div className="section-sub"><b>Horários do trajeto</b></div>
+      <ol className="tt-list">
+        {times.list.map((t) => (
+          <li key={t.key}>
+            <span className="tt-at">{minToHm(t.at)}</span>
+            <span className="tt-what">{t.label}{t.leave != null && <span className="muted"> · sair {minToHm(t.leave)}</span>}</span>
+          </li>
         ))}
-      </tbody>
-    </table>
+      </ol>
+      <p className="note" style={{ marginBottom: 0 }}>
+        Saída = chegada desejada ({minToHm(times.arrival)}) − direção − paradas − margem ({times.buffer} min). {provider === 'ors' || times.noTraffic ? 'Tempos sem trânsito (o OpenRouteService não prevê trânsito).' : 'Com trânsito previsto pelo Google para o horário.'} Ajuste a chegada e a margem na aba Agenda.
+      </p>
+    </div>
+  )
+}
+
+/** Edição completa de uma parada: mantém o id e a posição; só busca de novo se o endereço mudar. */
+function StopEditSheet({ stop, cap, near, onClose, onSave, onDelete }) {
+  const { confirm } = useUI()
+  const init = useMemo(() => ({
+    label: stop.label || '',
+    dwellMin: stop.dwellMin ?? 5,
+    reference: stop.reference || '',
+    parts: { street: '', number: '', complement: '', district: '', city: '', cep: '', ...(stop.parts ?? {}) },
+    place: { address: stop.address, formatted: stop.formatted, lat: stop.lat, lon: stop.lon, precision: stop.precision }
+  }), [stop.id])
+  const [f, setF] = useState(init)
+  const [results, setResults] = useState(null)
+  const [busy, setBusy] = useState(null)
+  const [err, setErr] = useState(null)
+  const [mapOpen, setMapOpen] = useState(false)
+  const [latTxt, setLatTxt] = useState(stop.lat != null ? String(stop.lat) : '')
+  const [lonTxt, setLonTxt] = useState(stop.lon != null ? String(stop.lon) : '')
+  const dirty = JSON.stringify(f) !== JSON.stringify(init)
+  const setPart = (k, v) => setF((x) => ({ ...x, parts: { ...x.parts, [k]: v } }))
+  const setPoint = (lat, lon, precision = 'manual') => {
+    const la = Math.round(lat * 1e6) / 1e6
+    const lo = Math.round(lon * 1e6) / 1e6
+    setLatTxt(String(la))
+    setLonTxt(String(lo))
+    setF((x) => ({ ...x, place: { ...x.place, lat: la, lon: lo, precision } }))
+  }
+  const typedQuery = partsToQuery(f.parts) || f.place.address
+  const search = async () => {
+    setErr(null)
+    if (typedQuery.trim().length < 5) return setErr('Preencha a rua e a cidade (ou o CEP).')
+    setBusy('busca')
+    try {
+      const list = await geocode(typedQuery, { near })
+      setResults(list)
+      if (!list.length) setErr('Não encontrei. Confira a rua e a cidade, ou marque o ponto no mapa.')
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(null)
+    }
+  }
+  const pick = (g) => {
+    setF((x) => ({ ...x, place: { address: partsToQuery(x.parts) || g.formatted, formatted: g.formatted, lat: g.lat, lon: g.lon, precision: g.precision || (g.partial ? 'area' : 'numero') } }))
+    setLatTxt(String(g.lat))
+    setLonTxt(String(g.lon))
+    setResults(null)
+  }
+  const useHere = async () => {
+    setErr(null)
+    setBusy('local')
+    try {
+      const g = await locateMe()
+      setF((x) => ({ ...x, place: { ...x.place, formatted: g.formatted || x.place.formatted, lat: g.lat, lon: g.lon, precision: 'gps' } }))
+      setLatTxt(String(g.lat))
+      setLonTxt(String(g.lon))
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(null)
+    }
+  }
+  const typeCoord = (which, v) => {
+    if (which === 'lat') setLatTxt(v)
+    else setLonTxt(v)
+    const la = Number(String(which === 'lat' ? v : latTxt).replace(',', '.'))
+    const lo = Number(String(which === 'lon' ? v : lonTxt).replace(',', '.'))
+    if (la >= -34 && la <= 5.4 && lo >= -74 && lo <= -34.7) setF((x) => ({ ...x, place: { ...x.place, lat: la, lon: lo, precision: 'manual' } }))
+  }
+  const save = () => {
+    if (!f.label.trim()) return setErr('Dê um nome à parada (ex.: Dani).')
+    if (!f.place.address && !typedQuery) return setErr('Informe o endereço.')
+    const parts = Object.fromEntries(Object.entries(f.parts).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v))
+    onSave({ ...stop, label: f.label.trim(), dwellMin: f.dwellMin, reference: f.reference.trim(), parts, ...f.place, address: f.place.address || typedQuery })
+  }
+  const cancel = async () => {
+    if (dirty && !(await confirm({ title: 'Descartar alterações?', message: 'As mudanças nesta parada não foram salvas.', confirmLabel: 'Descartar' }))) return
+    onClose()
+  }
+  const remove = async () => {
+    if (await confirm({ title: `Excluir ${stop.label || 'a parada'}?`, message: 'A parada sai deste trajeto. A rota será recalculada.', confirmLabel: 'Excluir', danger: true })) onDelete()
+  }
+  const P = (k, label, o = {}) => (
+    <div className="field" style={o.style}><label htmlFor={`se-${k}`}>{label}</label><input id={`se-${k}`} className="input" value={f.parts[k]} onChange={(e) => setPart(k, e.target.value)} {...o.input} /></div>
+  )
+  return (
+    <Sheet title="Editar parada" onClose={cancel}>
+      <div className="stop-edit" data-testid="stop-edit">
+        {dirty && <div className="unsaved small" role="status" data-testid="unsaved">Alterações não salvas</div>}
+        <div className="grid-2-1">
+          <div className="field"><label htmlFor="se-label">Nome da parada</label><input id="se-label" className="input" value={f.label} onChange={(e) => setF((x) => ({ ...x, label: e.target.value }))} maxLength={60} /></div>
+          <div className="field"><label htmlFor="se-dwell">Permanência</label><MinutesInput value={f.dwellMin} max={600} label="Minutos de permanência" onChange={(v) => setF((x) => ({ ...x, dwellMin: v }))} /></div>
+        </div>
+        <div className="list-group-title">Endereço</div>
+        <p className="small" style={{ margin: '0 0 6px' }}>Atual: {f.place.formatted || f.place.address} <span className={isPrecise(f.place) ? 'delta-good' : 'place-approx'}>({PRECISE_TXT(f.place)})</span></p>
+        <div className="grid-2-1">
+          {P('street', 'Rua', { input: { placeholder: 'Ex.: Rua Beija-Flor' } })}
+          {P('number', 'Número', { input: { inputMode: 'numeric', placeholder: '250' } })}
+        </div>
+        <div className="grid-2">
+          {P('complement', 'Complemento')}
+          {P('district', 'Bairro')}
+        </div>
+        <div className="grid-2">
+          {P('city', 'Cidade', { input: { placeholder: 'Jundiaí' } })}
+          {P('cep', 'CEP', { input: { inputMode: 'numeric', placeholder: '13212-812' } })}
+        </div>
+        <div className="field"><label htmlFor="se-ref">Ponto de referência <span className="opt">opcional</span></label><input id="se-ref" className="input" value={f.reference} onChange={(e) => setF((x) => ({ ...x, reference: e.target.value }))} maxLength={120} placeholder="Ex.: portão azul, em frente à padaria" /></div>
+        <div className="btn-inline">
+          <button type="button" className="btn btn-dark" disabled={!!busy} onClick={search} data-testid="se-search">{busy === 'busca' ? 'Buscando…' : 'Buscar endereço'}</button>
+          <button type="button" className="link-btn" onClick={() => setMapOpen((v) => !v)} data-testid="se-map">{mapOpen ? 'Fechar mapa' : 'Localizar no mapa'}</button>
+          <button type="button" className="link-btn" disabled={!!busy} onClick={useHere}>{busy === 'local' ? 'Localizando…' : '📍 Usar minha localização'}</button>
+        </div>
+        {err && <div className="err" role="alert">{err}</div>}
+        {results?.length > 0 && (
+          <ul className="geo-results" aria-label="Endereços encontrados">
+            {results.map((g, i) => (
+              <li key={i}><button type="button" onClick={() => pick(g)}>{g.formatted}<span className="geo-tags">{g.partial && <span>aproximado{PRECISION_LABEL[g.precision] ? `: ${PRECISION_LABEL[g.precision]}` : ''}</span>}</span></button></li>
+            ))}
+          </ul>
+        )}
+        {mapOpen && (
+          <Suspense fallback={<div className="route-map placeholder" />}>
+            <p className="small muted" style={{ margin: '8px 0 4px' }}>Arraste o marcador (ou toque no mapa) até o local exato. O ponto passa a valer como “marcado por você”.</p>
+            <PointPicker point={f.place.lat != null ? { lat: f.place.lat, lon: f.place.lon } : null} around={near} onChange={(lat, lon) => setPoint(lat, lon)} />
+          </Suspense>
+        )}
+        <div className="grid-2" style={{ marginTop: 8 }}>
+          <div className="field"><label htmlFor="se-lat">Latitude</label><input id="se-lat" className="input" inputMode="decimal" value={latTxt} onChange={(e) => typeCoord('lat', e.target.value)} placeholder="-23.19992" /></div>
+          <div className="field"><label htmlFor="se-lon">Longitude</label><input id="se-lon" className="input" inputMode="decimal" value={lonTxt} onChange={(e) => typeCoord('lon', e.target.value)} placeholder="-47.00953" /></div>
+        </div>
+        <div className="btn-row" style={{ marginTop: 10 }}>
+          <button type="button" className="btn" onClick={cancel}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={save} data-testid="se-save">Salvar alterações</button>
+        </div>
+        <button type="button" className="link-btn muted-btn" style={{ marginTop: 8 }} onClick={remove}>Excluir parada</button>
+      </div>
+    </Sheet>
   )
 }
 

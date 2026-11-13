@@ -93,7 +93,7 @@ describe('rota no OpenRouteService: 5 pontos, 4 trechos, na ordem', () => {
     expect(JSON.parse(init.body).coordinates).toEqual(pts.map((p) => [p.lon, p.lat]))
     expect(init.headers.authorization).toBe('K')
     expect(JSON.stringify(r.body)).not.toContain('"K"')
-    expect(r.body.legs).toEqual([
+    expect(r.body.legs).toMatchObject([
       { distanceKm: 2.87, durationMin: 7, trafficMin: null, distanceM: 2873, durationSec: 402 },
       { distanceKm: 5.12, durationMin: 9, trafficMin: null, distanceM: 5121, durationSec: 512 },
       { distanceKm: 3.3, durationMin: 6, trafficMin: null, distanceM: 3304, durationSec: 378 },

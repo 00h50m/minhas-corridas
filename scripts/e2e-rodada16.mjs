@@ -21,7 +21,7 @@ const T = () => p.evaluate(() => document.body.innerText.replace(/ /g, ' '))
 const need = async (s) => { const t = await T(); if (!t.toLowerCase().includes(s.toLowerCase())) throw new Error(`Esperava "${s}"\n---\n${t.slice(0, 2500)}`) }
 const waitText = (s, timeout = 8000) => p.waitForFunction((s) => document.body.innerText.replace(/ /g, ' ').toLowerCase().includes(s.toLowerCase()), { timeout }, s)
 const typeIn = async (sel, v) => { await p.$eval(sel, (el) => { Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set.call(el, ''); el.dispatchEvent(new Event('input', { bubbles: true })) }); await p.type(sel, v) }
-const legRows = () => p.$$eval('[data-testid=legs] tbody tr', (trs) => trs.map((tr) => tr.innerText.replace(/\s+/g, ' ').trim()))
+const legRows = () => p.$$eval('[data-testid=leg] .leg-main', (bs) => bs.map((b) => [...b.children].map((c) => c.innerText.replace(/\s+/g, ' ').trim()).join(' ')))
 const stored = () => p.evaluate(() => JSON.parse(localStorage.getItem('minhas-corridas:v1')).races[0].logistics)
 
 // Endereços → coordenadas confirmadas (fictícias, distintas)
@@ -122,7 +122,7 @@ await p.evaluate(() => [...document.querySelectorAll('[data-testid=destination-f
 await p.waitForSelector('[data-testid=destination-fix] .geo-results button')
 await p.$eval('[data-testid=destination-fix] .geo-results button', (b) => b.click())
 await p.waitForFunction(() => !document.querySelector('[data-testid=approx]'))
-await p.waitForFunction((n) => document.querySelectorAll('[data-testid=legs] tbody tr').length === 4 && window.__n !== n, {}, posts.length)
+await p.waitForFunction((n) => document.querySelectorAll('[data-testid=leg]').length === 4 && window.__n !== n, {}, posts.length)
 await wait(800)
 if (posts.length !== 2 || posts[1][4].lat !== -23.04512) throw new Error('Não recalculou com o ponto exato do destino: ' + JSON.stringify(posts.at(-1)))
 ok('Destino “Avenida Indústrias, Vinhedo” marcado como aproximado; coordenadas coladas do mapa viram o ponto exato e a rota recalcula')

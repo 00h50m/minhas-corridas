@@ -146,11 +146,12 @@ async function orsRoute(points, cfg, fetchImpl) {
   const body = await getJson(fetchImpl, 'https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: cfg.key },
-    body: JSON.stringify({ coordinates: coords, language: 'pt', instructions: false })
+    // Não desligar as instruções: sem elas o ORS não devolve os trechos (segments).
+    body: JSON.stringify({ coordinates: coords, language: 'pt' })
   })
   const f = body.features?.[0]
   const segs = f?.properties?.segments
-  if (!segs?.length) throw fail(422, 'Não encontrei rota entre esses endereços.')
+  if (!segs?.length) throw fail(502, 'O serviço de rotas não devolveu os trechos da rota. Tente de novo.')
   if (segs.length !== coords.length - 1) throw fail(502, `O serviço de rotas devolveu ${segs.length} trechos para ${coords.length} pontos. Recalcule a rota.`)
   // Sem arredondar antes: metros e segundos brutos, conferidos com o total da própria resposta.
   const raw = segs.map((s) => ({ m: Number(s.distance) || 0, s: Number(s.duration) || 0 }))

@@ -29,6 +29,8 @@ export function collapsedPoints(points, minM = 30) {
 }
 
 /** O ponto tem localização confirmada (número na rua, ponto marcado ou endereço antigo já verificado)? */
-export const isPrecise = (p) => p?.lat != null && (p.precision == null || ['numero', 'ponto', 'gps', 'manual'].includes(p.precision))
+// Pontos salvos antes de existir a precisão (sem o campo) contam como NÃO confirmados.
+export const isPrecise = (p) => p?.lat != null && ['numero', 'ponto', 'gps', 'manual'].includes(p.precision)
 
-export const PRECISION_LABEL = { rua: 'só a rua, sem o número', cep: 'pela região do CEP', area: 'só o bairro ou a cidade' }
+export const PRECISION_LABEL = { rua: 'só a rua, sem o número', cep: 'pela região do CEP', area: 'só o bairro ou a cidade', local: 'um lugar com nome, não o endereço buscado' }
+export const precisionLabel = (p) => PRECISION_LABEL[p?.precision] || 'localização não confirmada'

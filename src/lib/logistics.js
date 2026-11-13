@@ -25,7 +25,7 @@ export function normalizePlace(raw) {
   const lat = num(raw.lat, -90, 90)
   const lon = num(raw.lon, -180, 180)
   const has = lat != null && lon != null
-  const precision = has && ['numero', 'rua', 'cep', 'area', 'ponto', 'gps', 'manual'].includes(raw.precision) ? raw.precision : null
+  const precision = has && ['numero', 'rua', 'cep', 'area', 'local', 'ponto', 'gps', 'manual'].includes(raw.precision) ? raw.precision : null
   return { label: str(raw.label, 60), address, formatted: str(raw.formatted, 240), lat: has ? lat : null, lon: has ? lon : null, ...(precision ? { precision } : {}) }
 }
 

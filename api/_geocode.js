@@ -63,8 +63,10 @@ function fromPhoton(f) {
   const named = p.name && p.name !== p.street ? p.name : null
   const head = named && street ? `${named} - ${street}` : named || street || ''
   const cityUf = [p.city || p.locality || p.county, uf(p.state)].filter(Boolean).join(' - ')
-  const precision = p.housenumber || ['house', 'building'].includes(p.type) ? 'numero' : p.type === 'street' ? 'rua' : 'area'
-  return { formatted: join(head, p.district || (p.city ? p.locality : null), cityUf, p.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: p.street || (p.type === 'street' ? p.name : ''), _city: p.city || p.locality || p.county || '', _hn: p.housenumber || '' }
+  // Lugar com nome e sem número (escola, prédio, condomínio): é um ponto exato DESSE lugar;
+  // só vale para o endereço buscado se o nome ou a rua baterem (conferido em geocodeAll).
+  const precision = p.housenumber ? 'numero' : ['house', 'building'].includes(p.type) ? 'local' : p.type === 'street' ? 'rua' : 'area'
+  return { formatted: join(head, p.district || (p.city ? p.locality : null), cityUf, p.postcode), lat, lon, partial: precision !== 'numero', precision, source: 'osm', _street: p.street || (p.type === 'street' ? p.name : ''), _city: p.city || p.locality || p.county || '', _hn: p.housenumber || '', _name: p.name || '' }
 }
 
 async function photonSearch(q, fetchImpl, near) {
@@ -153,11 +155,21 @@ export async function geocodeAll(q, { fetchImpl = fetch, mode = 'full', provider
     const loc = locateCep(c, n, hits)
     lists.push([{ formatted: join(c.street ? join(c.street, n) : null, c.district, `${c.city} - ${c.uf}`, `${cep.slice(0, 5)}-${cep.slice(5)}`), lat: loc.lat, lon: loc.lon, partial: loc.precision !== 'numero' || !n, precision: loc.precision, source: 'cep' }])
   }
-  return mergeResults(lists, q).filter((r) => r.lat != null).map(publicResult)
+  return mergeResults(lists.map((l) => l.map((r) => placeMatch(r, q))), q).filter((r) => r.lat != null).map(publicResult)
+}
+
+/** Lugar com nome conta como exato só se o que foi buscado tem o nome dele ou a mesma rua. */
+export function placeMatch(r, q) {
+  if (r?.precision !== 'local') return r
+  const words = streetWords(r._name)
+  const qWords = new Set(streetWords(q))
+  const byName = words.length > 0 && words.every((w) => qWords.has(w))
+  const byStreet = !!r._street && streetWords(r._street).every((w) => qWords.has(w))
+  return byName || byStreet ? { ...r, precision: 'numero', partial: false } : r
 }
 
 /** Tira os campos internos usados na validação. */
-const publicResult = ({ _street, _city, _hn, ...r }) => ({ precision: r.partial ? 'area' : 'numero', ...r })
+const publicResult = ({ _street, _city, _hn, _name, ...r }) => ({ precision: r.partial ? 'area' : 'numero', ...r })
 
 const STREET_TYPES = new Set(['rua', 'r', 'avenida', 'av', 'travessa', 'tv', 'alameda', 'al', 'estrada', 'est', 'rodovia', 'rod', 'praca', 'pc', 'largo', 'via', 'viela', 'de', 'da', 'do', 'das', 'dos', 'e'])
 const streetWords = (s) => norm(s).split(/[^a-z0-9]+/).filter((w) => w && !STREET_TYPES.has(w))
@@ -179,7 +191,7 @@ export function locateCep(c, n, hits) {
   const ok = hits.filter((h) => h && h.lat != null && sameCity(h._city, c.city) && c.street && sameStreet(c.street, h._street))
   const exact = ok.find((h) => h.precision === 'numero' && n && String(h._hn).split(/[^0-9]/)[0] === String(n))
   if (exact) return { lat: exact.lat, lon: exact.lon, precision: 'numero' }
-  const street = ok.find((h) => h.precision === 'rua' || h.precision === 'numero')
+  const street = ok.find((h) => ['rua', 'numero', 'local'].includes(h.precision))
   if (street) return { lat: street.lat, lon: street.lon, precision: 'rua' }
   if (c.lat != null) return { lat: c.lat, lon: c.lon, precision: 'cep' }
   return { lat: null, lon: null, precision: 'area' }

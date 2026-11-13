@@ -4,7 +4,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
 import { PROVIDER_LABEL, computeRoute, geocode, routeCapabilities } from '../services/routing.js'
-import { PRECISION_LABEL, isPrecise } from '../lib/geo.js'
+import { PRECISION_LABEL, isPrecise, precisionLabel } from '../lib/geo.js'
 import PlaceField from '../components/PlaceField.jsx'
 import { firstName } from '../lib/people.js'
 import Pickups from '../components/Pickups.jsx'
@@ -274,7 +274,7 @@ function TripPanel({ which, race: r, log, update, cap }) {
               {!s.collapsed.length && s.approx.length > 0 && (
                 <div className="alert alert-warn small" style={{ marginBottom: 10 }} data-testid="approx">
                   <div>
-                    Localização aproximada: {s.approx.map((i) => `${s.points[i].label || 'Destino'} (${PRECISION_LABEL[s.points[i].precision] || 'sem número'})`).join(', ')}. A rota usa esse ponto e pode variar; confirme o ponto exato (busque com o número ou cole as coordenadas do mapa).
+                    Localização aproximada: {s.approx.map((i) => `${s.points[i].label || 'Destino'} (${precisionLabel(s.points[i])})`).join(', ')}. A rota usa esse ponto e pode variar; confirme o ponto exato (busque com o número ou cole as coordenadas do mapa).
                     <button type="button" className="link-btn" disabled={fixing} onClick={relocate}>{fixing ? 'Localizando…' : 'Tentar localizar o número'}</button>
                   </div>
                 </div>

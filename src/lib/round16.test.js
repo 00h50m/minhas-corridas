@@ -176,3 +176,26 @@ describe('totais, paradas, ordem e mudanças', () => {
     expect(s.collapsed.length).toBe(6)
   })
 })
+
+describe('correções depois do teste real', async () => {
+  const { placeMatch } = await import('../../api/_geocode.js')
+  it('ORS: o pedido não desliga as instruções (sem elas não vêm os trechos)', async () => {
+    const fetchImpl = vi.fn(async () => json({ features: [{ properties: { summary: { distance: 1000 } }, geometry: { coordinates: [] } }] }))
+    const pts = [{ address: 'A', lat: -23.16, lon: -46.9 }, { address: 'B', lat: -23.04, lon: -46.98 }]
+    const r = await handleRoute(req({ method: 'POST', body: { points: pts } }), { env: { ORS_API_KEY: 'K' }, fetchImpl })
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).not.toHaveProperty('instructions')
+    expect(r.status).toBe(502)
+    expect(r.body.error).toContain('não devolveu os trechos')
+  })
+  it('ponto salvo antes da precisão existir não conta como confirmado', () => {
+    expect(isPrecise({ lat: -23, lon: -46 })).toBe(false)
+    expect(isPrecise({ lat: -23, lon: -46, precision: 'numero' })).toBe(true)
+  })
+  it('lugar com nome (escola) só é exato se o nome ou a rua batem com a busca', () => {
+    const escola = { precision: 'local', _name: 'EMEB José Pedro Raymundo', _street: 'Rua Hélio Antônio Lucena', partial: true }
+    expect(placeMatch(escola, 'Avenida José Joaquim Pedro, 580, Vila Rio Branco, Jundiaí').precision).toBe('local')
+    const cond = { precision: 'local', _name: 'Residencial Cenário', _street: 'Avenida José Joaquim Pedro', partial: true }
+    expect(placeMatch(cond, 'Residencial Cenário, Jundiaí')).toMatchObject({ precision: 'numero', partial: false })
+    expect(placeMatch(cond, 'Avenida José Joaquim Pedro, 580, Jundiaí').precision).toBe('numero')
+  })
+})

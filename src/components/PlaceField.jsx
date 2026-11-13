@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
 import { SOURCE_LABEL, geocode, locateMe } from '../services/routing.js'
 import { useUI } from './ui.jsx'
-import { PRECISION_LABEL, isPrecise } from '../lib/geo.js'
+import { PRECISION_LABEL, isPrecise, precisionLabel } from '../lib/geo.js'
 
 const newId = () => Math.random().toString(36).slice(2, 10)
 
@@ -118,7 +118,7 @@ export default function PlaceField({ label, name, place, onChange, cap, testid, 
       {place && (
         <div className="place-ok small">
           {isPrecise(place) ? <span className="delta-good">✓ {place.formatted || place.address}</span>
-            : place.lat != null ? <span className="place-approx" data-testid="place-approx">≈ {place.formatted || place.address} <b>· localização aproximada ({PRECISION_LABEL[place.precision] || 'sem confirmar o número'}).</b> Para o ponto exato, busque com o número ou cole as coordenadas do mapa (ex.: -23.0512, -46.9734).</span>
+            : place.lat != null ? <span className="place-approx" data-testid="place-approx">≈ {place.formatted || place.address} <b>· localização aproximada ({precisionLabel(place)}).</b> Para o ponto exato, busque com o número ou cole as coordenadas do mapa (ex.: -23.0512, -46.9734).</span>
             : <span className="muted">Endereço sem verificação: {place.address}</span>}
           {noFav ? null : favName == null ? (
             <button type="button" className="link-btn" onClick={() => setFavName(place.label || '')}>☆ Salvar nos favoritos</button>

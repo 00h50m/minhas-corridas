@@ -14,6 +14,7 @@ import { formatDuration, formatKm, formatPace } from '../lib/format.js'
 import { navLinks, raceSchedule, tripSummary } from '../lib/logistics.js'
 import { minToHm } from '../lib/schedule.js'
 import Timeline from '../components/Timeline.jsx'
+import Pickups from '../components/Pickups.jsx'
 
 /** Minutos até HH:MM de hoje (negativo se já passou). */
 function minutesUntil(hm, now = new Date()) {
@@ -141,6 +142,7 @@ export default function RaceDay() {
                   <ol className="day-stops">{ida.points.filter((p) => p.role === 'stop').map((p, i) => <li key={i}><b>{p.label}</b> <span className="muted small">{p.formatted || p.address}{p.dwellMin ? ` · ${p.dwellMin} min` : ''}</span></li>)}</ol>
                 </>
               )}
+              {ida && <Pickups race={r} schedule={sched} stops={ida.points.filter((p) => p.role === 'stop')} />}
               {nav && <a className="btn btn-dark btn-block" style={{ marginTop: 10 }} href={nav.google} target="_blank" rel="noreferrer" data-testid="day-route"><IconPin /> Abrir a rota no Google Maps</a>}
             </div>
           </>

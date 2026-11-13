@@ -29,7 +29,7 @@ export function normalizePlace(raw) {
 function normalizeStop(raw) {
   const p = normalizePlace(raw)
   if (!p) return null
-  return { ...p, id: str(raw.id, 20) || newId(), dwellMin: Math.round(num(Number(raw.dwellMin), 0, 600) ?? 5) }
+  return { ...p, id: str(raw.id, 20) || newId(), dwellMin: Math.round(num(Number(raw.dwellMin), 0, 600) ?? 5), personId: str(raw.personId, 20) || null }
 }
 
 function normalizeRoute(raw) {

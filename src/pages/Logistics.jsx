@@ -3,7 +3,10 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { getRace, saveRace, useStore } from '../services/store.js'
 import { getProfile, saveProfile, useProfile } from '../services/profile.js'
-import { PROVIDER_LABEL, SOURCE_LABEL, computeRoute, geocode, locateMe, routeCapabilities } from '../services/routing.js'
+import { PROVIDER_LABEL, computeRoute, routeCapabilities } from '../services/routing.js'
+import PlaceField from '../components/PlaceField.jsx'
+import { firstName } from '../lib/people.js'
+import Pickups from '../components/Pickups.jsx'
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconExternal, IconInfo, IconPin, IconPlus, IconX } from '../components/Icons.jsx'
 import { FUELS, costItems, destinationPlace, fuelCost, kitPlace, navLinks, normalizeLogistics, pointsKey, raceSchedule, tripOf, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
@@ -78,130 +81,6 @@ export default function Logistics() {
 }
 
 /* ---------- Endereços ---------- */
-
-function PlaceField({ label, name, place, onChange, cap, testid, hint, locate = false, near = null }) {
-  const prof = useProfile()
-  const { notify } = useUI()
-  const [text, setText] = useState(place?.address ?? '')
-  const [typed, setTyped] = useState(false) // só sugere depois que a pessoa digita
-  const [results, setResults] = useState(null)
-  const [busy, setBusy] = useState(null) // 'busca' | 'local'
-  const [err, setErr] = useState(null)
-  const [notFound, setNotFound] = useState(false)
-  const [favName, setFavName] = useState(null)
-  useEffect(() => { setText(place?.address ?? ''); setTyped(false) }, [place?.address])
-  const favs = prof.data.favorites
-  const asLabel = place?.label || name || label
-
-  // Sugestões enquanto digita (a partir de 5 letras, com uma pausa curta).
-  useEffect(() => {
-    if (!typed || text.trim().length < 5) return
-    let alive = true
-    const t = setTimeout(() => {
-      geocode(text.trim(), { suggest: true, near })
-        .then((list) => alive && list.length && setResults(list))
-        .catch(() => {})
-    }, 450)
-    return () => { alive = false; clearTimeout(t) }
-  }, [text, typed])
-
-  const search = async () => {
-    setErr(null)
-    setNotFound(false)
-    if (text.trim().length < 5) return setErr('Digite o CEP ou o endereço: rua, número, bairro e cidade.')
-    setBusy('busca')
-    try {
-      const list = await geocode(text.trim(), { near })
-      setResults(list)
-      if (!list.length) { setNotFound(true); setErr('Não encontrei. Tente o CEP (ex.: 13214-000, 95) ou rua + cidade.') }
-    } catch (e) {
-      setNotFound(true)
-      setErr(e.message)
-    } finally {
-      setBusy(null)
-    }
-  }
-  const pick = (g) => {
-    onChange({ label: asLabel, address: g.formatted || text.trim(), formatted: g.formatted, lat: g.lat, lon: g.lon })
-    setResults(null)
-    setTyped(false)
-  }
-  const useTyped = () => {
-    if (text.trim().length < 5) return setErr('Digite o endereço completo.')
-    onChange({ label: asLabel, address: text.trim(), formatted: '', lat: null, lon: null })
-    setResults(null)
-    setErr(null)
-    setNotFound(false)
-  }
-  const useLocation = async () => {
-    setErr(null)
-    setBusy('local')
-    try {
-      const g = await locateMe()
-      setText(g.formatted || '')
-      pick(g)
-      notify('Localização usada')
-    } catch (e) {
-      setErr(e.message)
-    } finally {
-      setBusy(null)
-    }
-  }
-  const saveFav = () => {
-    const nm = (favName || '').trim()
-    if (!nm) return
-    const p = getProfile().data
-    const others = p.favorites.filter((f) => f.label.toLowerCase() !== nm.toLowerCase())
-    saveProfile({ ...p, favorites: [...others, { ...place, label: nm, id: newId() }].slice(-20) })
-    setFavName(null)
-    notify('Endereço salvo nos favoritos')
-  }
-  return (
-    <div className="place-field" data-testid={testid}>
-      <label className="lbl">{label}</label>
-      {favs.length > 0 && (
-        <div className="fav-chips" role="group" aria-label="Favoritos">
-          {favs.map((f) => <button key={f.id} type="button" className={place?.address === f.address ? 'on' : ''} onClick={() => { onChange({ ...f, label: f.label }); setResults(null) }}>★ {f.label}</button>)}
-        </div>
-      )}
-      <div className="grid-2-1">
-        <input className="input" value={text} onChange={(e) => { setText(e.target.value); setTyped(true); setErr(null); setNotFound(false) }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search() } }} placeholder="CEP ou rua, número, bairro, cidade" aria-label={label} autoComplete="street-address" />
-        <button type="button" className="btn btn-dark" disabled={!!busy} onClick={search}>{busy === 'busca' ? '…' : 'Buscar'}</button>
-      </div>
-      <div className="hint">{hint || 'Dica: o CEP acha qualquer rua. Ex.: “13214-000, 95”.'}</div>
-      {locate && <button type="button" className="link-btn" disabled={!!busy} onClick={useLocation}>{busy === 'local' ? 'Localizando…' : '📍 Usar minha localização'}</button>}
-      {err && <div className="err" role="alert">{err}</div>}
-      {results?.length > 0 && (
-        <ul className="geo-results" aria-label="Endereços encontrados">
-          {results.map((g, i) => (
-            <li key={i}>
-              <button type="button" onClick={() => pick(g)}>
-                {g.formatted}
-                <span className="geo-tags">{g.source && <span>{SOURCE_LABEL[g.source] || g.source}</span>}{g.partial && <span>aproximado</span>}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {(notFound || (text.trim().length >= 5 && !place && !results?.length && typed)) && (
-        <button type="button" className="link-btn muted-btn" onClick={useTyped}>Usar como digitado (sem verificar)</button>
-      )}
-      {place && (
-        <div className="place-ok small">
-          {place.lat != null ? <span className="delta-good">✓ {place.formatted || place.address}</span> : <span className="muted">Endereço sem verificação: {place.address}</span>}
-          {favName == null ? (
-            <button type="button" className="link-btn" onClick={() => setFavName(place.label || '')}>☆ Salvar nos favoritos</button>
-          ) : (
-            <span className="fav-name">
-              <input className="input" value={favName} onChange={(e) => setFavName(e.target.value)} placeholder="Nome (ex.: Casa)" maxLength={30} aria-label="Nome do favorito" />
-              <button type="button" className="btn" onClick={saveFav}>Salvar</button>
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 /** Minutos: aceita apagar e redigitar (sem virar "015"); salva só números válidos. */
 function MinutesInput({ value, max, label, onChange }) {
@@ -379,8 +258,23 @@ function TripPanel({ which, race: r, log, update, cap }) {
 }
 
 function StopsEditor({ stops, setStops, cap }) {
+  const prof = useProfile()
+  const { people, favorites: places } = prof.data
   const [adding, setAdding] = useState(false)
   const [label, setLabel] = useState('')
+  const [pickFor, setPickFor] = useState(null) // pessoa sem endereço salvo: pergunta onde buscar
+  const [savePlace, setSavePlace] = useState(true)
+  const addStop = (st) => {
+    setStops((list) => [...list, { ...st, id: newId() }].slice(0, 8))
+    setAdding(false)
+    setLabel('')
+    setPickFor(null)
+  }
+  const addPerson = (pe) => {
+    const pl = places.find((x) => x.id === pe.placeId)
+    if (pl) addStop({ ...pl, label: `Buscar ${pe.name}`, personId: pe.id, dwellMin: pl.dwellMin ?? 5 })
+    else setPickFor(pe)
+  }
   const move = (i, d) => setStops((list) => { const a = [...list]; const [x] = a.splice(i, 1); a.splice(i + d, 0, x); return a })
   return (
     <>
@@ -405,9 +299,42 @@ function StopsEditor({ stops, setStops, cap }) {
       </ol>
       {adding ? (
         <div className="stop-add">
-          <div className="field"><label htmlFor="stop-label">Nome da parada</label><input id="stop-label" className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Buscar a Ana, Posto" maxLength={60} /></div>
-          <PlaceField label="Endereço da parada" place={null} cap={cap} testid="stop-place" onChange={(p) => { setStops((list) => [...list, { ...p, label: label.trim() || p.label || 'Parada', id: newId(), dwellMin: 5 }].slice(0, 8)); setAdding(false); setLabel('') }} />
-          <button type="button" className="link-btn" onClick={() => setAdding(false)}>Cancelar</button>
+          {(people.length > 0 || places.length > 0) && !pickFor && (
+            <div className="stop-kind" data-testid="stop-quick">
+              {people.length > 0 && (
+                <div>
+                  <div className="list-group-title" style={{ marginTop: 0 }}>Buscar alguém</div>
+                  <div className="chips">{people.map((pe) => <button key={pe.id} type="button" onClick={() => addPerson(pe)}>👤 {pe.name}</button>)}</div>
+                </div>
+              )}
+              {places.length > 0 && (
+                <div>
+                  <div className="list-group-title" style={{ marginTop: 0 }}>Lugar salvo</div>
+                  <div className="chips">{places.map((pl) => <button key={pl.id} type="button" onClick={() => addStop({ ...pl, label: pl.label, dwellMin: pl.dwellMin ?? 5 })}>★ {pl.label}</button>)}</div>
+                </div>
+              )}
+              <div className="list-group-title" style={{ marginTop: 0 }}>Ou outro endereço</div>
+            </div>
+          )}
+          {pickFor ? (
+            <>
+              <PlaceField label={`Onde buscar ${pickFor.name}`} place={null} cap={cap} testid="stop-place" onChange={(pl) => {
+                if (savePlace) {
+                  const data = getProfile().data
+                  const id = newId()
+                  saveProfile({ ...data, favorites: [...data.favorites, { ...pl, id, label: `Casa da ${firstName(pickFor.name)}`.slice(0, 60), dwellMin: 5 }], people: data.people.map((x) => (x.id === pickFor.id ? { ...x, placeId: id } : x)) })
+                }
+                addStop({ ...pl, label: `Buscar ${pickFor.name}`, personId: pickFor.id, dwellMin: 5 })
+              }} />
+              <label className="check"><input type="checkbox" checked={savePlace} onChange={(e) => setSavePlace(e.target.checked)} /> Guardar este endereço para {firstName(pickFor.name)}</label>
+            </>
+          ) : (
+            <>
+              <div className="field"><label htmlFor="stop-label">Nome da parada</label><input id="stop-label" className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Posto, Padaria" maxLength={60} /></div>
+              <PlaceField label="Endereço da parada" place={null} cap={cap} testid="stop-place" onChange={(p) => addStop({ ...p, label: label.trim() || p.label || 'Parada', dwellMin: 5 })} />
+            </>
+          )}
+          <button type="button" className="link-btn" onClick={() => { setAdding(false); setPickFor(null) }}>Cancelar</button>
         </div>
       ) : (
         stops.length < 8 && <button type="button" className="btn btn-block" onClick={() => setAdding(true)}><IconPlus /> Adicionar parada</button>
@@ -600,6 +527,7 @@ function AgendaPanel({ race: r, log, update, goTrip }) {
         <>
           <div className="section-title"><h2>Sua agenda</h2><span className="muted small">{r.date ? formatDateBR(r.date) : ''}</span></div>
           <Timeline schedule={schedule} />
+          <Pickups race={r} schedule={schedule} stops={ida.points.filter((p) => p.role === 'stop')} />
           {schedule.noTraffic && (
             <div className="alert alert-info small" style={{ marginTop: 8 }} data-testid="no-traffic"><IconInfo /><div>{schedule.prep.trafficExtraPct ? `Trechos sem trânsito previsto: acréscimo de ${schedule.prep.trafficExtraPct}% aplicado.` : 'A rota não considera trânsito. Em horário de pico, use “Acréscimo por trânsito” (15 a 25%) ou aumente a margem.'}</div></div>
           )}

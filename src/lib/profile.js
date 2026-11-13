@@ -3,6 +3,7 @@ import { isValidISODate, parseISODate } from './dates.js'
 import { UFS } from './model.js'
 import { DEFAULT_PREP, normalizePrep } from './schedule.js'
 import { FUELS, normalizePlace } from './logistics.js'
+import { normalizePeople } from './people.js'
 
 export const SHIRT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'XGG', 'Infantil']
 export const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
@@ -28,7 +29,8 @@ export function emptyProfile() {
     showNameOnCard: true,
     vehicle: { kmPerL: null, fuel: 'gasolina', pricePerL: null },
     prep: { ...DEFAULT_PREP }, // tempos de preparação padrão para a agenda do dia
-    favorites: [] // endereços favoritos: [{ id, label, address, formatted, lat, lon }]
+    favorites: [], // lugares: [{ id, label, address, formatted, lat, lon, dwellMin }]
+    people: [] // pessoas: [{ id, name, phone, placeId }] (quem você busca ou leva junto)
   }
 }
 
@@ -53,9 +55,15 @@ export function normalizeProfile(raw) {
   p.vehicle = { kmPerL: n(v.kmPerL, 1, 100), fuel: FUELS.some((f) => f.id === v.fuel) ? v.fuel : 'gasolina', pricePerL: n(v.pricePerL, 0.1, 50) }
   p.prep = normalizePrep(p.prep)
   p.favorites = (Array.isArray(p.favorites) ? p.favorites : [])
-    .map((f) => { const pl = normalizePlace(f); return pl && pl.label ? { ...pl, id: String(f.id || pl.label).slice(0, 20) } : null })
+    .map((f) => {
+      const pl = normalizePlace(f)
+      if (!pl || !pl.label) return null
+      const dwell = Number(f.dwellMin)
+      return { ...pl, id: String(f.id || pl.label).slice(0, 20), dwellMin: Number.isFinite(dwell) && dwell >= 0 && dwell <= 600 && f.dwellMin !== null && f.dwellMin !== '' ? Math.round(dwell) : null }
+    })
     .filter(Boolean)
-    .slice(0, 20)
+    .slice(0, 30)
+  p.people = normalizePeople(p.people, new Set(p.favorites.map((f) => f.id)))
   return Object.fromEntries(Object.keys(emptyProfile()).map((k) => [k, p[k]]))
 }
 

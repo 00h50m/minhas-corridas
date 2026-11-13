@@ -17,7 +17,7 @@ export function reviewYears(races) {
  * { year, count, km, timeSec, avgPace, months[12], topMonth, distances, prs, firsts, targets,
  *   longest, fastest, highlight, places, states, spent, kmDriven, goalsDone, nextYear, empty }
  */
-export function yearReview(races, goals, year, today) {
+export function yearReview(races, goals, year, today, people = []) {
   const all = races.filter((r) => r.status === 'concluida' && r.result?.netTime && r.result.officialDistanceKm && r.date).sort(byDateAsc)
   const done = all.filter((r) => yearOf(r.date) === year)
   const out = { year, count: done.length, empty: done.length === 0 }
@@ -102,6 +102,12 @@ export function yearReview(races, goals, year, today) {
     const inYear = g.deadline ? yearOf(g.deadline) === year : g.startDate ? yearOf(g.startDate) <= year : true
     return inYear && (g.status === 'concluido' || (p.achieved && g.type !== 'orcamento'))
   })
+
+  // Com quem correu (pessoas cadastradas marcadas em "Quem vai junto")
+  const names = new Map(people.map((p) => [p.id, p.name]))
+  const counts = new Map()
+  for (const r of done) for (const id of r.companionIds ?? []) if (names.has(id)) counts.set(id, (counts.get(id) ?? 0) + 1)
+  out.companions = [...counts].map(([id, n]) => ({ id, name: names.get(id), count: n })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR'))
 
   out.nextYear = races.filter((r) => yearOf(r.date) === year + 1 && ['inscrita', 'aberta', 'interesse'].includes(r.status)).length
   return out

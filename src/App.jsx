@@ -26,6 +26,7 @@ const Profile = lazy(() => import('./pages/Profile.jsx'))
 const Logistics = lazy(() => import('./pages/Logistics.jsx'))
 const YearReview = lazy(() => import('./pages/YearReview.jsx'))
 const Privacy = lazy(() => import('./pages/Privacy.jsx'))
+const PeoplePlaces = lazy(() => import('./pages/PeoplePlaces.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="/lembretes" element={<Reminders />} />
             <Route path="/perfil" element={<Profile />} />
             <Route path="/privacidade" element={<Privacy />} />
+            <Route path="/pessoas-e-lugares" element={<PeoplePlaces />} />
             <Route path="*" element={store.status === 'ready' ? <NotFound /> : null} />
           </Routes>
           </Suspense>

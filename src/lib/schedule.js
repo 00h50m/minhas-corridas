@@ -101,7 +101,7 @@ export function buildSchedule({ startTime, prep: rawPrep, legs = [], stops = [],
   stops.forEach((st, i) => {
     t += legMinutes(legs[i], pct)
     const dwell = Math.max(0, Math.round(st.dwellMin || 0))
-    add(`parada-${i}`, t, `Chegar: ${st.label || `Parada ${i + 1}`}`, { stop: i, legMin: legMinutes(legs[i], pct), detail: dwell ? `${dwell} min · sair ${minToHm(t + dwell)}` : null, leaveAt: t + dwell })
+    add(`parada-${i}`, t, /^Buscar /.test(st.label || '') ? st.label : `Chegar: ${st.label || `Parada ${i + 1}`}`, { stop: i, legMin: legMinutes(legs[i], pct), detail: dwell ? `${dwell} min · sair ${minToHm(t + dwell)}` : null, leaveAt: t + dwell })
     t += dwell
   })
   t += legMinutes(legs[legs.length - 1], pct)

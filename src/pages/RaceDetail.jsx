@@ -16,6 +16,8 @@ import { IconBell, IconCompare, IconFlag, IconShare } from '../components/Icons.
 import { comparableRaces } from '../lib/compare.js'
 import { TargetCompareCard, TargetQuickSet } from '../components/Target.jsx'
 import LogisticsSummary from '../components/LogisticsSummary.jsx'
+import { companionNames } from '../lib/people.js'
+import { useProfile } from '../services/profile.js'
 import { DecisionActions, DecisionDetails, WishPicker, setWish } from '../components/Decision.jsx'
 import { buildICS } from '../lib/ics.js'
 import { downloadText } from '../services/backup.js'
@@ -34,6 +36,7 @@ export default function RaceDetail() {
   const { races, goals } = useStore()
   const nav = useNavigate()
   const { confirm, notify } = useUI()
+  const prof = useProfile()
   const [editTarget, setEditTarget] = useState(false)
   const r = getRace(id)
   if (!r) return <Navigate to="/corridas" replace />
@@ -234,7 +237,7 @@ export default function RaceDetail() {
             <Row k="Local" v={r.venueName} />
             <Row k="Endereço" v={r.venueAddress} />
             <Row k="Sair de casa" v={r.leaveHomeTime} />
-            <Row k="Companhia" v={r.companions} />
+            <Row k="Companhia" v={companionNames(r, prof.data.people).join(', ')} />
             <Row k="Organizador" v={r.organizer} />
             <Row k="Prazo inscrição" v={r.signupDeadline && formatDateBR(r.signupDeadline)} />
             <Row k="Muda de lote" v={r.lotChangeDate && formatDateBR(r.lotChangeDate)} />

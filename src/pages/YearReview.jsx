@@ -38,7 +38,7 @@ export default function YearReview() {
   const today = todayISO()
   const year = Number(ano)
   const years = reviewYears(races)
-  const rv = useMemo(() => (Number.isInteger(year) ? yearReview(races, goals, year, today) : null), [races, goals, year, today])
+  const rv = useMemo(() => (Number.isInteger(year) ? yearReview(races, goals, year, today, prof.data.people) : null), [races, goals, year, today, prof.data.people])
   const canvasRef = useRef()
   const [format, setFormat] = useState('feed')
   const fullName = prof.data.name || prof.data.nickname
@@ -148,6 +148,7 @@ export default function YearReview() {
                 {rv.longest && <><dt>Mais longa</dt><dd>{formatKm(rv.longest.result.officialDistanceKm)} · {rv.longest.name}</dd></>}
                 {rv.targets.set > 0 && <><dt>Metas de tempo</dt><dd>{rv.targets.hit} de {rv.targets.set} batidas</dd></>}
                 {rv.goalsDone.length > 0 && <><dt>Objetivos</dt><dd>{rv.goalsDone.map((g) => g.title).join(' · ')}</dd></>}
+                {rv.companions.length > 0 && <><dt>Com quem correu</dt><dd>{rv.companions.map((c) => `${c.name} (${c.count})`).join(' · ')}</dd></>}
                 {rv.places.length > 0 && <><dt>Lugares</dt><dd>{rv.places.length} {rv.places.length === 1 ? 'cidade' : 'cidades'}{rv.states.length > 1 ? ` em ${rv.states.length} estados` : ''}: {rv.places.map((p) => p.city).join(', ')}</dd></>}
                 <dt>Gastos com provas</dt><dd>{formatMoney(rv.spent)}</dd>
                 {rv.kmDriven > 0 && <><dt>Dirigiu para correr</dt><dd>{formatKm(rv.kmDriven)}</dd></>}

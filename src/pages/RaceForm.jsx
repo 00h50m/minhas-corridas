@@ -5,7 +5,7 @@ import LinkImport from '../components/LinkImport.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { PredictionHint } from '../components/Prediction.jsx'
 import { WishPicker } from '../components/Decision.jsx'
-import { getProfile } from '../services/profile.js'
+import { getProfile, useProfile } from '../services/profile.js'
 import { logisticsManagesTransport } from '../lib/logistics.js'
 import { weekdayShort } from '../lib/dates.js'
 import { getRace, saveRace, useStore } from '../services/store.js'
@@ -34,6 +34,7 @@ function toForm(r) {
   f.shirtIncluded = !!r.shirtIncluded
   f.targetTime = durationToInput(r.targetTime)
   f.wish = r.wish ?? null
+  f.companionIds = r.companionIds ?? []
   return f
 }
 
@@ -68,6 +69,7 @@ function fromForm(f, base) {
   r.shirtIncluded = f.shirtIncluded
   if (!r.shirtIncluded) r.shirtSize = ''
   r.wish = [1, 2, 3].includes(f.wish) ? f.wish : null
+  r.companionIds = f.companionIds ?? []
   r.targetTime = null
   if (f.targetTime) {
     r.targetTime = parseDuration(f.targetTime)
@@ -84,6 +86,7 @@ function summaryOf(...vals) {
 export default function RaceForm() {
   const { id } = useParams()
   const { races } = useStore()
+  const people = useProfile().data.people
   const nav = useNavigate()
   const { notify } = useUI()
   const existing = id ? getRace(id) : null
@@ -277,7 +280,17 @@ export default function RaceForm() {
             </div>
             <Field label="Nome do local" htmlFor="venueName"><input id="venueName" className="input" value={f.venueName} onChange={set('venueName')} placeholder="Ex.: Parque Ibirapuera" /></Field>
             <Field label="Endereço" htmlFor="venueAddress"><input id="venueAddress" className="input" value={f.venueAddress} onChange={set('venueAddress')} /></Field>
-            <Field label="Companhia para a prova" htmlFor="companions"><input id="companions" className="input" value={f.companions} onChange={set('companions')} placeholder="Quem vai junto" /></Field>
+            {people.length > 0 && (
+              <Field label="Quem vai junto">
+                <div className="seg" role="group" aria-label="Quem vai junto" data-testid="companions">
+                  {people.map((pe) => {
+                    const on = f.companionIds.includes(pe.id)
+                    return <button type="button" key={pe.id} aria-pressed={on} onClick={() => setF((p) => ({ ...p, companionIds: on ? p.companionIds.filter((x) => x !== pe.id) : [...p.companionIds, pe.id] }))}>{pe.name}</button>
+                  })}
+                </div>
+              </Field>
+            )}
+            <Field label={people.length ? 'Outras companhias' : 'Companhia para a prova'} htmlFor="companions" hint={people.length ? null : 'Dica: cadastre quem costuma ir com você em Perfil → Pessoas e lugares.'}><input id="companions" className="input" value={f.companions} onChange={set('companions')} placeholder="Quem vai junto" /></Field>
           </div>
         </details>
 

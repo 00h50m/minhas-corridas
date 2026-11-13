@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconCamera, IconInfo } from '../components/Icons.jsx'
 import { Avatar } from '../components/Avatar.jsx'
-import { removeAvatar, saveProfile, setAvatarFromFile, useProfile } from '../services/profile.js'
+import { getProfile, removeAvatar, saveProfile, setAvatarFromFile, useProfile } from '../services/profile.js'
 import { useSync } from '../services/sync.js'
 import { BLOOD_TYPES, SEX_OPTIONS, SHIRT_SIZES, ageCategory, ageOn, callName, validateProfile } from '../lib/profile.js'
 import { UFS } from '../lib/model.js'
@@ -53,7 +53,9 @@ export default function Profile() {
     setErrors(errs)
     if (Object.keys(errs).length) return
     try {
-      saveProfile(draft)
+      // Lugares e pessoas são editados em outra tela: preserva a versão mais recente deles.
+      const cur = getProfile().data
+      saveProfile({ ...draft, favorites: cur.favorites, people: cur.people })
       notify('Perfil salvo')
       nav(-1)
     } catch (err) {
@@ -127,22 +129,13 @@ export default function Profile() {
           </div>
         </div>
 
-        {f.favorites.length > 0 && (
-          <>
-            <div className="section-title"><h2>Endereços favoritos</h2></div>
-            <div className="card">
-              <ul className="plain-list" data-testid="favorites">
-                {f.favorites.map((x) => (
-                  <li key={x.id}>
-                    <span style={{ flex: 1, minWidth: 0 }}><b>★ {x.label}</b><br /><span className="muted small">{x.formatted || x.address}</span></span>
-                    <button type="button" className="link-btn" onClick={() => setF((p) => ({ ...p, favorites: p.favorites.filter((y) => y.id !== x.id) }))}>Remover</button>
-                  </li>
-                ))}
-              </ul>
-              <p className="note">Adicione favoritos na Logística de uma prova (☆ Salvar nos favoritos).</p>
-            </div>
-          </>
-        )}
+        <Link to="/pessoas-e-lugares" className="card account-card" style={{ marginTop: 12 }} data-testid="people-link">
+          <span style={{ fontSize: 26 }} aria-hidden="true">👥</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b>Pessoas e lugares</b><br /><span className="small muted">{prof.data.people.length} {prof.data.people.length === 1 ? 'pessoa' : 'pessoas'} · {prof.data.favorites.length} {prof.data.favorites.length === 1 ? 'lugar' : 'lugares'} — quem você busca e os endereços de sempre.</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
 
         <div className="section-title"><h2>Emergência</h2></div>
         <div className="card">

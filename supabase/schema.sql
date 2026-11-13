@@ -266,3 +266,7 @@ create policy "perfil: dono altera" on public.profiles
   for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create policy "perfil: dono apaga" on public.profiles
   for delete to authenticated using (user_id = (select auth.uid()));
+
+-- 10) Mais espaço no perfil para "Pessoas e lugares" (até 30 lugares e 30 pessoas).
+alter table public.profiles drop constraint if exists profiles_data_check;
+alter table public.profiles add constraint profiles_data_check check (pg_column_size(data) < 32000);

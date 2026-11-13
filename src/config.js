@@ -13,4 +13,4 @@ export function cleanSupabaseUrl(u) {
 // (exigidos pela LGPD e pelo programa de desenvolvedores da Garmin).
 export const PRIVACY_CONTROLLER = 'o responsável pelo PaceOn'
 export const PRIVACY_CONTACT = ''
-export const PRIVACY_UPDATED = '12/11/2026'
+export const PRIVACY_UPDATED = '13/11/2026'

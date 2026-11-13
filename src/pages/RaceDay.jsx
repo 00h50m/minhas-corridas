@@ -16,6 +16,7 @@ import { minToHm } from '../lib/schedule.js'
 import Timeline from '../components/Timeline.jsx'
 import Pickups from '../components/Pickups.jsx'
 import DayGuide from '../components/DayGuide.jsx'
+import { daySteps, returnSteps } from '../lib/dayPlan.js'
 
 /** Minutos até HH:MM de hoje (negativo se já passou). */
 function minutesUntil(hm, now = new Date()) {
@@ -62,6 +63,7 @@ export default function RaceDay() {
   const r = getRace(id)
   const [, tick] = useState(0)
   const [awake, setAwake] = useState(false)
+  const [tripSel, setTripSel] = useState(null) // 'ida' | 'volta' escolhido; sem escolha, segue o momento do dia
   useWakeLock(awake)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 30_000)
@@ -85,6 +87,12 @@ export default function RaceDay() {
   const nextAct = sched && isToday ? sched.items.find((i) => i.at > nowMin) : sched && d > 0 ? sched.items[0] : null
   const leaveLabel = sched ? minToHm(sched.depart, { withDay: false }) : r.leaveHomeTime
   const toLeaveSched = sched && isToday ? sched.depart - nowMin : toLeave
+  // Passo a passo do dia: ida até a largada; depois da largada (ou chegando ao local), a volta.
+  const idaSteps = isToday && sched && ida?.complete ? daySteps(sched, ida.points) : []
+  const ret = isToday ? returnSteps(r, em.prep) : null
+  const dayMarks = r.dayLog?.date === r.date ? r.dayLog.marks : {}
+  const idaDone = idaSteps.length > 0 && idaSteps.every((x) => dayMarks[x.key])
+  const showTrip = tripSel ?? (started || idaDone || !idaSteps.length ? 'volta' : 'ida')
   const kitPending = r.kitPickupDate && r.kitPickupDate >= today && !(r.checklist ?? []).some((i) => i.done && /kit retirado/i.test(i.text))
 
   return (
@@ -98,7 +106,23 @@ export default function RaceDay() {
           {r.startTime && <div className="meta">Largada às {r.startTime}{leaveLabel ? ` · sair de casa às ${leaveLabel}${isToday && toLeaveSched > 0 ? ` (${untilLabel(toLeaveSched)})` : ''}` : ''}</div>}
         </div>
 
-        {isToday && sched && ida?.complete && !started && <div style={{ marginTop: 12 }}><DayGuide race={r} schedule={sched} points={ida.points} nowMin={nowMin} live /></div>}
+        {isToday && (idaSteps.length > 0 || ret?.reason !== 'off') && (
+          <div style={{ marginTop: 12 }}>
+            <div className="seg seg-sm dg-switch" role="group" aria-label="Trajeto">
+              <button type="button" aria-pressed={showTrip === 'ida'} onClick={() => setTripSel('ida')} disabled={!idaSteps.length}>Ida</button>
+              <button type="button" aria-pressed={showTrip === 'volta'} onClick={() => setTripSel('volta')} data-testid="dg-volta-tab">Volta</button>
+            </div>
+            {showTrip === 'ida' ? (
+              <DayGuide race={r} steps={idaSteps} nowMin={nowMin} live />
+            ) : ret?.steps.length ? (
+              <DayGuide race={r} steps={ret.steps} nowMin={nowMin} live trip="volta" note={ret.estimated ? 'Hora de sair do local estimada (largada + 2h30). Para acertar, informe em Logística → Volta → “Sair do local às”.' : null} />
+            ) : (
+              <div className="card muted small" data-testid="dg-volta-missing">
+                {ret?.reason === 'off' ? 'A volta não está planejada.' : ret?.reason === 'route' ? 'Falta calcular a rota da volta.' : 'Falta a hora de sair do local.'} <Link to={`/corridas/${r.id}/logistica`}>Planejar a volta na Logística</Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {nextAct && !started && !(isToday && sched && ida?.complete) && (
           <div className="card next-act" style={{ marginTop: 12 }} data-testid="next-activity">

@@ -1,7 +1,8 @@
 // Dia da prova, passo a passo: sair de casa → chegar e sair de cada parada → chegar ao local.
 // Com as marcações reais ("saí de casa", "cheguei na Dani"…), calcula o atraso e projeta os próximos horários.
 // Tudo em minutos desde a meia-noite do dia da prova (como a agenda).
-import { hmToMin, minToHm } from './schedule.js'
+import { hmToMin, legMinutes, minToHm, normalizePrep } from './schedule.js'
+import { tripSummary } from './logistics.js'
 import { firstName } from './people.js'
 
 /**
@@ -80,4 +81,40 @@ export function legNavLinks(point) {
     google: `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${enc(t)}`,
     waze: point.lat != null ? `https://waze.com/ul?ll=${point.lat},${point.lon}&navigate=yes` : `https://waze.com/ul?q=${enc(t)}&navigate=yes`
   }
+}
+
+/** Na volta, "Buscar Dani" vira "Deixar Dani". */
+export const dropLabel = (label) => String(label || '').replace(/^Buscar /, 'Deixar ')
+
+/**
+ * Passos da volta: sair do local → chegar e sair de cada parada → chegar em casa, para a frente a partir
+ * da hora de sair do local (Logística → Volta). Sem hora definida, estima largada + 2h30.
+ * { steps, estimated, reason } — reason: 'off' (volta não planejada) | 'route' (sem rota) | 'time' (sem horário).
+ */
+export function returnSteps(race, profilePrep) {
+  const log = race.logistics
+  if (!log?.back?.enabled) return { steps: [], reason: 'off' }
+  const s = tripSummary(race, log, 'volta')
+  if (!s.complete) return { steps: [], reason: 'route' }
+  const set = hmToMin(log.back.departTime)
+  const start = hmToMin(race.startTime)
+  const D = set ?? (start != null ? start + 150 : null)
+  if (D == null) return { steps: [], reason: 'time' }
+  const pct = normalizePrep(log.prep ?? profilePrep).trafficExtraPct
+  // Mesmos minutos por trecho que a tela mostra (arredondados para fechar com o total).
+  const legMin = (i) => legMinutes({ ...s.legs[i], durationMin: s.legMin[i] }, pct)
+  const pts = s.points
+  const home = pts.at(-1)
+  const steps = [{ key: 'v-sair', kind: 'leave', label: `Sair de ${pts[0].label || 'local da prova'}`, action: 'Saí do local', at: D, to: pts[1] }]
+  let t = D
+  pts.slice(1, -1).forEach((p, i) => {
+    t += legMin(i)
+    const name = dropLabel(p.label) || `Parada ${i + 1}`
+    steps.push({ key: `v-chegar-${i}`, kind: 'arrive', label: `Chegar: ${name}`, action: `Cheguei: ${name}`, at: t, point: p, personId: p.personId ?? null })
+    t += Math.max(0, Math.round(p.dwellMin || 0))
+    steps.push({ key: `v-sair-${i}`, kind: 'leave', label: `Sair: ${name}`, action: `Saí: ${name}`, at: t, to: pts[i + 2] })
+  })
+  t += legMin(pts.length - 2)
+  steps.push({ key: 'v-chegar-casa', kind: 'arrive', label: `Chegar em ${home.label || 'casa'}`, action: 'Cheguei em casa', at: t, point: home })
+  return { steps, estimated: set == null, reason: null }
 }

@@ -4,16 +4,16 @@
 import { useEffect, useState } from 'react'
 import { getRace, saveRace } from '../services/store.js'
 import { useProfile } from '../services/profile.js'
-import { dayStatus, daySteps, delayLabel, legNavLinks, onTheWayMessage } from '../lib/dayPlan.js'
+import { dayStatus, delayLabel, legNavLinks, onTheWayMessage } from '../lib/dayPlan.js'
 import { minToHm } from '../lib/schedule.js'
 import { whatsappLink } from '../lib/people.js'
 import { IconPin } from './Icons.jsx'
 
 const hhmm = (d = new Date()) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
-export default function DayGuide({ race, schedule, points, nowMin, live }) {
+/** steps: passos da ida (daySteps) ou da volta (returnSteps); trip: 'ida' | 'volta'; note: aviso extra (ex.: horário estimado). */
+export default function DayGuide({ race, steps, nowMin, live, trip = 'ida', note = null }) {
   const people = useProfile().data.people
-  const steps = daySteps(schedule, points)
   const marks = race.dayLog?.date === race.date ? race.dayLog.marks : {}
   const st = dayStatus(steps, marks, live ? nowMin : null)
   useDayAlerts(st, live)
@@ -35,12 +35,13 @@ export default function DayGuide({ race, schedule, points, nowMin, live }) {
   const nav = cur && !st.finished ? legNavLinks(target) : null
   // Quem está no próximo ponto (busca): mensagem com a hora projetada de chegada.
   const nextArrive = cur ? st.steps.slice(st.currentIdx).find((s) => s.kind === 'arrive') : null
-  const person = nextArrive?.personId ? people.find((p) => p.id === nextArrive.personId) : null
+  // Na volta a pessoa está no carro: o aviso no WhatsApp é só para a ida (buscar).
+  const person = trip === 'ida' && nextArrive?.personId ? people.find((p) => p.id === nextArrive.personId) : null
   const tone = Math.abs(st.delayMin) <= 2 ? 'ok' : st.delayMin > 0 ? 'late' : 'early'
   return (
-    <div className="card day-guide" data-testid="day-guide">
+    <div className="card day-guide" data-testid={trip === 'volta' ? 'day-guide-volta' : 'day-guide'}>
       <div className="dg-top">
-        <div className="list-group-title" style={{ margin: 0 }}>{live ? 'Agora' : 'Passo a passo do trajeto'}</div>
+        <div className="list-group-title" style={{ margin: 0 }}>{trip === 'volta' ? 'Volta' : live ? 'Agora' : 'Passo a passo do trajeto'}</div>
         {live && (st.steps.some((s) => s.done) || st.late) && <span className={`dg-status ${tone}`} data-testid="dg-status">{delayLabel(st.delayMin)}</span>}
       </div>
       {cur ? (
@@ -67,8 +68,9 @@ export default function DayGuide({ race, schedule, points, nowMin, live }) {
           )}
         </>
       ) : (
-        <p className="small" style={{ margin: '6px 0' }} data-testid="dg-done"><b>Você chegou.</b> Boa prova! 🏃</p>
+        <p className="small" style={{ margin: '6px 0' }} data-testid="dg-done">{trip === 'volta' ? <><b>Em casa.</b> Descanse e registre o resultado. 🏅</> : <><b>Você chegou.</b> Boa prova! 🏃</>}</p>
       )}
+      {note && <p className="note" style={{ marginTop: 4 }}>{note}</p>}
       <ol className="dg-steps">
         {st.steps.map((s) => (
           <li key={s.key} className={s.done ? 'done' : s === cur ? 'cur' : ''}>

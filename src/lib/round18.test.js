@@ -77,3 +77,40 @@ describe('agenda (.ics) com a saída de cada parada', () => {
     expect(ics).toContain('UID:hc-sair-parada-0@minhas-corridas')
   })
 })
+
+describe('volta passo a passo', async () => {
+  const { returnSteps, dropLabel } = await import('./dayPlan.js')
+  const { pointsKey } = await import('./logistics.js')
+  const P = {
+    casa: { label: 'Casa', address: 'Casa', lat: -23.17, lon: -46.88 },
+    dani: { id: 's1', label: 'Buscar Dani', address: 'Dani', lat: -23.18, lon: -46.89, dwellMin: 5, personId: 'p1' },
+    portal: { id: 's2', label: 'Portal do Medeiros', address: 'Portal', lat: -23.2, lon: -47.01, dwellMin: 3 },
+    pac: { label: 'PAC', address: 'PAC', lat: -23.04, lon: -46.98 }
+  }
+  const race = (back) => ({
+    id: 'hc', name: 'HC', date: '2026-11-15', startTime: '07:00', venueAddress: 'PAC',
+    logistics: normalizeLogistics({ origin: P.casa, destination: P.pac, outbound: { stops: [P.dani, P.portal] }, back })
+  })
+  // volta = PAC → Portal → Dani → Casa (mesmas paradas, ao contrário): trechos 35, 30, 6 min
+  const routeBack = { provider: 'manual', legs: [{ distanceKm: 25, durationMin: 35 }, { distanceKm: 14, durationMin: 30 }, { distanceKm: 2, durationMin: 6 }], key: pointsKey([P.pac, P.portal, P.dani, P.casa]) }
+  it('sai do local na hora informada; chegar e sair de cada parada; "Buscar Dani" vira "Deixar Dani"', () => {
+    const r = returnSteps(race({ enabled: true, mode: 'reverse', departTime: '09:30', route: routeBack }))
+    expect(r.estimated).toBe(false)
+    expect(r.steps.map((s) => [s.key, s.label, s.at])).toEqual([
+      ['v-sair', 'Sair de PAC', 570],
+      ['v-chegar-0', 'Chegar: Portal do Medeiros', 605],
+      ['v-sair-0', 'Sair: Portal do Medeiros', 608],
+      ['v-chegar-1', 'Chegar: Deixar Dani', 638],
+      ['v-sair-1', 'Sair: Deixar Dani', 643],
+      ['v-chegar-casa', 'Chegar em Casa', 649]
+    ])
+    expect(dropLabel('Buscar Ana')).toBe('Deixar Ana')
+  })
+  it('sem hora de sair: estima largada + 2h30; sem volta / sem rota: diz o que falta', () => {
+    const r = returnSteps(race({ enabled: true, mode: 'reverse', departTime: '', route: routeBack }))
+    expect(r.estimated).toBe(true)
+    expect(r.steps[0].at).toBe(7 * 60 + 150)
+    expect(returnSteps(race({ enabled: false })).reason).toBe('off')
+    expect(returnSteps(race({ enabled: true, mode: 'reverse', departTime: '09:30' })).reason).toBe('route')
+  })
+})

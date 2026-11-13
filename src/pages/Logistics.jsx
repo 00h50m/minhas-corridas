@@ -18,6 +18,7 @@ import { formatKm, formatMoney, parseMoney, moneyToInput } from '../lib/format.j
 import { downloadText } from '../services/backup.js'
 import { buildICS } from '../lib/ics.js'
 import Timeline from '../components/Timeline.jsx'
+import { returnSteps } from '../lib/dayPlan.js'
 
 const RouteMap = lazy(() => import('../components/RouteMap.jsx'))
 const PointPicker = lazy(() => import('../components/RouteMap.jsx').then((m) => ({ default: m.PointPicker })))
@@ -231,6 +232,7 @@ function TripPanel({ which, race: r, log, update, cap }) {
   }
   const stopIdAt = (i) => (editableStops && s.points[i]?.role === 'stop' ? s.points[i].id : null)
   const times = which === 'ida' && s.complete ? legTimes(schedule, s) : null
+  const back = which === 'volta' && s.complete ? returnSteps(r, getProfile().data.prep) : null
   const links = s.points.length >= 2 ? navLinks(s.points) : null
   const coordsForMap = s.route?.points?.length ? s.route.points : s.points.every((p) => p.lat != null) ? s.points.map((p) => ({ lat: p.lat, lon: p.lon })) : []
   const ret = which === 'volta' && s.complete ? returnSchedule({ departTime: log.back.departTime, legs: s.legs, stops: s.points.filter((p) => p.role === 'stop'), trafficExtraPct: normalizePrep(log.prep ?? getProfile().data.prep).trafficExtraPct }) : null
@@ -360,6 +362,18 @@ function TripPanel({ which, race: r, log, update, cap }) {
           {s.complete && coordsForMap.length < 2 && <p className="note">O mapa aparece quando os endereços são verificados ou a rota é calculada pelo serviço de mapas.</p>}
 
           {times && <TripTimes times={times} provider={s.route?.provider} />}
+          {back?.steps.length > 0 && (
+            <div className="card trip-times" data-testid="return-times" style={{ marginTop: 12 }}>
+              <div className="section-sub"><b>Horários da volta</b></div>
+              <ol className="tt-list">
+                {back.steps.filter((x) => x.kind === 'arrive' || x.key === 'v-sair').map((x) => {
+                  const leave = back.steps.find((y) => y.key === x.key.replace('chegar', 'sair'))
+                  return <li key={x.key}><span className="tt-at">{minToHm(x.at)}</span><span className="tt-what">{x.label.replace(/^Chegar: /, '')}{x.kind === 'arrive' && leave && leave !== x ? <span className="muted"> · sair {minToHm(leave.at)}</span> : null}</span></li>
+                })}
+              </ol>
+              <p className="note" style={{ marginBottom: 0 }}>{back.estimated ? 'Saída estimada para 2h30 depois da largada: informe acima a hora de sair do local. ' : ''}{s.route?.provider === 'ors' ? 'Tempos sem trânsito.' : ''} No dia da prova, a volta aparece passo a passo no modo Dia da prova.</p>
+            </div>
+          )}
           {pickLeg != null && s.points[pickLeg + 1] && (
             <RoutePicker a={s.points[pickLeg]} b={s.points[pickLeg + 1]} current={s.complete ? { ...s.legs[pickLeg], choice: s.choices[pickLeg] } : null} onClose={() => setPickLeg(null)} onApply={(o) => applyChoice(pickLeg, o)} />
           )}

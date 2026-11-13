@@ -55,7 +55,7 @@ o acesso é pelo **Garmin Connect Developer Program**, voltado a empresas/organi
   - Nome do app (PaceOn), site (https://minhas-corridas-omega.vercel.app) e descrição curta:
     *“App de planejamento de provas de corrida. Os treinos planejados pelo usuário são enviados ao Garmin Connect para execução no relógio; as atividades concluídas voltam para comparar planejado x executado.”*
   - **Política de privacidade** publicada (o que é coletado, para quê, como apagar). Ainda não existe no app — necessária antes do pedido.
-  - Responsável e e-mail de contato; se houver, CNPJ/empresa (o programa costuma pedir).
+  - Responsável e e-mail de contato: paceon.contato@gmail.com; se houver, CNPJ/empresa (o programa costuma pedir).
   - Volume estimado de usuários (uso pessoal / poucos usuários).
 - Não envie nenhuma chave a ninguém; as credenciais da Garmin, quando aprovadas, ficam só nas variáveis do Vercel.
 

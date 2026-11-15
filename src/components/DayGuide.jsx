@@ -21,7 +21,9 @@ export default function DayGuide({ race, steps, nowMin, live, trip = 'ida', note
   if (!steps.length) return null
   const save = (m) => {
     const fresh = getRace(race.id)
-    saveRace({ ...fresh, dayLog: { date: race.date, marks: m } })
+    // "Retirei o kit" também marca o item do checklist.
+    const checklist = m.kit ? (fresh.checklist ?? []).map((i) => (/kit retirado/i.test(i.text) ? { ...i, done: true } : i)) : fresh.checklist
+    saveRace({ ...fresh, checklist, dayLog: { date: race.date, marks: m } })
   }
   const mark = () => save({ ...marks, [st.current.key]: hhmm() })
   const undo = () => {

@@ -1018,3 +1018,7 @@ details.link-import { margin-top: 0; }
 .tw-compact .tw-row { margin-bottom: 8px; }
 .send-nocable { display: grid; gap: 8px; }
 .copy-text { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.45; white-space: pre; overflow: auto; }
+.kit-time { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kit-time .input { width: 150px; }
+.chip-btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 6px 10px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+.chip-btn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }

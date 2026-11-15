@@ -48,7 +48,7 @@ export function dayReview(race, profilePrep) {
   if (steps.some((s) => marks[s.key])) {
     const { legs, dwells } = compare(steps, marks)
     const sair = actualOf(steps[0], marks)
-    const lastStep = steps.at(-1)
+    const lastStep = steps.find((x) => x.key === 'chegar-destino') ?? steps.at(-1)
     const arr = actualOf(lastStep, marks)
     const measured = legs.filter((l) => l.actual != null)
     out.ida = {

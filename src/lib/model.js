@@ -50,6 +50,7 @@ export function emptyRace() {
     shirtSize: '',
     kitItems: '',
     kitPickupDate: null,
+    kitOnRaceDay: false, // retirada no dia da prova (data = a da prova; local = a largada, se não houver outro)
     kitPickupTime: '',
     kitPickupAddress: '',
     kitPickupBy: '',
@@ -177,6 +178,8 @@ export function normalizeRace(raw) {
   if (![1, 2, 3].includes(r.wish)) r.wish = null
   r.logistics = normalizeLogistics(r.logistics)
   r.dayLog = normalizeDayLog(r.dayLog)
+  r.kitOnRaceDay = !!r.kitOnRaceDay
+  if (r.kitOnRaceDay && r.date) r.kitPickupDate = r.date
   r.companionIds = Array.isArray(r.companionIds) ? [...new Set(r.companionIds.filter((x) => typeof x === 'string' && x).map((x) => x.slice(0, 20)))].slice(0, 20) : []
   r.scheduleFeed = Array.isArray(r.scheduleFeed)
     ? r.scheduleFeed.filter((e) => e && typeof e.title === 'string' && isValidISODate(e.date) && isValidTimeHM(e.time)).slice(0, 6).map((e) => ({ key: String(e.key || '').slice(0, 20), title: e.title.slice(0, 120), date: e.date, time: e.time }))

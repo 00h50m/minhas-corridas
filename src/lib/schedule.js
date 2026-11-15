@@ -67,14 +67,17 @@ export const legMinutes = (leg, extraPct = 0) => (leg?.trafficMin != null ? Math
  * Retorna null se faltar a largada ou os trechos; senão
  * { items, wake, depart, arrivalPlanned, arrivalTarget, warmupStart, start, travelMin, warnings }.
  */
-export function buildSchedule({ startTime, prep: rawPrep, legs = [], stops = [], destLabel = 'Local da prova' }) {
+export function buildSchedule({ startTime, prep: rawPrep, legs = [], stops = [], destLabel = 'Local da prova', kit = null }) {
   const L = hmToMin(startTime)
   if (L == null) return null
   if (!legs.length || legs.length !== stops.length + 1) return null
   const prep = normalizePrep(rawPrep)
   const positioning = L - prep.positioningMin
   const warmupStart = positioning - prep.warmupMin
-  const arrivalTarget = L - prep.arriveBeforeMin // chegada a pé ao local
+  // Retirada do kit no dia (antes da largada): é preciso chegar até esse horário.
+  const kitMin = kit ? hmToMin(kit.time) : null
+  const kitAt = kitMin != null && kitMin < L ? kitMin : null
+  const arrivalTarget = Math.min(L - prep.arriveBeforeMin, kitAt ?? Infinity) // chegada a pé ao local
   const parkArrivalTarget = arrivalTarget - prep.parkingMin
   const pct = prep.trafficExtraPct
   const travelMin = legs.reduce((s, l) => s + legMinutes(l, pct), 0)
@@ -109,6 +112,7 @@ export function buildSchedule({ startTime, prep: rawPrep, legs = [], stops = [],
   const arrivalPlanned = parkArrival + prep.parkingMin
   add('estacionar', parkArrival, `Chegar a ${destLabel}`, { legMin: legMinutes(legs[legs.length - 1], pct), detail: prep.parkingMin ? `estacionar e caminhar ${prep.parkingMin} min` : null })
   add('chegada', arrivalPlanned, 'Chegada prevista à largada', { highlight: true, detail: prep.bufferMin ? `com margem de ${prep.bufferMin} min até ${minToHm(arrivalTarget)}` : null })
+  if (kitAt != null) add('kit', kitAt, 'Retirar o kit', { highlight: true, detail: kit.where || null })
   if (prep.warmupMin) add('aquecimento', warmupStart, 'Aquecimento', { durationMin: prep.warmupMin })
   if (prep.positioningMin) add('posicionar', positioning, 'Posicionar na largada')
   add('largada', L, 'Largada', { highlight: true })
@@ -116,12 +120,13 @@ export function buildSchedule({ startTime, prep: rawPrep, legs = [], stops = [],
   const warnings = []
   if (arrivalTarget > warmupStart) warnings.push('A chegada desejada é depois do início do aquecimento: aumente a antecedência ou diminua o aquecimento.')
   if (wake < 0) warnings.push('O horário de acordar cai no dia anterior.')
+  if (kitAt != null && kitAt > warmupStart) warnings.push('A retirada do kit fica depois do início do aquecimento: retire mais cedo ou encurte o aquecimento.')
   items.sort((a, b) => a.at - b.at || order(a.key) - order(b.key))
   const noTraffic = legs.some((l) => l.trafficMin == null)
   return { items, wake, depart, arrivalPlanned, arrivalTarget, warmupStart, start: L, travelMin, dwellMin, prep, warnings, noTraffic }
 }
 
-const ORDER = ['acordar', 'banho', 'cafe', 'vestir', 'finais', 'sair', 'parada', 'estacionar', 'chegada', 'aquecimento', 'posicionar', 'largada']
+const ORDER = ['acordar', 'banho', 'cafe', 'vestir', 'finais', 'sair', 'parada', 'estacionar', 'chegada', 'kit', 'aquecimento', 'posicionar', 'largada']
 const order = (k) => ORDER.indexOf(k.startsWith('parada') ? 'parada' : k)
 
 /**
@@ -145,4 +150,10 @@ export function returnSchedule({ departTime, legs = [], stops = [], trafficExtra
   if (D == null || !legs.length) return null
   const travel = legs.reduce((s, l) => s + legMinutes(l, trafficExtraPct), 0) + stops.reduce((s, st) => s + Math.max(0, st.dwellMin || 0), 0)
   return { depart: D, arrival: D + travel, travelMin: travel }
+}
+
+/** Horário sugerido para a retirada no dia: 1 h antes da largada (ou o deslocamento pedido). */
+export function kitDayTime(startTime, beforeMin = 60) {
+  const L = hmToMin(startTime)
+  return L == null ? '' : minToHm(L - beforeMin, { withDay: false })
 }

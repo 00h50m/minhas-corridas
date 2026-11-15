@@ -76,7 +76,7 @@ export default function Logistics() {
           </div>
         )}
         <div style={{ marginTop: 12 }}>
-          {tab === 'custos' ? <CostsPanel race={r} log={log} update={update} /> : tab === 'agenda' ? <AgendaPanel race={r} log={log} update={update} goTrip={() => setTab('ida')} /> : <TripPanel key={tab} which={tab} race={r} log={log} update={update} cap={cap} />}
+          {tab === 'custos' ? <CostsPanel race={r} log={log} update={update} /> : tab === 'agenda' ? <AgendaPanel race={r} log={log} update={update} goTrip={() => setTab('ida')} /> : tab === 'kit' && r.kitOnRaceDay ? <KitOnRaceDay race={r} goTrip={() => setTab('ida')} /> : <TripPanel key={tab} which={tab} race={r} log={log} update={update} cap={cap} />}
         </div>
       </div>
     </>
@@ -1006,4 +1006,23 @@ function collapseMessage(s) {
   const name = (i) => s.points[i].label || (i === 0 ? 'Saída' : 'Destino')
   const list = (g) => { const n = [...g].sort((a, b) => a - b).map(name); return n.length > 1 ? `${n.slice(0, -1).join(', ')} e ${n.at(-1)}` : n[0] }
   return `${groups.map(list).join('; ')} estão no mesmo ponto do mapa: a localização veio aproximada (provavelmente o centro da cidade ou do CEP), e a rota daria 0 km entre eles. Localize esses endereços de novo.`
+}
+
+/** Retirada no dia da prova: sem trajeto separado; a agenda do dia já faz chegar a tempo. */
+function KitOnRaceDay({ race: r, goTrip }) {
+  const sched = raceSchedule(r, getProfile().data.prep)
+  const kit = sched?.items.find((i) => i.key === 'kit')
+  return (
+    <div className="card" data-testid="kit-on-day">
+      <b>Retirada no dia da prova{r.kitPickupTime ? `, às ${r.kitPickupTime}` : ''}</b>
+      <p className="small" style={{ margin: '6px 0' }}>{r.kitPickupAddress ? `Em ${r.kitPickupAddress}.` : 'No local da largada.'} Não precisa de um trajeto separado: a agenda do dia já faz você chegar até {r.kitPickupTime || 'o horário da retirada'}.</p>
+      {kit ? (
+        <p className="small" style={{ margin: 0 }}>Na agenda: sair de casa às <b>{minToHm(sched.depart)}</b>, retirar o kit às <b>{minToHm(kit.at)}</b>, largada às <b>{r.startTime}</b>.</p>
+      ) : (
+        <p className="note" style={{ margin: 0 }}>{!r.kitPickupTime ? 'Informe o horário da retirada no cadastro da prova. ' : ''}Para ver os horários, planeje a <button type="button" className="link-btn" onClick={goTrip}>ida</button> e gere a agenda.</p>
+      )}
+      {sched?.warnings?.filter((w) => /kit/.test(w)).map((w) => <div key={w} className="alert alert-warn small" style={{ marginTop: 8 }}><div>{w}</div></div>)}
+      <Link to={`/corridas/${r.id}/editar`} className="link-btn">Mudar no cadastro</Link>
+    </div>
+  )
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { repeatRace } from '../lib/alerts.js'
 import LinkImport from '../components/LinkImport.jsx'
+import { kitDayTime } from '../lib/schedule.js'
 import TimeInput from '../components/TimeInput.jsx'
 import { PredictionHint } from '../components/Prediction.jsx'
 import { WishPicker } from '../components/Decision.jsx'
@@ -31,6 +32,7 @@ function toForm(r) {
   f.signupDeadline = r.signupDeadline ?? ''
   f.lotChangeDate = r.lotChangeDate ?? ''
   f.kitPickupDate = r.kitPickupDate ?? ''
+  f.kitOnRaceDay = !!r.kitOnRaceDay
   f.shirtIncluded = !!r.shirtIncluded
   f.targetTime = durationToInput(r.targetTime)
   f.wish = r.wish ?? null
@@ -65,7 +67,10 @@ function fromForm(f, base) {
   }
   r.signupDeadline = f.signupDeadline || null
   r.lotChangeDate = f.lotChangeDate || null
-  r.kitPickupDate = f.kitPickupDate || null
+  r.kitOnRaceDay = !!f.kitOnRaceDay
+  r.kitPickupDate = r.kitOnRaceDay ? r.date : f.kitPickupDate || null
+  // No dia da prova, sem horário informado: 1 h antes da largada.
+  if (r.kitOnRaceDay && !r.kitPickupTime && r.startTime) r.kitPickupTime = kitDayTime(r.startTime)
   r.shirtIncluded = f.shirtIncluded
   if (!r.shirtIncluded) r.shirtSize = ''
   r.wish = [1, 2, 3].includes(f.wish) ? f.wish : null
@@ -343,7 +348,7 @@ export default function RaceForm() {
         </details>
 
         <details className="section">
-          <summary>Kit e retirada<span className="sum">{summaryOf(f.kitPickupDate && formatDateBR(f.kitPickupDate), f.kitPickupBy)}</span></summary>
+          <summary>Kit e retirada<span className="sum">{summaryOf(f.kitOnRaceDay ? `no dia${f.kitPickupTime ? `, ${f.kitPickupTime}` : ''}` : f.kitPickupDate && formatDateBR(f.kitPickupDate), f.kitPickupBy)}</span></summary>
           <div className="body">
             <label className="check"><input id="shirtIncluded" type="checkbox" checked={f.shirtIncluded} onChange={(e) => { const on = e.target.checked; setF((p) => ({ ...p, shirtIncluded: on, shirtSize: on && !p.shirtSize ? getProfile().data.shirtSize || '' : p.shirtSize })) }} /> Camiseta incluída</label>
             {f.shirtIncluded && (
@@ -352,15 +357,27 @@ export default function RaceForm() {
               </Field>
             )}
             <Field label="Itens do kit" htmlFor="kitItems"><textarea id="kitItems" className="input" value={f.kitItems} onChange={set('kitItems')} placeholder="Ex.: camiseta, medalha, sacochila" /></Field>
-            <div className="grid-2">
-              <Field label="Data da retirada" htmlFor="kitPickupDate" error={errors.kitPickupDate}>
-                <input id="kitPickupDate" type="date" className="input" value={f.kitPickupDate} onChange={set('kitPickupDate')} aria-invalid={inv('kitPickupDate')} />
+            <label className="check"><input id="kitOnRaceDay" type="checkbox" checked={f.kitOnRaceDay} onChange={(e) => { const on = e.target.checked; setF((p) => ({ ...p, kitOnRaceDay: on, kitPickupTime: on && !p.kitPickupTime && p.startTime ? kitDayTime(p.startTime) : p.kitPickupTime })) }} data-testid="kit-race-day" /> Retirada no dia da prova</label>
+            {f.kitOnRaceDay ? (
+              <Field label="Horário da retirada" htmlFor="kitPickupTime" error={errors.kitPickupTime} hint={f.startTime ? 'Geralmente 1 h antes da largada. A agenda do dia faz você chegar até esse horário.' : 'Informe a largada para sugerir 1 h antes.'}>
+                <div className="kit-time">
+                  <input id="kitPickupTime" type="time" className="input" value={f.kitPickupTime} onChange={set('kitPickupTime')} aria-invalid={inv('kitPickupTime')} />
+                  {f.startTime && [60, 45, 30].map((m) => (
+                    <button key={m} type="button" className={`chip-btn${f.kitPickupTime === kitDayTime(f.startTime, m) ? ' on' : ''}`} onClick={() => setF((p) => ({ ...p, kitPickupTime: kitDayTime(p.startTime, m) }))}>{m === 60 ? '1 h antes' : `${m} min antes`}</button>
+                  ))}
+                </div>
               </Field>
-              <Field label="Horário" htmlFor="kitPickupTime" error={errors.kitPickupTime}>
-                <input id="kitPickupTime" type="time" className="input" value={f.kitPickupTime} onChange={set('kitPickupTime')} aria-invalid={inv('kitPickupTime')} />
-              </Field>
-            </div>
-            <Field label="Endereço da retirada" htmlFor="kitPickupAddress"><input id="kitPickupAddress" className="input" value={f.kitPickupAddress} onChange={set('kitPickupAddress')} /></Field>
+            ) : (
+              <div className="grid-2">
+                <Field label="Data da retirada" htmlFor="kitPickupDate" error={errors.kitPickupDate}>
+                  <input id="kitPickupDate" type="date" className="input" value={f.kitPickupDate} onChange={set('kitPickupDate')} aria-invalid={inv('kitPickupDate')} />
+                </Field>
+                <Field label="Horário" htmlFor="kitPickupTime" error={errors.kitPickupTime}>
+                  <input id="kitPickupTime" type="time" className="input" value={f.kitPickupTime} onChange={set('kitPickupTime')} aria-invalid={inv('kitPickupTime')} />
+                </Field>
+              </div>
+            )}
+            <Field label="Endereço da retirada" htmlFor="kitPickupAddress" hint={f.kitOnRaceDay ? 'Deixe vazio se for no local da largada.' : null}><input id="kitPickupAddress" className="input" value={f.kitPickupAddress} onChange={set('kitPickupAddress')} placeholder={f.kitOnRaceDay ? 'No local da largada' : ''} /></Field>
             <Field label="Quem retira" htmlFor="kitPickupBy" hint="Deixe vazio se for você mesma."><input id="kitPickupBy" className="input" value={f.kitPickupBy} onChange={set('kitPickupBy')} placeholder="Ex.: assessoria, amiga" /></Field>
           </div>
         </details>

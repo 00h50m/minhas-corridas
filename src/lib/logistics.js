@@ -368,12 +368,13 @@ export function raceSchedule(race, profilePrep) {
   const stops = ida.points.filter((p) => p.role === 'stop')
   // Mesmos minutos por trecho que a tela mostra (arredondados para fechar com o total).
   const legs = ida.legs.map((l, i) => ({ ...l, durationMin: ida.legMin[i] }))
-  return buildSchedule({ startTime: race.startTime, prep: log.prep ?? profilePrep, legs, stops, destLabel: ida.points.at(-1)?.label || 'Local da prova' })
+  const kit = race.kitOnRaceDay && race.kitPickupTime ? { time: race.kitPickupTime, where: race.kitPickupAddress || null } : null
+  return buildSchedule({ startTime: race.startTime, prep: log.prep ?? profilePrep, legs, stops, destLabel: ida.points.at(-1)?.label || 'Local da prova', kit })
 }
 
 export function raceKitSchedule(race, profilePrep) {
   const log = race.logistics
-  if (!log?.kit.enabled || !race.kitPickupTime) return null
+  if (race.kitOnRaceDay || !log?.kit.enabled || !race.kitPickupTime) return null // no dia: entra na agenda da prova
   const kit = tripSummary(race, log, 'kit')
   if (!kit.complete) return null
   const prep = normalizePrep(log.prep ?? profilePrep)

@@ -24,6 +24,9 @@ export function daySteps(schedule, points) {
   })
   const park = schedule.items.find((x) => x.key === 'estacionar')
   if (park) steps.push({ key: 'chegar-destino', kind: 'arrive', label: `Chegar a ${dest.label || 'local da prova'}`, action: 'Cheguei ao local', at: park.at, point: dest })
+  // Retirada do kit no dia da prova (no local): depois de chegar.
+  const kit = schedule.items.find((x) => x.key === 'kit')
+  if (kit) steps.push({ key: 'kit', kind: 'arrive', label: 'Retirar o kit', action: 'Retirei o kit', at: kit.at, point: dest })
   return steps
 }
 

@@ -6,6 +6,8 @@ import { IconPlus } from '../components/Icons.jsx'
 import { WORKOUT_STATUSES, estimate, fmtSec, summary } from '../lib/workout.js'
 import { todayISO } from '../lib/dates.js'
 import TrainingWeek from '../components/TrainingWeek.jsx'
+import CopyBox from '../components/CopyBox.jsx'
+import { claudePrompt } from '../lib/workoutShare.js'
 
 const STATUS_LABEL = Object.fromEntries(WORKOUT_STATUSES.map((s) => [s.id, s.label]))
 
@@ -44,6 +46,12 @@ export default function Workouts() {
         {past.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
         <Link to="/treinos/novo" className="btn btn-primary btn-block" style={{ marginTop: 16 }}><IconPlus /> Novo treino</Link>
         <Link to="/treinos/importar" className="link-btn" style={{ display: 'inline-block', marginTop: 8 }}>Importar treinos (link ou arquivo)</Link>
+        {upcoming.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <CopyBox label={`Copiar prompt dos ${upcoming.length} próximos treinos para o Claude`} text={claudePrompt(upcoming)} done="Prompt copiado: cole no Claude" testid="copy-claude-all"
+              hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado: ele cria todos, agenda nas datas e envia para o relógio." />
+          </div>
+        )}
         <p className="note">O PaceOn guarda e envia os treinos que <b>você</b> monta; ele não cria nem recomenda treinos.</p>
       </div>
     </>

@@ -6,7 +6,8 @@ import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconTrash, IconUpload } from '../components/Icons.jsx'
 import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, fmtPace, fmtSec, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
-import { garminLines } from '../lib/workoutShare.js'
+import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
+import CopyBox from '../components/CopyBox.jsx'
 import { formatDateBR, toISODate } from '../lib/dates.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { downloadBlob } from '../services/backup.js'
@@ -118,6 +119,14 @@ function Detail({ w }) {
             <p className="muted" style={{ marginBottom: 0 }}>O envio automático do PaceOn para o relógio depende de a Garmin liberar o acesso (Training API).</p>
           </div>
         )}
+
+        <div className="card small send-nocable" style={{ marginTop: 10 }} data-testid="wk-nocable">
+          <b>Mandar para o relógio sem cabo</b>
+          <CopyBox label="Copiar para o Intervals.icu" text={intervalsText(w)} done="Texto copiado: cole no Intervals.icu" testid="copy-intervals"
+            hint="No Intervals.icu: Calendário → no dia → Add workout → tipo Corrida → cole no campo de descrição e confira a prévia antes de salvar. Com a Garmin conectada e “Upload planned workouts” ligado, o treino vai para o Garmin Connect e para o relógio." />
+          <CopyBox label="Copiar prompt para o Claude (Garmin Connect)" text={claudePrompt([w])} done="Prompt copiado: cole no Claude" testid="copy-claude"
+            hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado. Ele cria o treino, agenda e envia para o relógio; confira o resultado no Garmin Connect." />
+        </div>
 
         <div className="section-title"><h2>Como foi</h2></div>
         <div className="seg" role="group" aria-label="Status do treino">

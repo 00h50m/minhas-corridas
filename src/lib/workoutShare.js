@@ -68,3 +68,79 @@ export function garminLines(items) {
   }
   return out
 }
+
+/* ---------- Intervals.icu (texto do construtor de treinos) ---------- */
+
+const ivDur = (d) => {
+  if (d.kind === 'distance') return `${Math.round(d.value) / 1000}km` // km evita confundir "m" (minutos) com metros
+  if (d.kind === 'lap') return null
+  const m = Math.floor(d.value / 60)
+  const s = d.value % 60
+  return m && s ? `${m}m${s}s` : m ? `${m}m` : `${s}s`
+}
+const ivPace = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+const ivStep = (s, header = null) => {
+  const label = s.name || STEP_BY_ID[s.type]?.label?.replace(' (parado)', '') || 'Corrida'
+  // Sem repetir o nome da seção ("Aquecimento" → "- 5m").
+  const cue = [label === header ? null : label, s.target.kind === 'hr' ? `FC ${s.target.min}-${s.target.max}` : null].filter(Boolean).join(' ')
+  const dur = ivDur(s.duration)
+  const target = s.target.kind === 'pace' ? ` ${ivPace(s.target.min)}-${ivPace(s.target.max)}/km Pace` : ''
+  return dur ? `- ${cue ? `${cue} ` : ''}${dur}${target}` : `- Press lap${cue ? ` ${cue}` : ''}${target}` // "até o botão de volta"
+}
+
+/**
+ * Texto para colar no construtor de treinos do Intervals.icu (tipo: corrida).
+ * Seções sem traço (Aquecimento, Principal, Série Nx, Desaquecimento), passos com traço, uma linha em branco entre seções.
+ */
+export function intervalsText(w) {
+  const sections = []
+  let series = 0
+  const repeats = w.items.filter((x) => x.kind === 'repeat').length
+  for (const it of w.items) {
+    if (it.kind === 'repeat') {
+      series++
+      sections.push({ title: `Série${repeats > 1 ? ` ${series}` : ''} ${it.times}x`, steps: it.steps })
+      continue
+    }
+    const title = it.type === 'aquecimento' ? 'Aquecimento' : it.type === 'desaquecimento' ? 'Desaquecimento' : 'Principal'
+    const last = sections.at(-1)
+    if (title === 'Principal' && last?.title === 'Principal') last.steps.push(it)
+    else sections.push({ title, steps: [it] })
+  }
+  return sections.map((sec) => [sec.title, ...sec.steps.map((st) => ivStep(st, sec.title))].join('\n')).join('\n\n')
+}
+
+/* ---------- Prompt para o Claude criar no Garmin Connect (pelo navegador) ---------- */
+
+const brDate = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : null)
+
+function stepsText(w) {
+  return garminLines(w.items).map((l) => (l.repeat ? `  Repetir ${l.repeat} vezes:` : `  ${l.indent ? '    ' : ''}- ${l.step}: ${l.duration.replace(' · ', ' ')}; meta: ${l.target.replace(' · ', ' ')}${l.note ? ` (${l.note})` : ''}`)).join('\n')
+}
+
+/**
+ * Prompt em português para colar no Claude com acesso ao navegador (Claude no Chrome):
+ * cria cada treino no Garmin Connect (web), agenda na data e envia ao relógio.
+ */
+export function claudePrompt(workouts) {
+  const list = workouts.map((w, i) => `${i + 1}. "${w.name}"${w.date ? ` — agendar para ${brDate(w.date)}` : ''}\n${stepsText(w)}`).join('\n\n')
+  return `Use o navegador para criar ${workouts.length === 1 ? 'este treino de corrida' : `estes ${workouts.length} treinos de corrida`} no Garmin Connect, na minha conta (já estou logada em connect.garmin.com).
+
+Para cada treino:
+1. Vá em Treinamento e planejamento → Exercícios (connect.garmin.com/modern/workouts) e clique em "Criar exercício" → Corrida.
+2. Use exatamente o nome indicado.
+3. Monte os passos na ordem. Para cada passo, escolha o tipo (Aquecimento, Corrida, Recuperação, Descanso ou Desaquecimento), a duração indicada (Tempo em mm:ss ou Distância) e a meta (“Sem meta” quando indicado). Use “Adicionar repetição” para os blocos “Repetir N vezes”, com os passos de dentro na ordem.
+4. Salve. Se houver data, use “Agendar”/“Adicionar ao calendário” para colocar o treino nessa data.
+5. Depois de salvar, use “Enviar para dispositivo” e escolha o meu Forerunner 165.
+
+Regras:
+- Não altere nem apague nenhum outro treino ou atividade da minha conta.
+- Se um treino com o mesmo nome já existir, não crie outro igual: me pergunte o que fazer.
+- Se algum campo for diferente do que descrevi (nome de menu, unidade), escolha o equivalente e me avise no final.
+- Ao terminar, me mostre uma lista com cada treino criado, a data agendada e se foi enviado ao relógio.
+
+Treinos:
+
+${list}
+`
+}

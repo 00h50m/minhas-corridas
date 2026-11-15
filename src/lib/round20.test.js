@@ -37,3 +37,34 @@ describe('semana de treinos', () => {
     expect(weekStreak([], '2026-11-18')).toBe(0)
   })
 })
+
+describe('mandar sem cabo: Intervals.icu e prompt para o Claude', async () => {
+  const { intervalsText, claudePrompt } = await import('./workoutShare.js')
+  const w = normalizeWorkout({
+    name: 'Tiros 6x800', date: '2026-11-21',
+    items: [
+      { type: 'aquecimento', duration: { kind: 'time', value: 600 } },
+      { kind: 'repeat', times: 6, steps: [{ type: 'tiro', duration: { kind: 'distance', value: 800 }, target: { kind: 'pace', min: 290, max: 310 } }, { type: 'recuperacao', duration: { kind: 'time', value: 90 }, target: { kind: 'hr', min: 120, max: 140 } }] },
+      { type: 'corrida', duration: { kind: 'lap' } },
+      { type: 'desaquecimento', duration: { kind: 'time', value: 300 } }
+    ]
+  })
+  it('Intervals.icu: seções, distância em km, pace como faixa, FC como texto, botão de volta', () => {
+    expect(intervalsText(w)).toBe([
+      'Aquecimento', '- 10m', '',
+      'Série 6x', '- Tiro 0.8km 4:50-5:10/km Pace', '- Recuperação FC 120-140 1m30s', '',
+      'Principal', '- Press lap Corrida', '',
+      'Desaquecimento', '- 5m'
+    ].join('\n'))
+  })
+  it('prompt para o Claude: nome, data, passos e regras de segurança', () => {
+    const p = claudePrompt([w])
+    expect(p).toContain('criar este treino de corrida no Garmin Connect')
+    expect(p).toContain('1. "Tiros 6x800" — agendar para 21/11/2026')
+    expect(p).toContain('Repetir 6 vezes:')
+    expect(p).toContain('- Corrida: Distância 800 m; meta: Ritmo 4:50–5:10 /km (mais forte)')
+    expect(p).toContain('- Recuperação: Tempo 01:30; meta: Frequência cardíaca 120–140 bpm')
+    expect(p).toContain('Não altere nem apague nenhum outro treino')
+    expect(claudePrompt([w, w])).toContain('estes 2 treinos de corrida')
+  })
+})

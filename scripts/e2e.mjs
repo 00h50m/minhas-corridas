@@ -625,6 +625,8 @@ if ((await page2.$eval('#netTime', (el) => el.value)) !== '29:40') throw new Err
 await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-resultado-relogio.png`, fullPage: true })
 await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar resultado')).click())
 await page2.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+// O detalhe da prova carrega sob demanda: espera o resumo do relógio aparecer.
+await page2.waitForFunction(() => /do relógio/i.test(document.body.innerText), { timeout: 8000 }).catch(() => {})
 t3 = await page2.evaluate(() => document.body.innerText)
 if (!t3.includes('DO RELÓGIO') && !t3.includes('Do relógio')) throw new Error('Resumo do relógio não aparece no detalhe')
 if (!t3.includes('29:40') || !t3.includes('5:56')) throw new Error('Pace oficial mudou')

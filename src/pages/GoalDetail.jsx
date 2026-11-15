@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteGoal, getGoal, saveGoal, useStore } from '../services/store.js'
 import { GoalStatusBadge, Progress, TopBar, useUI } from '../components/ui.jsx'
@@ -11,10 +11,11 @@ import { raceBudgetCost, scopeOf } from '../lib/budget.js'
 import { BudgetBar } from '../components/Budget.jsx'
 import { GoalPlan } from '../components/Analysis.jsx'
 import { formatMoney } from '../lib/format.js'
+const GoalTrainingPlan = lazy(() => import('../components/GoalTrainingPlan.jsx'))
 
 export default function GoalDetail() {
   const { id } = useParams()
-  const { races } = useStore()
+  const { races, workouts } = useStore()
   const nav = useNavigate()
   const { confirm, notify } = useUI()
   const g = getGoal(id)
@@ -23,7 +24,7 @@ export default function GoalDetail() {
   if (!g) return <Navigate to="/objetivos" replace />
 
   const today = todayISO()
-  const p = goalProgress(g, races, today)
+  const p = goalProgress(g, races, today, workouts)
   const tone = p.over ? 'danger' : p.achieved || g.status === 'concluido' ? 'ok' : 'brand'
 
   const setStatus = (status) => {
@@ -83,7 +84,7 @@ export default function GoalDetail() {
           {p.warn && g.status === 'andamento' && <div className="alert alert-warn small" style={{ marginTop: 10 }}><div><b>Perto do limite:</b> já passou de {p.budget.alertPct}% do orçamento.</div></div>}
           {p.over && g.status === 'andamento' && <div className="alert alert-error small" style={{ marginTop: 10 }}><div><b>Orçamento estourado.</b></div></div>}
           <p className="small" style={{ margin: '10px 0 0' }}>{p.detail}</p>
-          {g.type === 'tempo' && <p className="note">Percentual = proximidade da marca (alvo ÷ melhor tempo oficial). Chega a 100% quando o tempo fica abaixo do alvo.</p>}
+          {g.type === 'tempo' && <p className="note">Percentual = proximidade da marca (alvo ÷ melhor tempo: prova oficial ou teste do plano de treino). Chega a 100% quando o tempo fica abaixo do alvo.</p>}
         </div>
 
         {p.note && <div className="alert alert-info small" style={{ marginTop: 12 }}><IconInfo /><div>{p.note}</div></div>}
@@ -94,9 +95,16 @@ export default function GoalDetail() {
           <button className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={() => setStatus('concluido')}><IconCheck /> Marcar como concluído</button>
         )}
 
+        {['tempo', 'primeira', 'manual'].includes(g.type) && (
+          <>
+            <div className="section-title"><h2>Plano de treino</h2><Link to="/treinos">Treinos</Link></div>
+            <Suspense fallback={null}><GoalTrainingPlan goal={g} today={today} /></Suspense>
+          </>
+        )}
+
         {g.type === 'tempo' && g.status !== 'concluido' && (
           <>
-            <div className="section-title"><h2>Plano</h2></div>
+            <div className="section-title"><h2>Plano de ritmo</h2></div>
             <GoalPlan goal={g} races={races} />
           </>
         )}

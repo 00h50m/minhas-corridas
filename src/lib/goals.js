@@ -63,7 +63,20 @@ export function formatGoalTarget(g) {
  * - achieved: os dados registrados já cumprem o objetivo.
  * - over: orçamento estourado.
  */
-export function goalProgress(g, races, today = todayISO()) {
+/**
+ * Testes de treino ligados ao objetivo de tempo: treinos feitos com o arquivo do relógio cobrindo
+ * a distância do objetivo (ex.: o "Teste 5 km" do plano). [{ workout, sec, date }]
+ */
+export function workoutTests(g, workouts = []) {
+  if (g.type !== 'tempo' || !g.distanceKm) return []
+  return workouts
+    .filter((w) => w.goalId === g.id && w.status === 'feito' && w.result?.elapsedSec > 0 && w.result.distanceKm >= g.distanceKm * 0.98 && w.result.distanceKm <= g.distanceKm * 1.15)
+    .filter((w) => (!g.startDate || !w.date || w.date >= g.startDate) && (!g.deadline || !w.date || w.date <= g.deadline))
+    .map((w) => ({ workout: w, sec: Math.round(w.result.elapsedSec), date: w.date }))
+    .sort((a, b) => a.sec - b.sec)
+}
+
+export function goalProgress(g, races, today = todayISO(), workouts = []) {
   const type = GOAL_TYPE_BY_ID[g.type]
   const expired = !!(g.deadline && g.deadline < today)
   const daysLeft = g.deadline ? daysBetween(today, g.deadline) : null
@@ -94,6 +107,22 @@ export function goalProgress(g, races, today = todayISO()) {
     let note = null
     if (bp && (!bo || bp.result.netTime < bo.result.netTime)) {
       note = `Registro pessoal (sem resultado oficial): ${formatDuration(bp.result.netTime)} em ${bp.name}. Não conta para a meta.`
+    }
+    // Teste do plano de treino (ligado a este objetivo) também conta, identificado como tal.
+    const test = workoutTests(g, workouts)[0] ?? null
+    if (test && (!bo || test.sec < bo.result.netTime)) {
+      const t = test.sec
+      const ok = t < target
+      return {
+        ...base,
+        races: bo ? [bo] : [],
+        test,
+        note,
+        pct: ok ? 1 : Math.max(0, Math.min(0.99, target / t)),
+        achieved: ok,
+        label: `Melhor: ${formatDuration(t)} (teste em treino)`,
+        detail: ok ? `Meta batida por ${formatDuration(target - t)} no teste “${test.workout.name}”${test.date ? ` (${formatDateBR(test.date)})` : ''}.` : `Faltam ${formatDuration(t - target)} para ficar abaixo de ${formatDuration(target)} (teste “${test.workout.name}”).`
+      }
     }
     if (!bo) {
       return { ...base, races: [], pct: 0, achieved: false, note, label: 'Sem resultado oficial', detail: `Nenhum resultado oficial de ${formatKm(g.distanceKm)} registrado${g.startDate || g.deadline ? ' no período' : ''}.` }

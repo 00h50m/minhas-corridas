@@ -74,7 +74,7 @@ function normalizeItem(raw) {
 }
 
 export function emptyWorkout() {
-  return { id: null, name: '', date: null, status: 'planejado', raceId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
+  return { id: null, name: '', date: null, status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
 }
 
 export function normalizeWorkout(raw) {
@@ -83,6 +83,7 @@ export function normalizeWorkout(raw) {
   w.date = isValidISODate(w.date) ? w.date : null
   w.status = WORKOUT_STATUSES.some((s) => s.id === w.status) ? w.status : 'planejado'
   w.raceId = str(w.raceId, 60) || null
+  w.goalId = str(w.goalId, 60) || null // objetivo a que este treino pertence (plano)
   w.notes = str(w.notes, 1000)
   w.items = (Array.isArray(w.items) ? w.items : []).map(normalizeItem).filter(Boolean).slice(0, 30)
   w.result = normalizeResult(w.result)

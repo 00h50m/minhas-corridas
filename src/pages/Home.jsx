@@ -124,7 +124,7 @@ export default function Home() {
   const budget = currentBudget(goals, today)
   // Objetivos já atingidos (aguardando confirmação) aparecem primeiro; o orçamento tem cartão próprio.
   const active = activeGoals(goals).filter((g) => g.id !== budget?.id)
-    .map((g, i) => ({ g, i, hit: goalProgress(g, races, today).achieved }))
+    .map((g, i) => ({ g, i, hit: goalProgress(g, races, today, workouts).achieved }))
     .sort((a, b) => (a.hit === b.hit ? a.i - b.i : a.hit ? -1 : 1))
     .map((x) => x.g)
   const cands = candidates(races, today)

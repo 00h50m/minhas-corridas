@@ -1022,3 +1022,8 @@ details.link-import { margin-top: 0; }
 .kit-time .input { width: 150px; }
 .chip-btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 6px 10px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
 .chip-btn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.gp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.gp-next { display: block; margin-top: 8px; color: var(--ink); text-decoration: none; }
+.gp-pick { list-style: none; padding: 0; margin: 8px 0 0; max-height: 50vh; overflow: auto; }
+.gp-pick li { border-top: 1px solid var(--line); padding: 4px 0; }
+.plan-hint { margin-top: 10px; }

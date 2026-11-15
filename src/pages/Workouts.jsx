@@ -12,7 +12,7 @@ import { claudePrompt } from '../lib/workoutShare.js'
 const STATUS_LABEL = Object.fromEntries(WORKOUT_STATUSES.map((s) => [s.id, s.label]))
 
 export default function Workouts() {
-  const { workouts } = useStore()
+  const { workouts, goals } = useStore()
   const today = todayISO()
   if (workouts.length === 0) {
     return (
@@ -37,6 +37,7 @@ export default function Workouts() {
       <TopBar title="Treinos" sub={`${upcoming.length} ${upcoming.length === 1 ? 'planejado' : 'planejados'}`} back="/" right={<Link to="/treinos/novo" className="icon-btn" aria-label="Novo treino"><IconPlus /></Link>} />
       <div className="page">
         <TrainingWeek workouts={workouts} today={today} />
+        <PlanGoalHint workouts={upcoming} goals={goals} />
         <div className="list-group-title">Próximos</div>
         {upcoming.length === 0 && <div className="card muted small">Nenhum treino com data à frente.</div>}
         {upcoming.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
@@ -75,5 +76,25 @@ export function WorkoutItem({ w, today }) {
         </div>
       </div>
     </Link>
+  )
+}
+
+/** Treinos planejados sem objetivo: sugere ligar a um objetivo (ou criar um com eles). */
+function PlanGoalHint({ workouts, goals }) {
+  const free = workouts.filter((w) => !w.goalId)
+  if (free.length < 2) return null
+  const active = goals.filter((g) => g.status === 'andamento' && ['tempo', 'primeira', 'manual'].includes(g.type))
+  // Distância do teste do plano (o passo por distância mais longo), para já sugerir o objetivo.
+  const testM = Math.max(0, ...free.flatMap((w) => w.items.flatMap((it) => (it.kind === 'repeat' ? [] : it.duration.kind === 'distance' ? [it.duration.value] : []))))
+  const last = free.map((w) => w.date).sort().at(-1)
+  const q = new URLSearchParams({ tipo: 'tempo', plano: '1', ...(testM >= 1000 ? { km: String(testM / 1000) } : {}), ...(last ? { ate: last } : {}) })
+  return (
+    <div className="card small plan-hint" data-testid="plan-goal-hint">
+      <b>{free.length} treinos planejados sem objetivo.</b> Ligue a um objetivo para ver o progresso do plano{testM >= 1000 ? ' e usar o teste como marca' : ''}.
+      <div className="btn-inline" style={{ marginTop: 6 }}>
+        <Link to={`/objetivos/novo?${q}`} className="link-btn" data-testid="plan-goal-create">Criar objetivo com estes treinos</Link>
+        {active.map((g) => <Link key={g.id} to={`/objetivos/${g.id}`} className="link-btn">Ligar a “{g.title}”</Link>)}
+      </div>
+    </div>
   )
 }

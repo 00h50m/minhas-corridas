@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { getGoal, saveGoal } from '../services/store.js'
+import { getGoal, getState, saveGoal, saveWorkout } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { COMMON_DISTANCES, GOAL_STATUSES, GOAL_TYPES, GOAL_TYPE_BY_ID, emptyGoal, validateGoal } from '../lib/model.js'
 import { suggestGoalTitle } from '../lib/goals.js'
@@ -76,6 +76,10 @@ export default function GoalForm() {
     const tipo = GOAL_TYPE_BY_ID[params.get('tipo')] ? params.get('tipo') : 'tempo'
     const g = emptyGoal(tipo)
     const ano = /^\d{4}$/.test(params.get('ano') ?? '') ? params.get('ano') : null
+    // Atalho "Criar objetivo com estes treinos" (?tipo=tempo&km=5&ate=AAAA-MM-DD&plano=1)
+    const km = Number(params.get('km'))
+    if (km > 0 && km < 500) g.distanceKm = km
+    if (/^\d{4}-\d{2}-\d{2}$/.test(params.get('ate') ?? '')) g.deadline = params.get('ate')
     if (PERIOD_TYPES.includes(tipo)) {
       const y = ano ?? todayISO().slice(0, 4)
       g.startDate = `${y}-01-01`
@@ -123,7 +127,17 @@ export default function GoalForm() {
     }
     try {
       const saved = saveGoal(goal)
-      notify(existing ? 'Objetivo atualizado' : 'Objetivo criado')
+      // Criado a partir dos treinos: liga os planejados até o prazo.
+      let linked = 0
+      if (!existing && params.get('plano') === '1') {
+        const today = todayISO()
+        for (const w of getState().workouts) {
+          if (w.goalId || w.status !== 'planejado' || !w.date || w.date < today || (saved.deadline && w.date > saved.deadline)) continue
+          saveWorkout({ ...w, goalId: saved.id })
+          linked++
+        }
+      }
+      notify(existing ? 'Objetivo atualizado' : linked ? `Objetivo criado com ${linked} treinos` : 'Objetivo criado')
       nav(`/objetivos/${saved.id}`, { replace: true })
     } catch (err) {
       setSaveError(err.message)

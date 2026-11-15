@@ -21,7 +21,7 @@ export default function WorkoutForm() {
 function Editor({ initial, isNew }) {
   const nav = useNavigate()
   const { notify } = useUI()
-  const { races } = useStore()
+  const { races, goals } = useStore()
   const today = todayISO()
   const [w, setW] = useState(initial)
   const [errors, setErrors] = useState({})
@@ -62,6 +62,15 @@ function Editor({ initial, isNew }) {
             </select>
           </Field>
         </div>
+
+        {goals.some((x) => x.status === 'andamento') && (
+          <Field label="Objetivo" optional htmlFor="wk-goal">
+            <select id="wk-goal" className="input" value={w.goalId ?? ''} onChange={(e) => set({ goalId: e.target.value || null })}>
+              <option value="">—</option>
+              {goals.filter((x) => x.status === 'andamento' || x.id === w.goalId).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+            </select>
+          </Field>
+        )}
 
         {!picked ? (
           <div className="card" data-testid="wk-templates">

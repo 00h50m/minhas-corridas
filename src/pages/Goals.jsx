@@ -4,6 +4,7 @@ import { EmptyState, GoalStatusBadge, Progress, TopBar } from '../components/ui.
 import { IconPlus } from '../components/Icons.jsx'
 import { GOAL_TYPE_BY_ID } from '../lib/model.js'
 import { activeGoals, formatGoalTarget, goalProgress } from '../lib/goals.js'
+import { planProgress } from '../lib/goalPlan.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
 
 export default function Goals() {
@@ -51,7 +52,9 @@ export default function Goals() {
 }
 
 export function GoalCard({ goal: g, races, today, compact }) {
-  const p = goalProgress(g, races, today)
+  const { workouts } = useStore()
+  const p = goalProgress(g, races, today, workouts)
+  const plan = planProgress(g, workouts, today)
   const tone = p.over ? 'danger' : p.warn ? 'warn' : p.achieved || g.status === 'concluido' ? 'ok' : 'brand'
   return (
     <Link to={`/objetivos/${g.id}`} className={`goal-card g-${g.status}`}>
@@ -66,6 +69,7 @@ export function GoalCard({ goal: g, races, today, compact }) {
         {!compact && <GoalStatusBadge status={g.status} />}
       </div>
       <Progress pct={p.pct} tone={tone} label={`Progresso de ${g.title}`} />
+      {plan && <div className="small muted" style={{ marginTop: 6 }} data-testid="goal-plan-chip">🏃 Plano: {plan.done} de {plan.total} treinos{plan.week ? ` · semana ${Math.min(plan.week, plan.weeks)} de ${plan.weeks}` : ''}</div>}
       <div className="goal-foot">
         <b>{p.label}</b>
         <span>

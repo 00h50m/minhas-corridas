@@ -5,13 +5,13 @@ import { BottomNav, UIProvider } from './components/ui.jsx'
 import { useStore } from './services/store.js'
 import Home from './pages/Home.jsx'
 import Races from './pages/Races.jsx'
-import RaceDetail from './pages/RaceDetail.jsx'
 import History from './pages/History.jsx'
 import Goals from './pages/Goals.jsx'
 import ImportPrompt from './components/ImportPrompt.jsx'
 
 // Telas menos usadas (e as que trazem bibliotecas grandes) carregam só quando abertas.
 const RaceForm = lazy(() => import('./pages/RaceForm.jsx'))
+const RaceDetail = lazy(() => import('./pages/RaceDetail.jsx'))
 const ResultForm = lazy(() => import('./pages/ResultForm.jsx'))
 const Settings = lazy(() => import('./pages/Settings.jsx'))
 const GoalForm = lazy(() => import('./pages/GoalForm.jsx'))

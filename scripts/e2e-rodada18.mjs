@@ -14,6 +14,11 @@ let step = 0
 const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] })
 const p = await browser.newPage()
 await p.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
+// Horário local fixo perto das 10h (fuso escolhido pela hora UTC), para o teste não depender da hora em que roda.
+{
+  const off = ((10 - new Date().getUTCHours() + 36) % 24) - 12 // −12 … +11
+  await p.emulateTimezone(off === 0 ? 'Etc/GMT' : `Etc/GMT${off > 0 ? '-' : '+'}${Math.abs(off)}`)
+}
 const errors = []
 p.on('pageerror', (e) => errors.push(e.message))
 p.on('console', (m) => m.type() === 'error' && !m.text().includes('Failed to load resource') && errors.push(m.text()))

@@ -977,3 +977,7 @@ details.link-import { margin-top: 0; }
 .lr-s { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); }
 .lr-s .btn { flex: none; }
 .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.gc-steps { list-style: none; padding: 0; margin: 6px 0 10px; }
+.gc-steps li { padding: 5px 0; border-top: 1px solid var(--line); }
+.gc-steps li.gc-in { padding-left: 16px; }
+.wk-imp-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }

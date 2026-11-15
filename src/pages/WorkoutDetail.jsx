@@ -6,6 +6,7 @@ import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconTrash, IconUpload } from '../components/Icons.jsx'
 import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, fmtPace, fmtSec, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
+import { garminLines } from '../lib/workoutShare.js'
 import { formatDateBR, toISODate } from '../lib/dates.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { downloadBlob } from '../services/backup.js'
@@ -24,6 +25,7 @@ function Detail({ w }) {
   const fileRef = useRef(null)
   const [msg, setMsg] = useState(null)
   const [howTo, setHowTo] = useState(false)
+  const [gc, setGc] = useState(false)
   const est = estimate(w.items)
   const race = w.raceId ? getRace(w.raceId) : null
 
@@ -93,6 +95,27 @@ function Detail({ w }) {
               <li>Desconecte com segurança. No relógio: <b>Corrida → Opções → Treinos</b>.</li>
             </ol>
             <p className="muted" style={{ marginBottom: 0 }}>Formato de treino da Garmin, conferido com o leitor oficial da Garmin, mas ainda não testado em todos os modelos. Se não aparecer no relógio, conte para a gente. O envio direto pelo Garmin Connect depende de aprovação da Garmin.</p>
+          </div>
+        )}
+
+        <button type="button" className="btn btn-block" style={{ marginTop: 6 }} onClick={() => setGc((v) => !v)} aria-expanded={gc} data-testid="wk-gc">{gc ? 'Fechar' : 'Montar no Garmin Connect (só pelo celular)'}</button>
+        {gc && (
+          <div className="card small" data-testid="wk-gc-guide">
+            <p style={{ marginTop: 0 }}>Sem computador: crie o treino no app <b>Garmin Connect</b> copiando os passos abaixo. Ele envia para o relógio pelo Bluetooth.</p>
+            <ol className="wk-howto">
+              <li>No Garmin Connect: <b>Mais (☰) → Treinos e planejamento → Exercícios → Criar exercício → Corrida</b> (os nomes do menu podem variar com a versão do app).</li>
+              <li>Nome do treino: <b>{w.name}</b>. Monte os passos na ordem (use “Adicionar repetição” para os blocos):</li>
+            </ol>
+            <ol className="gc-steps">
+              {garminLines(w.items).map((l, i) => (l.repeat
+                ? <li key={i} className="gc-rep"><b>Repetir {l.repeat} vezes:</b></li>
+                : <li key={i} className={l.indent ? 'gc-in' : ''}><b>{l.step}</b> — {l.duration} — {l.target}{l.note ? <span className="muted"> ({l.note})</span> : null}</li>
+              ))}
+            </ol>
+            <ol className="wk-howto" start={3}>
+              <li>Salve e toque em <b>Enviar para dispositivo</b>. No relógio: <b>Corrida → Opções → Treinos</b>.</li>
+            </ol>
+            <p className="muted" style={{ marginBottom: 0 }}>O envio automático do PaceOn para o relógio depende de a Garmin liberar o acesso (Training API).</p>
           </div>
         )}
 

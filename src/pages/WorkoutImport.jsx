@@ -7,6 +7,9 @@ import { decodePlan } from '../lib/workoutShare.js'
 import { estimate, fmtSec, summary } from '../lib/workout.js'
 import { formatDateBR, weekdayShort } from '../lib/dates.js'
 
+/** Passos sem ids (para comparar o conteúdo). */
+const strip = (items) => items.map(({ id, ...it }) => (it.kind === 'repeat' ? { ...it, steps: strip(it.steps) } : it))
+
 export default function WorkoutImport() {
   const { hash } = useLocation()
   const nav = useNavigate()
@@ -23,15 +26,22 @@ export default function WorkoutImport() {
       return { ok: false, error: e.message }
     }
   }, [hash, fromFile])
-  const exists = (w) => workouts.some((x) => x.name === w.name && x.date === w.date)
+  // Mesmo nome e data: igual → não repete; diferente (ex.: ganhou faixas de pace) → atualiza os passos e as observações,
+  // mantendo o status (feito/planejado) e o resultado.
+  const sameAs = (w) => workouts.find((x) => x.name === w.name && x.date === w.date) ?? null
+  const changed = (w, x) => JSON.stringify(strip(w.items)) !== JSON.stringify(strip(x.items)) || (w.notes || '') !== (x.notes || '')
+  const exists = (w) => { const x = sameAs(w); return !!x && !changed(w, x) }
+  const toUpdate = (w) => { const x = sameAs(w); return !!x && changed(w, x) }
   const add = () => {
     let n = 0
+    let u = 0
     for (const w of parsed.workouts) {
-      if (exists(w)) continue
-      saveWorkout({ ...w, id: null, status: 'planejado', result: null })
-      n++
+      const x = sameAs(w)
+      if (x && !changed(w, x)) continue
+      if (x) { saveWorkout({ ...x, items: w.items, notes: w.notes }); u++ }
+      else { saveWorkout({ ...w, id: null, status: 'planejado', result: null }); n++ }
     }
-    notify(n ? `${n} ${n === 1 ? 'treino adicionado' : 'treinos adicionados'}` : 'Esses treinos já estavam no app')
+    notify(n || u ? [n ? `${n} ${n === 1 ? 'adicionado' : 'adicionados'}` : null, u ? `${u} ${u === 1 ? 'atualizado' : 'atualizados'}` : null].filter(Boolean).join(', ') : 'Esses treinos já estavam no app')
     nav('/treinos', { replace: true })
   }
   const onFile = async (e) => {
@@ -62,9 +72,10 @@ export default function WorkoutImport() {
                 <div className="wk-imp-top"><b>{w.name}</b><span className="muted small">{w.date ? `${weekdayShort(w.date)} ${formatDateBR(w.date).slice(0, 5)}` : 'sem data'}</span></div>
                 <div className="small muted">{summary(w.items)} · ≈ {fmtSec(estimate(w.items).sec)}</div>
                 {exists(w) && <div className="small" style={{ marginTop: 4 }}>Já está no app (não será repetido).</div>}
+                {toUpdate(w) && <div className="small" style={{ marginTop: 4 }} data-testid="wk-import-update">Já está no app: os passos serão atualizados (o status e o resultado ficam).</div>}
               </div>
             ))}
-            <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 14 }} onClick={add} data-testid="wk-import-add">Adicionar {parsed.workouts.filter((w) => !exists(w)).length} treinos</button>
+            <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 14 }} onClick={add} data-testid="wk-import-add">{(() => { const n = parsed.workouts.filter((w) => !sameAs(w)).length; const u = parsed.workouts.filter(toUpdate).length; const parts = [n ? `Adicionar ${n}` : null, u ? `${n ? 'atualizar' : 'Atualizar'} ${u}` : null].filter(Boolean); return parts.length ? `${parts.join(' e ')} ${n + u === 1 ? 'treino' : 'treinos'}` : 'Adicionar 0 treinos' })()}</button>
             <p className="note">Os treinos entram como planejados, com as datas acima. Dá para mudar a data ou os passos depois, em cada treino. <Link to="/treinos">Cancelar</Link></p>
           </>
         )}

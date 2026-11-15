@@ -60,6 +60,25 @@ await p.waitForFunction(() => location.pathname === '/treinos')
 if ((await stored()).length !== 3) throw new Error('Repetiu treinos')
 ok('Mesmo link de novo: nada repetido')
 
+// 2b. Mesmo treino com mudança (ganhou faixa de pace): atualiza no lugar, mantendo status e id
+const before = (await stored()).find((w) => w.name === 'S1 A Base 6x2')
+await p.evaluate((id) => { const d = JSON.parse(localStorage.getItem('minhas-corridas:v1')); d.workouts = d.workouts.map((w) => (w.id === id ? { ...w, status: 'feito' } : w)); localStorage.setItem('minhas-corridas:v1', JSON.stringify(d)) }, before.id)
+const withPace = plan.map((w, i) => (i === 0 ? normalizeWorkout({ ...w, items: [{ type: 'corrida', duration: t(20), target: { kind: 'pace', min: 525, max: 570 } }] }) : w))
+await p.goto(`${BASE}/treinos/importar#p=${encodePlan('Bloco 5 km', withPace)}`, { waitUntil: 'networkidle0' })
+await p.waitForSelector('[data-testid=wk-import-update]')
+await need('Atualizar 1 treino')
+await p.$eval('[data-testid=wk-import-add]', (b) => b.click())
+await p.waitForFunction(() => location.pathname === '/treinos')
+const after = (await stored()).find((w) => w.name === 'S1 A Base 6x2')
+if ((await stored()).length !== 3 || after.id !== before.id || after.status !== 'feito' || after.items[0].target.min !== 525) throw new Error('Atualização: ' + JSON.stringify({ n: (await stored()).length, id: after.id === before.id, st: after.status, t: after.items[0].target }))
+// volta ao estado do teste
+await p.evaluate((id) => { const d = JSON.parse(localStorage.getItem('minhas-corridas:v1')); d.workouts = d.workouts.map((w) => (w.id === id ? { ...w, status: 'planejado' } : w)); localStorage.setItem('minhas-corridas:v1', JSON.stringify(d)) }, before.id)
+await p.goto(`${BASE}/treinos/importar#p=${code}`, { waitUntil: 'networkidle0' })
+await p.waitForSelector('[data-testid=wk-import-add]')
+await p.$eval('[data-testid=wk-import-add]', (b) => b.click())
+await p.waitForFunction(() => location.pathname === '/treinos')
+ok('Mesmo nome e data com passos novos (pace): “Atualizar 1 treino” atualiza no lugar, mantendo id e status')
+
 // 3. Arquivo .json (mesmo formato) e link quebrado
 const dir = path.resolve(SHOTS, 'r21')
 fs.mkdirSync(dir, { recursive: true })

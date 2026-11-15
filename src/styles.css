@@ -981,3 +981,18 @@ details.link-import { margin-top: 0; }
 .gc-steps li { padding: 5px 0; border-top: 1px solid var(--line); }
 .gc-steps li.gc-in { padding-left: 16px; }
 .wk-imp-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+
+/* Corridas: atalhos de status e separação por mês */
+.quick-status { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 2px; scrollbar-width: none; }
+.quick-status::-webkit-scrollbar { display: none; }
+.quick-status button { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 7px 12px; font-size: 13.5px; font-weight: 800; cursor: pointer; }
+.quick-status button[aria-pressed='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.quick-status .qs-n { font-weight: 700; opacity: .65; margin-left: 2px; }
+.month-sep { font-size: 13px; font-weight: 800; color: var(--ink-2); margin: 14px 4px 6px; }
+.month-sep::first-letter { text-transform: uppercase; }
+/* Avisos que pedem ação (fora do destaque do Início) */
+.chip.chip-hot { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand-ink); }
+.hero .chip.chip-hot { background: var(--brand); color: #fff; }
+.chip.chip-dim { background: transparent; border: 1px dashed var(--line); color: var(--ink-3); }
+.hero .chip.chip-dim { border-color: rgba(255, 255, 255, 0.35); color: inherit; }
+.quick-status button { padding: 7px 10px; font-size: 13px; }

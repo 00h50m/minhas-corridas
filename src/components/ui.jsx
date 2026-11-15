@@ -69,7 +69,7 @@ export function DateTile({ date }) {
   )
 }
 
-export function RaceItem({ race, extra }) {
+export function RaceItem({ race, extra, when }) {
   const place = [race.city, race.state].filter(Boolean).join('/')
   return (
     <Link to={`/corridas/${race.id}`} className={`race-item b-${race.status}`}>
@@ -77,7 +77,7 @@ export function RaceItem({ race, extra }) {
       <div className="race-body">
         <div className="t">{race.name}</div>
         <div className="s">
-          {[race.date ? formatDateBR(race.date) : 'Data a confirmar', race.startTime, place].filter(Boolean).join(' · ')}
+          {[when ?? (race.date ? formatDateBR(race.date) : 'Data a confirmar'), race.startTime, place].filter(Boolean).join(' · ')}
         </div>
         <div className="row">
           <StatusBadge status={race.status} />

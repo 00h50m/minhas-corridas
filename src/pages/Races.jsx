@@ -12,7 +12,27 @@ import { downloadText } from '../services/backup.js'
 
 const emptyFilters = { query: '', statuses: [], city: '', distance: null, from: '', to: '' }
 // Mantém filtros e visualização ao voltar da tela de detalhe.
-const memo = { view: 'lista', filters: emptyFilters, month: null, selected: null }
+const memo = { view: 'lista', filters: emptyFilters, month: null, selected: null, allPast: false }
+
+// Atalhos de status (com contagem) acima da lista.
+const QUICK = [
+  { id: 'todas', label: 'Todas', statuses: [] },
+  { id: 'inscritas', label: 'Inscritas', statuses: ['inscrita'] },
+  { id: 'interesse', label: 'Interesse', statuses: ['interesse', 'aberta'] },
+  { id: 'concluidas', label: 'Concluídas', statuses: ['concluida'] }
+]
+const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x))
+const PAST_SHOWN = 5
+
+/** "Hoje", "Amanhã", "Em 12 dias" (até 60 dias); depois a data. */
+function whenLabel(date, today) {
+  const d = daysBetween(today, date)
+  if (d === 0) return 'Hoje'
+  if (d === 1) return 'Amanhã'
+  if (d > 1 && d <= 60) return `Em ${d} dias`
+  return formatDateBR(date)
+}
+const shortDay = (iso, today) => { const d = daysBetween(today, iso); return d === 0 ? 'hoje' : d === 1 ? 'amanhã' : formatDateBR(iso).slice(0, 5) }
 
 function activeFilterCount(f) {
   return (f.statuses.length ? 1 : 0) + (f.city ? 1 : 0) + (f.distance != null ? 1 : 0) + (f.from || f.to ? 1 : 0)
@@ -26,6 +46,8 @@ export default function Races() {
   const [view, setViewState] = useState(memo.view)
   const [filters, setFiltersState] = useState(params.get('semdata') === '1' ? { ...emptyFilters } : memo.filters)
   const [sheet, setSheet] = useState(false)
+  const [allPast, setAllPastState] = useState(memo.allPast)
+  const setAllPast = (v) => { memo.allPast = v; setAllPastState(v) }
   const today = todayISO()
 
   const setView = (v) => { memo.view = v; setViewState(v) }
@@ -89,7 +111,34 @@ export default function Races() {
     if (sameDates.has(r.date)) out.push(<span key="s" className="flag flag-warn">Mesma data</span>)
     else if (r.date && r.status !== 'cancelada' && r.status !== 'desisti' && list.some((o) => o.id !== r.id && o.status !== 'cancelada' && o.status !== 'desisti' && o.date && Math.abs(daysBetween(r.date, o.date)) === 1)) out.push(<span key="c" className="flag flag-info">Dia seguido</span>)
     if (r.result) out.push(<span key="r" className="chip">⏱ {formatDuration(r.result.netTime)}</span>)
+    // O que pede ação: kit para retirar, inscrição fechando, resultado a registrar.
+    const kitDone = (r.checklist ?? []).some((i) => i.done && /kit retirado/i.test(i.text))
+    if (r.status === 'inscrita' && r.kitPickupDate && !kitDone) {
+      const k = daysBetween(today, r.kitPickupDate)
+      if (k >= 0 && k <= 3) out.push(<span key="k" className="chip chip-hot">Kit {shortDay(r.kitPickupDate, today)}</span>)
+    }
+    if (['interesse', 'aberta'].includes(r.status) && r.signupDeadline) {
+      const k = daysBetween(today, r.signupDeadline)
+      if (k >= 0 && k <= 7) out.push(<span key="i" className="chip chip-hot">Inscrição até {shortDay(r.signupDeadline, today)}</span>)
+    }
+    if (r.status === 'inscrita' && r.date && r.date < today && !r.result) out.push(<span key="res" className="chip chip-hot">Registrar resultado</span>)
     return out
+  }
+  const counts = Object.fromEntries(QUICK.map((q) => [q.id, q.statuses.length ? races.filter((r) => q.statuses.includes(r.status)).length : races.length]))
+  const quickActive = QUICK.find((q) => sameSet(q.statuses, filters.statuses))?.id ?? null
+  const narrowed = !!(filters.query || nFilters)
+  const pastShown = allPast || narrowed ? past : past.slice(0, PAST_SHOWN)
+  // Próximas separadas por mês (com o ano quando não for o atual).
+  const futureWithMonths = []
+  let lastMonth = null
+  for (const r of future) {
+    const m = r.date.slice(0, 7)
+    if (m !== lastMonth) {
+      const [yy, mm] = m.split('-').map(Number)
+      futureWithMonths.push({ header: `${monthName(mm - 1)}${yy !== Number(today.slice(0, 4)) ? ` ${yy}` : ''}`, key: m })
+      lastMonth = m
+    }
+    futureWithMonths.push({ race: r })
   }
 
   return (
@@ -111,6 +160,14 @@ export default function Races() {
           </button>
         </div>
 
+        <div className="quick-status" role="group" aria-label="Mostrar">
+          {QUICK.map((q) => (
+            <button key={q.id} type="button" aria-pressed={quickActive === q.id} onClick={() => setFilters({ ...filters, statuses: q.statuses })} data-testid={`quick-${q.id}`}>
+              {q.label} <span className="qs-n">{counts[q.id]}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="tabs" role="tablist" style={{ marginTop: 12 }}>
           <button role="tab" aria-selected={view === 'lista'} onClick={() => setView('lista')}>Lista</button>
           <button role="tab" aria-selected={view === 'mes'} onClick={() => setView('mes')}>Mês</button>
@@ -127,17 +184,20 @@ export default function Races() {
           <>
             {filtered.length === 0 && <div className="card muted" style={{ marginTop: 12 }}>Nenhuma corrida encontrada com esses filtros.</div>}
             {future.length > 0 && <div className="list-group-title">Próximas</div>}
-            {future.map((r) => <RaceItem key={r.id} race={r} extra={flagsFor(r, dated)} />)}
+            {futureWithMonths.map((x) => (x.header
+              ? <div key={x.key} className="month-sep" data-testid="month-sep">{x.header}</div>
+              : <RaceItem key={x.race.id} race={x.race} when={whenLabel(x.race.date, today)} extra={flagsFor(x.race, dated)} />))}
             {undated.length > 0 && <div className="list-group-title">Data a confirmar</div>}
             {undated.map((r) => <RaceItem key={r.id} race={r} />)}
-            {past.length > 0 && <div className="list-group-title">Anteriores</div>}
-            {past.map((r) => <RaceItem key={r.id} race={r} extra={flagsFor(r, dated)} />)}
+            {past.length > 0 && <div className="list-group-title">Anteriores{past.length > pastShown.length ? ` · ${pastShown.length} de ${past.length}` : ''}</div>}
+            {pastShown.map((r) => <RaceItem key={r.id} race={r} extra={flagsFor(r, dated)} />)}
+            {past.length > pastShown.length && <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => setAllPast(true)} data-testid="all-past">Ver todas as anteriores ({past.length})</button>}
+            {allPast && !narrowed && past.length > PAST_SHOWN && <button type="button" className="link-btn" onClick={() => setAllPast(false)}>Mostrar só as {PAST_SHOWN} mais recentes</button>}
             {(filters.from || filters.to) && <p className="note">Provas sem data não aparecem quando há filtro de período.</p>}
           </>
         ) : (
           <MonthView races={dated} undated={undated} sameDates={sameDates} today={today} />
         )}
-        <p className="note">O botão de agenda no topo exporta para .ics as provas com data da lista filtrada (exceto canceladas e desistências). Para uma agenda que se atualiza sozinha, use a <Link to="/lembretes">agenda por assinatura</Link>.</p>
       </div>
 
       {sheet && <FilterSheet races={races} value={filters} onApply={(f) => { setFilters(f); setSheet(false) }} onClose={() => setSheet(false)} />}

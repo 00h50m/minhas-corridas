@@ -5,6 +5,7 @@ import { DateTile, EmptyState, TopBar } from '../components/ui.jsx'
 import { IconPlus } from '../components/Icons.jsx'
 import { WORKOUT_STATUSES, estimate, fmtSec, summary } from '../lib/workout.js'
 import { todayISO } from '../lib/dates.js'
+import TrainingWeek from '../components/TrainingWeek.jsx'
 
 const STATUS_LABEL = Object.fromEntries(WORKOUT_STATUSES.map((s) => [s.id, s.label]))
 
@@ -33,6 +34,8 @@ export default function Workouts() {
     <>
       <TopBar title="Treinos" sub={`${upcoming.length} ${upcoming.length === 1 ? 'planejado' : 'planejados'}`} back="/" right={<Link to="/treinos/novo" className="icon-btn" aria-label="Novo treino"><IconPlus /></Link>} />
       <div className="page">
+        <TrainingWeek workouts={workouts} today={today} />
+        <div className="list-group-title">Próximos</div>
         {upcoming.length === 0 && <div className="card muted small">Nenhum treino com data à frente.</div>}
         {upcoming.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
         {undated.length > 0 && <div className="list-group-title">Sem data</div>}

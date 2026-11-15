@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar, AvatarButton } from '../components/Avatar.jsx'
 import { useProfile } from '../services/profile.js'
@@ -17,11 +17,13 @@ import BudgetCard from '../components/Budget.jsx'
 import { currentBudget } from '../lib/budget.js'
 import { candidates } from '../lib/decision.js'
 import { estimate, fmtSec, summary as workoutSummary } from '../lib/workout.js'
+// Resumo da semana de treinos: carrega só quando há treinos (não pesa a abertura do app).
+const TrainingWeek = lazy(() => import('../components/TrainingWeek.jsx'))
 import { resultBadges } from '../lib/shareCard.js'
 import { compareToTarget } from '../lib/targetCompare.js'
 import { formatDiff } from '../lib/compare.js'
 import { upcomingAlerts, whenLabel } from '../lib/alerts.js'
-import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
+import { addDaysISO, countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace } from '../lib/format.js'
 import { history, nextConfirmed, pendingResults, sameDateGroups, upcoming, yearSummary } from '../lib/stats.js'
 
@@ -163,6 +165,12 @@ export default function Home() {
         </nav>
 
         {nextWorkout && <NextWorkout w={nextWorkout} today={today} />}
+        {workouts.some((w) => w.date && w.date >= addDaysISO(today, -7) && w.date <= addDaysISO(today, 7)) && (
+          <Suspense fallback={null}>
+            {!nextWorkout && <div className="section-title"><h2>Treinos</h2><Link to="/treinos">Ver</Link></div>}
+            <div style={{ marginTop: nextWorkout ? 10 : 0 }}><TrainingWeek workouts={workouts} today={today} compact /></div>
+          </Suspense>
+        )}
 
         {alerts.length > 0 && (
           <>

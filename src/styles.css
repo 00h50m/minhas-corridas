@@ -996,3 +996,23 @@ details.link-import { margin-top: 0; }
 .chip.chip-dim { background: transparent; border: 1px dashed var(--line); color: var(--ink-3); }
 .hero .chip.chip-dim { border-color: rgba(255, 255, 255, 0.35); color: inherit; }
 .quick-status button { padding: 7px 10px; font-size: 13px; }
+
+/* Semana de treinos */
+.tw-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: 8px; }
+.tw-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.tw-day { display: grid; justify-items: center; gap: 2px; padding: 6px 0; border-radius: 12px; text-decoration: none; color: var(--ink-2); }
+.tw-day.has { background: var(--surface-2); color: var(--ink); }
+.tw-day.today { outline: 2px solid var(--brand); outline-offset: -2px; }
+.tw-dow { font-size: 11px; font-weight: 800; color: var(--ink-3); text-transform: uppercase; }
+.tw-num { font-weight: 800; font-size: 15px; }
+.tw-mark { font-size: 13px; font-weight: 900; min-height: 16px; line-height: 16px; }
+.tw-mark.feito { color: var(--ok); }
+.tw-mark.passou { color: var(--danger); }
+.tw-mark.pulado { color: var(--ink-3); }
+.tw-mark.hoje, .tw-mark.futuro { color: var(--brand); }
+.tw-totals { margin-top: 10px; }
+.tw-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 6px; }
+.tw-bar span { display: block; height: 100%; background: var(--ok); border-radius: inherit; }
+.tw-streak { margin-top: 8px; font-weight: 700; }
+.tw-compact { display: block; text-decoration: none; color: var(--ink); }
+.tw-compact .tw-row { margin-bottom: 8px; }

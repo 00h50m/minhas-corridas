@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteRace, getRace, saveRace, useStore } from '../services/store.js'
 import { StatusBadge, TopBar, useUI } from '../components/ui.jsx'
@@ -16,6 +16,10 @@ import { IconBell, IconCompare, IconFlag, IconShare } from '../components/Icons.
 import { comparableRaces } from '../lib/compare.js'
 import { TargetCompareCard, TargetQuickSet } from '../components/Target.jsx'
 import LogisticsSummary from '../components/LogisticsSummary.jsx'
+// Previsão e resumo da logística carregam só quando aparecem (não pesam a abertura do app).
+const WeatherCard = lazy(() => import('../components/WeatherCard.jsx'))
+const LogisticsReview = lazy(() => import('../components/LogisticsReview.jsx'))
+import { forecastAvailable } from '../lib/weather.js'
 import { companionNames } from '../lib/people.js'
 import { useProfile } from '../services/profile.js'
 import { DecisionActions, DecisionDetails, WishPicker, setWish } from '../components/Decision.jsx'
@@ -223,6 +227,20 @@ export default function RaceDetail() {
             </button>
           ))}
         </div>
+
+        {r.date && !res && !['cancelada', 'desisti', 'concluida'].includes(r.status) && forecastAvailable(daysBetween(today, r.date)) && (
+          <>
+            <div className="section-title"><h2>Clima na largada</h2></div>
+            <Suspense fallback={<div className="card muted small">Buscando a previsão…</div>}><WeatherCard race={r} /></Suspense>
+          </>
+        )}
+
+        {r.date && r.date <= today && r.dayLog?.date === r.date && (
+          <>
+            <div className="section-title"><h2>Como foi a logística</h2></div>
+            <Suspense fallback={null}><LogisticsReview race={r} /></Suspense>
+          </>
+        )}
 
         {r.date && !['cancelada', 'desisti'].includes(r.status) && (!res || r.logistics) && (
           <>

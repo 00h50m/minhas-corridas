@@ -49,6 +49,7 @@ export default function Privacy() {
           <li><b>Supabase</b> — banco de dados, autenticação e armazenamento dos arquivos da sua conta. Cada pessoa só acessa os próprios registros.</li>
           <li><b>Vercel</b> — hospedagem do app e das funções do servidor (endereços IP aparecem nos registros técnicos de acesso).</li>
           <li><b>Busca de endereços e rotas</b> — ao verificar um endereço ou calcular uma rota, o texto do endereço ou o CEP (e, nas rotas, os pontos do trajeto e o horário de saída) é enviado ao serviço configurado: BrasilAPI e ViaCEP (CEP), Photon e Nominatim (OpenStreetMap), OpenRouteService ou Google Maps Platform. Ao usar “minha localização”, as coordenadas atuais são enviadas para descobrir o endereço.</li>
+          <li><b>Previsão do tempo (Open-Meteo)</b> — para mostrar o clima na largada, o app envia a localização da prova (as coordenadas do local ou da cidade) e a data. Nenhum dado seu vai junto além do endereço IP.</li>
           <li><b>Mapas do OpenStreetMap</b> — as imagens do mapa são baixadas dos servidores do OpenStreetMap, que recebem o seu endereço IP.</li>
           <li><b>Serviços de notificação</b> do seu navegador ou celular (Google, Apple ou Mozilla), que recebem o conteúdo do aviso para entregá-lo.</li>
           <li><b>Google Fonts</b> — as fontes do app são carregadas dos servidores do Google, que recebem o seu endereço IP.</li>

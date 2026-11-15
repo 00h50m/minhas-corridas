@@ -2,6 +2,7 @@
 // projetados, navegação só até o próximo ponto, aviso no WhatsApp com o horário atualizado e
 // lembretes enquanto a tela estiver aberta.
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getRace, saveRace } from '../services/store.js'
 import { useProfile } from '../services/profile.js'
 import { dayStatus, delayLabel, legNavLinks, onTheWayMessage } from '../lib/dayPlan.js'
@@ -68,7 +69,7 @@ export default function DayGuide({ race, steps, nowMin, live, trip = 'ida', note
           )}
         </>
       ) : (
-        <p className="small" style={{ margin: '6px 0' }} data-testid="dg-done">{trip === 'volta' ? <><b>Em casa.</b> Descanse e registre o resultado. 🏅</> : <><b>Você chegou.</b> Boa prova! 🏃</>}</p>
+        <p className="small" style={{ margin: '6px 0' }} data-testid="dg-done">{trip === 'volta' ? <><b>Em casa.</b> Descanse e registre o resultado. 🏅 <Link to={`/corridas/${race.id}`} data-testid="dg-review-link">Ver como foi a logística</Link></> : <><b>Você chegou.</b> Boa prova! 🏃</>}</p>
       )}
       {note && <p className="note" style={{ marginTop: 4 }}>{note}</p>}
       <ol className="dg-steps">

@@ -16,6 +16,8 @@ import { minToHm } from '../lib/schedule.js'
 import Timeline from '../components/Timeline.jsx'
 import Pickups from '../components/Pickups.jsx'
 import DayGuide from '../components/DayGuide.jsx'
+import WeatherCard from '../components/WeatherCard.jsx'
+import { forecastAvailable } from '../lib/weather.js'
 import { daySteps, returnSteps } from '../lib/dayPlan.js'
 
 /** Minutos até HH:MM de hoje (negativo se já passou). */
@@ -105,6 +107,8 @@ export default function RaceDay() {
           <div className="name">{r.name}</div>
           {r.startTime && <div className="meta">Largada às {r.startTime}{leaveLabel ? ` · sair de casa às ${leaveLabel}${isToday && toLeaveSched > 0 ? ` (${untilLabel(toLeaveSched)})` : ''}` : ''}</div>}
         </div>
+
+        {forecastAvailable(d) && <div style={{ marginTop: 12 }}><WeatherCard race={r} /></div>}
 
         {isToday && (idaSteps.length > 0 || ret?.reason !== 'off') && (
           <div style={{ marginTop: 12 }}>

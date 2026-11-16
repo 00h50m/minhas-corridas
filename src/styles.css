@@ -1027,3 +1027,8 @@ details.link-import { margin-top: 0; }
 .gp-pick { list-style: none; padding: 0; margin: 8px 0 0; max-height: 50vh; overflow: auto; }
 .gp-pick li { border-top: 1px solid var(--line); padding: 4px 0; }
 .plan-hint { margin-top: 10px; }
+.ai-log { margin: 8px 0 0; padding-left: 18px; }
+.ai-log li + li { margin-top: 4px; }
+.ai-cands { display: grid; gap: 8px; }
+.tw-load { margin-top: 8px; }
+.tw-warn { margin-top: 4px; color: var(--warn); font-weight: 700; }

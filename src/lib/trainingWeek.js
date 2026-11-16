@@ -69,3 +69,19 @@ export function weekStreak(workouts, today) {
 }
 
 export const DOW_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+/**
+ * Carga da semana × semanas anteriores (tempo de treino).
+ * { thisSec (feito, ou planejado se ainda não terminou), plannedSec, lastSec, avg4Sec, pct (vs semana passada), warn }
+ * warn: a semana (planejada ou feita, o que for maior) passa de 10% acima da passada, com pelo menos 5 min a mais.
+ */
+export function weekLoad(workouts, start, today) {
+  const cur = weekSummary(workouts, start, today)
+  const prev = [1, 2, 3, 4].map((k) => weekSummary(workouts, addDaysISO(start, -7 * k), today).doneSec)
+  const lastSec = prev[0]
+  const counted = prev.filter((x) => x > 0)
+  const avg4Sec = counted.length ? Math.round(counted.reduce((a, b) => a + b, 0) / counted.length) : 0
+  const thisSec = Math.max(cur.doneSec, cur.plannedSec)
+  const pct = lastSec > 0 ? Math.round(((thisSec - lastSec) / lastSec) * 100) : null
+  return { thisSec, plannedSec: cur.plannedSec, doneSec: cur.doneSec, lastSec, avg4Sec, pct, warn: lastSec > 0 && thisSec > lastSec * 1.1 && thisSec - lastSec >= 300 }
+}

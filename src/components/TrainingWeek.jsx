@@ -1,7 +1,7 @@
 // Semana de treinos: segunda a domingo, planejado × feito, tempo, km e sequência de semanas cumpridas.
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { DOW_SHORT, weekStart, weekStreak, weekSummary, workoutState } from '../lib/trainingWeek.js'
+import { DOW_SHORT, weekLoad, weekStart, weekStreak, weekSummary, workoutState } from '../lib/trainingWeek.js'
 import { addDaysISO, formatDateBR } from '../lib/dates.js'
 import { IconChevronL, IconChevronR } from './Icons.jsx'
 
@@ -46,6 +46,7 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
           <span style={{ width: `${Math.round((s.done / s.planned) * 100)}%` }} />
         </div>
       )}
+      <Load workouts={workouts} start={start} today={today} />
       {(s.missed > 0 || s.skipped > 0) && <p className="note" style={{ margin: '6px 0 0' }}>{s.missed > 0 ? `${s.missed} ${s.missed === 1 ? 'treino passou' : 'treinos passaram'} sem marcar: abra e marque como feito (ou importe a atividade) ou “Não fiz”.` : ''}{s.skipped > 0 ? ` ${s.skipped} não ${s.skipped === 1 ? 'feito' : 'feitos'}.` : ''}</p>}
       {!current && <button type="button" className="link-btn" onClick={() => setStart(weekStart(today))}>Voltar para esta semana</button>}
       {streak > 0 && <div className="tw-streak small" data-testid="week-streak">🔥 {streak} {streak === 1 ? 'semana cumprida' : 'semanas seguidas cumpridas'}</div>}
@@ -69,5 +70,19 @@ function Day({ d, i, today }) {
     <Link to={`/treinos/${w.id}`} className={`${cls} has`} aria-label={`${DOW_SHORT[i]} ${formatDateBR(d.date)}: ${w.name}, ${STATE_TXT[st]}${d.workouts.length > 1 ? ` (+${d.workouts.length - 1})` : ''}`}>
       {inner}
     </Link>
+  )
+}
+
+/** Carga: esta semana × a passada (e a média de 4), com aviso acima de 10%. */
+function Load({ workouts, start, today }) {
+  const l = weekLoad(workouts, start, today)
+  if (!l.thisSec && !l.lastSec) return null
+  return (
+    <div className={`tw-load small${l.warn ? ' warn' : ''}`} data-testid="week-load">
+      Carga: <b>{mins(l.thisSec)}</b>{l.doneSec < l.plannedSec ? ' planejada' : ''}
+      {l.lastSec > 0 ? <> · semana passada {mins(l.lastSec)} ({l.pct > 0 ? '+' : ''}{l.pct}%)</> : ' · sem treinos na semana passada'}
+      {l.avg4Sec > 0 && l.avg4Sec !== l.lastSec ? <span className="muted"> · média de 4 semanas {mins(l.avg4Sec)}</span> : null}
+      {l.warn && <div className="tw-warn" data-testid="week-load-warn">Mais de 10% acima da semana passada. Se sentir cansaço fora do normal ou dor, segure o volume (repita a semana em vez de aumentar).</div>}
+    </div>
   )
 }

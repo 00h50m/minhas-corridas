@@ -44,7 +44,7 @@ const today = await p.evaluate(() => new Date().toLocaleDateString('sv'))
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.$eval('[data-testid=workouts-link]', (a) => a.click())
 await p.waitForFunction(() => location.pathname === '/treinos')
-await need('Seus treinos no relógio')
+await waitText('Seus treinos no relógio') // a tela carrega sob demanda
 await click('a', 'Criar treino')
 await p.waitForSelector('[data-testid=wk-templates]')
 await need('não recomendações de treino')

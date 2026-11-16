@@ -200,7 +200,7 @@ async function quickRace(name, date, city, km, status) {
   if (km) await type('#distanceKm', km)
   if (status) await clickText('.form > .card .seg button', status)
   await clickText('button', 'Salvar corrida')
-  await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+  await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 }
 await go('/corridas/nova')
 await type('#name', 'Night Run')
@@ -212,7 +212,7 @@ ok('Aviso informativo de dias consecutivos, sem bloquear')
 await type('#city', 'São Paulo')
 await type('#distanceKm', '5')
 await clickText('button', 'Salvar corrida')
-await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await quickRace('Corrida das Flores', iso(40), 'Campinas', '10', 'Tenho interesse')
 await quickRace('Maratona do Rio', null, 'Rio de Janeiro', '42,195', 'Tenho interesse')
 // Provas já corridas, para histórico/recordes
@@ -273,7 +273,8 @@ await expectText('Corrida das Flores')
 await shot('calendario-mes')
 ok('3. Prova encontrada no calendário mensal (com destaque de mesma data)')
 
-// .ics
+// .ics (apaga calendários de execuções anteriores para ler o desta)
+for (const f of fs.readdirSync(DL)) if (f.endsWith('.ics')) fs.unlinkSync(path.join(DL, f))
 await page.click('button[aria-label^="Exportar provas"]')
 await wait(800)
 const ics = fs.readdirSync(DL).find((f) => f.endsWith('.ics'))
@@ -334,7 +335,7 @@ await expectText('= 31:20')
 await type('#watchDistanceKm', '5,08')
 await clickText('.effort button', '7')
 await clickText('button', 'Concluir prova')
-await page.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+await page.waitForFunction(() => !location.pathname.endsWith('/resultado')) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await expectText('6:16') // pace 31:20/5km
 ok('5. Prova concluída com resultado; pace 6:16 /km calculado pela distância oficial')
 await go('/corridas?concluir=1')
@@ -350,7 +351,7 @@ await resPhoto.uploadFile(photoPath)
 await wait(150)
 await expectText('1 para salvar')
 await clickText('button', 'Concluir prova')
-await page.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+await page.waitForFunction(() => !location.pathname.endsWith('/resultado')) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await expectText('5:56')
 await page.waitForSelector('.photo-grid img')
 ok('Foto registrada junto com o resultado')
@@ -361,7 +362,7 @@ await page.goto(page.url() + '/resultado', { waitUntil: 'networkidle0' })
 await type('#netTime', '2:08:45')
 await page.$eval('.check input', (el) => el.click()) // desmarca oficial
 await clickText('button', 'Concluir prova')
-await page.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+await page.waitForFunction(() => !location.pathname.endsWith('/resultado')) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await expectText('2:08:45')
 await expectText('Registro pessoal')
 ok('Tempo acima de 1 hora e registro pessoal sem resultado oficial')
@@ -407,7 +408,7 @@ await expectText('5:55 /km') // meta 2:05:00 em 21,1 km
 await expectText('Metade (10,55 km)')
 await go('/historico')
 await clickText('a', 'Track & Field 5K')
-await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await expectText('Como foi a prova')
 await expectText('Em relação às suas provas')
 await expectText('Novo recorde pessoal')
@@ -438,7 +439,7 @@ await page.waitForFunction(() => !location.pathname.endsWith('/editar'))
 await expectText('Meia Maratona de Jundiaí')
 await go('/corridas')
 await clickText('a', 'Corrida das Flores')
-await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await clickText('button', 'Excluir')
 await expectText('Excluir esta corrida?')
 await shot('confirmar-exclusao')
@@ -529,7 +530,7 @@ await page2.evaluate(() => [...document.querySelectorAll('.form > .card .seg but
 await page2.evaluate(() => document.querySelectorAll('details').forEach((d) => (d.open = true)))
 await page2.$eval('#kitPickupDate', (el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })) }, iso(2))
 await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar corrida')).click())
-await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 await page2.goto(BASE + '/', { waitUntil: 'networkidle0' })
 let t3 = await page2.evaluate(() => document.body.innerText)
 // A própria prova aparece no destaque (contagem), não repetida na lista da semana.
@@ -539,8 +540,9 @@ ok('Avisos da semana no Início (kit) e a prova no destaque')
 
 await page2.goto(BASE + '/corridas', { waitUntil: 'networkidle0' })
 await page2.evaluate(() => [...document.querySelectorAll('a')].find((a) => a.innerText.includes('5K do Parque')).click())
-await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 const nextYear = Number(iso(-60).slice(0, 4)) + 1
+await page2.waitForFunction((y) => [...document.querySelectorAll('a')].some((a) => a.innerText.includes('Repetir em ' + y)), { timeout: 8000 }, nextYear) // detalhe carrega sob demanda
 await page2.evaluate((y) => [...document.querySelectorAll('a')].find((a) => a.innerText.includes('Repetir em ' + y)).click(), nextYear)
 await page2.waitForSelector('#name')
 const prefilled = await page2.$eval('#name', (el) => el.value)
@@ -553,7 +555,7 @@ await new Promise((r) => setTimeout(r, 200))
 if (!(await page2.evaluate(() => document.body.innerText)).includes('Escolha a data')) throw new Error('Repetir salvou sem data')
 await page2.$eval('#date', (el, v) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })) }, iso(300))
 await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar corrida')).click())
-await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 t3 = await page2.evaluate(() => document.body.innerText)
 if (!t3.includes('Tenho interesse') || t3.includes('Registrar resultado')) throw new Error('Cópia com status/resultado errado')
 const count5k = await page2.evaluate(() => JSON.parse(localStorage.getItem('minhas-corridas:v1')).races.filter((r) => r.name === '5K do Parque').length)
@@ -594,7 +596,7 @@ await new Promise((r) => setTimeout(r, 200))
 const vals = await page2.evaluate(() => ({ name: document.querySelector('#name').value, date: document.querySelector('#date')?.value, city: document.querySelector('#city').value, state: document.querySelector('#state').value, start: document.querySelector('#startTime').value, fee: document.querySelector('#fee').value, url: document.querySelector('#signupUrl').value }))
 if (vals.name !== 'Maratona Internacional de Floripa' || vals.date !== iso(200) || vals.city !== 'Florianópolis' || vals.state !== 'SC' || vals.start !== '06:30' || vals.fee !== '' || vals.url !== 'https://exemplo.com/maratona-floripa') throw new Error('Preenchimento pelo link incorreto: ' + JSON.stringify(vals))
 await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar corrida')).click())
-await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 t3 = await page2.evaluate(() => document.body.innerText)
 if (!t3.includes('Opções: 5 / 10 / 21,1 / 42,195 km')) throw new Error('Distâncias do evento não aplicadas\n' + t3.slice(0, 600))
 ok('2a. Preencher pelo link: validação, erro do site, conferência campo a campo e aplicação')
@@ -611,7 +613,7 @@ const fitPath = path.join(DL, 'atividade.fit'); fs.writeFileSync(fitPath, 'FIT')
 await page2.goto(BASE + '/historico', { waitUntil: 'networkidle0' })
 await page2.evaluate(() => [...document.querySelectorAll('[role=tab]')].find((b) => b.innerText === 'Provas').click())
 await page2.evaluate(() => [...document.querySelectorAll('a')].find((a) => a.innerText.includes('Track & Field 5K')).click())
-await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname))
+await page2.waitForFunction(() => /^\/corridas\/[^/]+$/.test(location.pathname)) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 const tfUrl = new URL(page2.url()).pathname
 await page2.goto(BASE + tfUrl + '/resultado', { waitUntil: 'networkidle0' })
 const watchInput = await page2.$('input[data-testid=watch-input]')
@@ -624,7 +626,7 @@ if (!t3.includes('5,08 km') || !t3.includes('mais lento') || !t3.includes('+80 m
 if ((await page2.$eval('#netTime', (el) => el.value)) !== '29:40') throw new Error('Tempo oficial foi sobrescrito')
 await page2.screenshot({ path: `${SHOTS}/${String(++step).padStart(2, '0')}-resultado-relogio.png`, fullPage: true })
 await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar resultado')).click())
-await page2.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+await page2.waitForFunction(() => !location.pathname.endsWith('/resultado')) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
 // O detalhe da prova carrega sob demanda: espera o resumo do relógio aparecer.
 await page2.waitForFunction(() => /do relógio/i.test(document.body.innerText), { timeout: 8000 }).catch(() => {})
 t3 = await page2.evaluate(() => document.body.innerText)
@@ -658,7 +660,8 @@ ok('2b. Arquivo do relógio: .FIT inválido recusado, TCX lido (parciais, FC, di
   const tz = await page2.evaluate(() => document.body.innerText)
   if (!tz.includes('5,03 km') || !tz.includes('máx. 171 bpm') || !tz.includes('12 m')) throw new Error('ZIP/FIT não lido\n' + tz.slice(0, 1200))
   await page2.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.includes('Salvar resultado')).click())
-  await page2.waitForFunction(() => !location.pathname.endsWith('/resultado'))
+  await page2.waitForFunction(() => !location.pathname.endsWith('/resultado')) ; await page2.waitForFunction(() => [...document.querySelectorAll('.section-title h2')].some((h) => /status/i.test(h.textContent)), { timeout: 8000 }) // detalhe carrega sob demanda
+  await page2.waitForFunction(() => document.body.innerText.includes('(FIT)'), { timeout: 8000 }).catch(() => {}) // detalhe carrega sob demanda
   if (!(await page2.evaluate(() => document.body.innerText)).includes('(FIT)')) throw new Error('Resumo FIT não salvo')
   ok('2c. .ZIP do Garmin (“Exportar original”) com .FIT lido e salvo')
 }

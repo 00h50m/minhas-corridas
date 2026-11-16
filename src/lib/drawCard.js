@@ -1,11 +1,12 @@
 // Desenha o card de resultado num <canvas> (só no navegador). Conteúdo vem de shareCardInfo().
-const DISPLAY = '"Barlow Condensed", "Arial Narrow", system-ui, sans-serif'
-const TEXT = '"Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
-const BRAND = '#FF5F24'
-const HERO = '#17152F'
-const CREAM = '#FFF4EC'
+export const DISPLAY = '"Barlow Condensed", "Arial Narrow", system-ui, sans-serif'
+export const TEXT = '"Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
+export const BRAND = '#FF5F24'
+export const HERO = '#17152F'
+export const CREAM = '#FFF4EC'
 
 let logo = null
+export const getLogo = () => logo
 
 /** Fontes e logo do card (o logo é opcional: sem ele, só o nome). */
 export async function loadCardFonts() {
@@ -22,7 +23,7 @@ export async function loadCardFonts() {
   ]).catch(() => {})
 }
 
-function wrap(ctx, text, maxW, maxLines) {
+export function wrap(ctx, text, maxW, maxLines) {
   const words = String(text).split(/\s+/).filter(Boolean)
   const lines = []
   let cur = ''
@@ -46,7 +47,7 @@ function wrap(ctx, text, maxW, maxLines) {
 }
 
 /** Ajusta o tamanho da fonte para caber na largura. */
-function fit(ctx, text, font, size, maxW, min = 40) {
+export function fit(ctx, text, font, size, maxW, min = 40) {
   let s = size
   ctx.font = font(s)
   while (s > min && ctx.measureText(text).width > maxW) {
@@ -56,7 +57,7 @@ function fit(ctx, text, font, size, maxW, min = 40) {
   return s
 }
 
-function roundRect(ctx, x, y, w, h, r) {
+export function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath()
   ctx.moveTo(x + r, y)
   ctx.arcTo(x + w, y, x + w, y + h, r)
@@ -73,7 +74,7 @@ function drawCover(ctx, img, W, H) {
   ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h)
 }
 
-function background(ctx, W, H, photo) {
+export function background(ctx, W, H, photo) {
   if (photo) {
     drawCover(ctx, photo, W, H)
     const g = ctx.createLinearGradient(0, 0, 0, H)

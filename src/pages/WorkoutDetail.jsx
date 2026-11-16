@@ -137,6 +137,7 @@ function Detail({ w }) {
         <p className="note">No Garmin Connect: atividade → ⚙ → Exportar original (.zip) ou Exportar para TCX.</p>
         {msg && <div className={`alert small ${msg.ok ? '' : 'alert-error'}`} role={msg.ok ? 'status' : 'alert'} style={{ marginTop: 10 }}>{msg.text}</div>}
         {w.result && <Executed w={w} />}
+        {w.status === 'feito' && <Link to={`/stories?modelo=treino&treino=${w.id}`} className="btn btn-block" style={{ marginTop: 10 }} data-testid="wk-story">📲 Compartilhar este treino</Link>}
 
         <div className="btn-row" style={{ marginTop: 22 }}>
           <Link to={`/treinos/novo?copiar=${w.id}`} className="btn">Duplicar</Link>

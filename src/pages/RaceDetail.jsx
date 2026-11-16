@@ -235,6 +235,10 @@ export default function RaceDetail() {
           </>
         )}
 
+        {r.status === 'inscrita' && r.date && r.date >= today && (
+          <Link to={`/stories?modelo=contagem&prova=${r.id}`} className="btn btn-block" style={{ marginTop: 12 }} data-testid="race-story">📲 Story da contagem</Link>
+        )}
+
         {r.date && r.date <= today && r.dayLog?.date === r.date && (
           <>
             <div className="section-title"><h2>Como foi a logística</h2></div>

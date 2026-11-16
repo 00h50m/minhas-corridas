@@ -31,6 +31,7 @@ const Workouts = lazy(() => import('./pages/Workouts.jsx'))
 const WorkoutForm = lazy(() => import('./pages/WorkoutForm.jsx'))
 const WorkoutDetail = lazy(() => import('./pages/WorkoutDetail.jsx'))
 const WorkoutImport = lazy(() => import('./pages/WorkoutImport.jsx'))
+const Stories = lazy(() => import('./pages/Stories.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 function ScrollTop() {
@@ -79,6 +80,7 @@ export default function App() {
                 <Route path="/objetivos/novo" element={<GoalForm />} />
                 <Route path="/objetivos/:id" element={<GoalDetail />} />
                 <Route path="/objetivos/:id/editar" element={<GoalForm key="edit" />} />
+                <Route path="/stories" element={<Stories />} />
                 <Route path="/treinos" element={<Workouts />} />
                 <Route path="/treinos/novo" element={<WorkoutForm />} />
                 <Route path="/treinos/importar" element={<WorkoutImport />} />

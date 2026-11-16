@@ -203,6 +203,12 @@ export default function Home() {
 
         {showLast && <LastRace race={last} races={races} />}
 
+        <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 16 }}>
+          <span style={{ fontSize: 26 }} aria-hidden="true">📲</span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, temporada, semana de treinos, contagem…</span></span>
+          <span aria-hidden="true">›</span>
+        </Link>
+
         <div className="section-title"><h2>Seu {year}</h2><Link to="/historico" onClick={() => { historyMemo.tab = 'evolucao' }}>Evolução</Link></div>
         <div className="stats">
           <div className="stat"><div className="v">{summary.doneCount}</div><div className="l">{summary.doneCount === 1 ? 'prova concluída' : 'provas concluídas'}</div></div>

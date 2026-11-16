@@ -126,6 +126,7 @@ export function normalizeLogistics(raw) {
     // Veículo desta viagem (vem do perfil e pode ser ajustado aqui)
     vehicle: { kmPerL: num(Number(v.kmPerL), 1, 100), fuel: FUELS.some((f) => f.id === v.fuel) ? v.fuel : 'gasolina', pricePerL: num(Number(v.pricePerL), 0.1, 50) },
     prep: raw.prep ? normalizePrep(raw.prep) : null, // preferências usadas na agenda desta prova
+    split: normalizeSplit(raw.split), // divisão da carona
     scheduleInFeed: !!raw.scheduleInFeed
   }
 }
@@ -436,4 +437,45 @@ export function navLinks(points) {
   const google = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${enc(target(origin))}&destination=${enc(target(dest))}${mids.length ? `&waypoints=${enc(mids.map(target).join('|'))}` : ''}`
   const waze = points.slice(1).map((p) => ({ label: p.label || p.address, url: p.lat != null ? `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes` : `https://waze.com/ul?q=${enc(p.address)}&navigate=yes` }))
   return { google, waze }
+}
+
+/* ---------- Carona compartilhada ---------- */
+
+/** Divisão da carona: { personIds, others (pessoas sem cadastro), includeMe, pix } ou null. */
+export function normalizeSplit(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const personIds = [...new Set((Array.isArray(raw.personIds) ? raw.personIds : []).filter((x) => typeof x === 'string' && x).map((x) => x.slice(0, 20)))].slice(0, 20)
+  const others = Math.max(0, Math.min(20, Math.round(Number(raw.others) || 0)))
+  return { personIds, others, includeMe: raw.includeMe !== false, pix: str(raw.pix, 80) }
+}
+
+/** Itens que entram na divisão: ida, volta, estacionamento e outros (a retirada do kit fica de fora). */
+const SPLIT_ITEMS = ['fuelOut', 'tollsOut', 'fuelBack', 'tollsBack', 'parking', 'extras']
+
+/**
+ * Conta da carona. people: pessoas do perfil.
+ * { total, count, share, items: [{ label, value }], persons: [pessoa], split }
+ */
+export function carpool(race, log, people = []) {
+  const split = log?.split ?? { personIds: defaultSplitIds(race, log), others: 0, includeMe: true, pix: '' }
+  const items = costItems(race, log).filter((i) => SPLIT_ITEMS.includes(i.id) && (i.paid ?? i.est) != null).map((i) => ({ label: i.label, value: i.paid ?? i.est }))
+  const total = round2(items.reduce((a, i) => a + i.value, 0))
+  const persons = split.personIds.map((id) => people.find((p) => p.id === id)).filter(Boolean)
+  const count = persons.length + split.others + (split.includeMe ? 1 : 0)
+  const share = count > 0 ? round2(total / count) : null
+  return { total, count, share, items, persons, split }
+}
+
+/** Quem a divisão já considera de início: as pessoas buscadas na ida e quem vai junto. */
+export function defaultSplitIds(race, log) {
+  const ids = [...(log?.outbound?.stops ?? []).map((s) => s.personId), ...(race.companionIds ?? [])].filter(Boolean)
+  return [...new Set(ids)]
+}
+
+/** Mensagem do WhatsApp com a parte de cada pessoa. */
+export function carpoolMessage({ person, race, c }) {
+  const brl = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\s/g, ' ')
+  const what = c.items.map((i) => i.label.replace(/ \((ida|volta)\)$/, '').toLowerCase()).filter((v, i, a) => a.indexOf(v) === i).join(', ')
+  const name = String(person.name || '').trim().split(/\s+/)[0]
+  return `Oi, ${name}! O deslocamento da ${race.name} (${what}) deu ${brl(c.total)}. Dividindo por ${c.count}, a sua parte fica ${brl(c.share)}.${c.split.pix ? ` Pix: ${c.split.pix}` : ''} 🙂`
 }

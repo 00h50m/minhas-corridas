@@ -6,11 +6,11 @@ import { getProfile, saveProfile, useProfile } from '../services/profile.js'
 import { PROVIDER_LABEL, computeRoute, geocode, locateMe, routeAlternatives, routeCapabilities } from '../services/routing.js'
 import { PRECISION_LABEL, isPrecise, precisionLabel } from '../lib/geo.js'
 import PlaceField from '../components/PlaceField.jsx'
-import { firstName } from '../lib/people.js'
+import { firstName, whatsappLink } from '../lib/people.js'
 import Pickups from '../components/Pickups.jsx'
 import { Sheet, TopBar, useUI } from '../components/ui.jsx'
 import { IconEdit, IconExternal, IconInfo, IconPin, IconPlus, IconX } from '../components/Icons.jsx'
-import { FUELS, PART_KEYS, costItems, destinationPlace, fuelCost, kitPlace, legKey, navLinks, normalizeChoice, normalizeLogistics, partsToQuery, raceSchedule, routeKey, tripChoices, tripOf, tripPoints, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
+import { FUELS, PART_KEYS, carpool, carpoolMessage, costItems, defaultSplitIds, destinationPlace, fuelCost, kitPlace, legKey, navLinks, normalizeChoice, normalizeLogistics, partsToQuery, raceSchedule, routeKey, tripChoices, tripOf, tripPoints, tripSummary, transportTotals, venueAddress, kitAddress } from '../lib/logistics.js'
 import { PREP_FIELDS, minToHm, normalizePrep, returnSchedule } from '../lib/schedule.js'
 import { raceKitSchedule } from '../lib/logistics.js'
 import { formatDateBR } from '../lib/dates.js'
@@ -928,7 +928,50 @@ function CostsPanel({ race: r, log, update }) {
           {!ida.complete && ' Calcule ou informe a rota da ida para estimar o combustível.'}
         </p>
       </div>
+
+      <div className="section-title"><h2>Dividir a carona</h2></div>
+      <Carpool race={r} log={log} update={update} />
     </>
+  )
+}
+
+/** Divide os custos de ida e volta entre quem vai junto e prepara a mensagem de cada um. */
+function Carpool({ race: r, log, update }) {
+  const people = useProfile().data.people
+  const c = carpool(r, log, people)
+  const sp = c.split
+  const set = (patch) => update((l) => { l.split = { ...(l.split ?? { personIds: defaultSplitIds(r, l), others: 0, includeMe: true, pix: '' }), ...patch } })
+  const toggle = (id) => set({ personIds: sp.personIds.includes(id) ? sp.personIds.filter((x) => x !== id) : [...sp.personIds, id] })
+  const brl = (n) => formatMoney(n)
+  return (
+    <div className="card carpool" data-testid="carpool">
+      {people.length > 0 ? (
+        <div className="chips" role="group" aria-label="Quem divide">
+          {people.map((p) => <button key={p.id} type="button" className={`chip-btn${sp.personIds.includes(p.id) ? ' on' : ''}`} aria-pressed={sp.personIds.includes(p.id)} onClick={() => toggle(p.id)}>{p.name}</button>)}
+        </div>
+      ) : <p className="small muted" style={{ marginTop: 0 }}>Cadastre quem vai junto em <Link to="/pessoas-e-lugares">Pessoas e lugares</Link> para mandar a parte de cada um pelo WhatsApp.</p>}
+      <div className="grid-2" style={{ marginTop: 8 }}>
+        <div className="field"><label htmlFor="cp-others">Pessoas sem cadastro</label><MinutesInput value={sp.others} max={20} label="Pessoas sem cadastro" onChange={(v) => set({ others: v })} /></div>
+        <div className="field"><label htmlFor="cp-pix">Sua chave Pix <span className="opt">opcional</span></label><input id="cp-pix" className="input" defaultValue={sp.pix} maxLength={80} onBlur={(e) => set({ pix: e.target.value })} placeholder="e-mail, celular…" /></div>
+      </div>
+      <label className="check"><input type="checkbox" checked={sp.includeMe} onChange={(e) => set({ includeMe: e.target.checked })} /> Incluir você na divisão</label>
+      {c.total > 0 && c.count > 0 ? (
+        <>
+          <div className="cost-total" data-testid="carpool-share"><span>{brl(c.total)} ÷ {c.count} {c.count === 1 ? 'pessoa' : 'pessoas'}</span><b>{brl(c.share)} cada</b></div>
+          <p className="note" style={{ marginTop: 4 }}>Entra: {c.items.map((i) => `${i.label} ${brl(i.value)}`).join(' · ')}. A retirada do kit fica de fora.</p>
+          {c.persons.length > 0 && (
+            <ul className="pickups" style={{ marginTop: 8 }}>
+              {c.persons.map((p) => (
+                <li key={p.id}>
+                  <span><b>{p.name}</b> <span className="muted small">{brl(c.share)}</span></span>
+                  <a className="wa-btn" href={whatsappLink(p.phone, carpoolMessage({ person: p, race: r, c }))} target="_blank" rel="noreferrer" data-testid="carpool-wa">WhatsApp</a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : <p className="note">{c.total > 0 ? 'Escolha quem divide.' : 'Os custos de ida e volta aparecem aqui quando houver combustível, pedágio ou estacionamento.'}</p>}
+    </div>
   )
 }
 

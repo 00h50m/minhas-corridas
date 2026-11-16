@@ -7,13 +7,13 @@ import { addDaysISO, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
 import { periodCosts } from '../lib/costs.js'
 import BudgetCard from '../components/Budget.jsx'
-import { compareYears, monthly, paceSeries } from '../lib/evolution.js'
+import { compareYears, monthly, paceSeriesWithTests } from '../lib/evolution.js'
 import { distanceLabel, history, recordsByDistance } from '../lib/stats.js'
 
 export const memo = { tab: 'provas', period: null }
 
 export default function History() {
-  const { races, goals } = useStore()
+  const { races, goals, workouts } = useStore()
   const [tab, setTabState] = useState(memo.tab)
   const setTab = (t) => { memo.tab = t; setTabState(t) }
   const list = history(races)
@@ -42,7 +42,7 @@ export default function History() {
         {tab === 'gastos' ? (
           <Costs races={races} goals={goals} />
         ) : tab === 'evolucao' ? (
-          <EvolutionTab races={races} />
+          <EvolutionTab races={races} workouts={workouts} />
         ) : list.length === 0 ? (
           <div style={{ marginTop: 12 }}>{noResults}</div>
         ) : tab === 'provas' ? (
@@ -96,12 +96,12 @@ function Delta({ cur, prev, fmt, lowerIsBetter }) {
   return <span className={good ? 'delta-good' : 'delta-bad'}>{d > 0 ? '▲' : '▼'} {fmt(Math.abs(d))}</span>
 }
 
-function EvolutionTab({ races }) {
+function EvolutionTab({ races, workouts = [] }) {
   const today = todayISO()
   const { cur, prevSame, prevFull, keys } = compareYears(races, today)
   const months = monthly(races, cur.year)
   const maxM = Math.max(1, ...months.map((m) => m.done + m.planned))
-  const series = paceSeries(races)
+  const series = paceSeriesWithTests(races, workouts)
   const dayMonth = formatDateBR(today).slice(0, 5)
   const money = (n) => formatMoney(n).replace(',00', '')
   return (
@@ -171,7 +171,7 @@ function EvolutionTab({ races }) {
           </div>
         ))
       )}
-      <p className="note">Pace = tempo líquido ÷ distância oficial. Cada distância tem o próprio gráfico: tempos de distâncias diferentes não são comparados.</p>
+      <p className="note">Pace = tempo líquido ÷ distância oficial (nos testes de treino, tempo ÷ distância do relógio). Cada distância tem o próprio gráfico: tempos de distâncias diferentes não são comparados.</p>
     </div>
   )
 }
@@ -192,16 +192,20 @@ function PaceChart({ points }) {
         <text x={P.l - 6} y={y(min) + 4} fontSize="10.5" fill="var(--ink-3)" textAnchor="end">{formatPace(min).replace(' /km', '')}</text>
         <text x={P.l - 6} y={y(max) + 4} fontSize="10.5" fill="var(--ink-3)" textAnchor="end">{formatPace(max).replace(' /km', '')}</text>
         <path d={path} fill="none" stroke="var(--brand)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-        {points.map((p, i) => (
-          <circle key={p.id} cx={x(i)} cy={y(p.pace)} r="5" fill={p.isOfficial ? 'var(--brand)' : 'var(--surface)'} stroke="var(--brand)" strokeWidth="2.5">
+        {points.map((p, i) => (p.kind === 'teste' ? (
+          <rect key={p.id} x={x(i) - 5} y={y(p.pace) - 5} width="10" height="10" transform={`rotate(45 ${x(i)} ${y(p.pace)})`} fill="var(--ok)" stroke="var(--surface)" strokeWidth="1.5" data-kind="teste">
+            <title>{`${p.name} · ${formatDateBR(p.date)} · ${formatPace(p.pace)} (teste em treino)`}</title>
+          </rect>
+        ) : (
+          <circle key={p.id} cx={x(i)} cy={y(p.pace)} r="5" fill={p.isOfficial ? 'var(--brand)' : 'var(--surface)'} stroke="var(--brand)" strokeWidth="2.5" data-kind="prova">
             <title>{`${p.name} · ${formatDateBR(p.date)} · ${formatPace(p.pace)}${p.isOfficial ? '' : ' (registro pessoal)'}`}</title>
           </circle>
-        ))}
+        )))}
         <text x={P.l} y={H - 4} fontSize="11" fill="var(--ink-3)">{formatDateBR(first.date)}</text>
         <text x={W - P.r} y={H - 4} fontSize="11" fill="var(--ink-3)" textAnchor="end">{formatDateBR(last.date)}</text>
       </svg>
       <div className="small muted">
-        {points.length} provas · {d < 0 ? `${formatPace(-d).replace(' /km', '')}/km mais rápida que a primeira` : d > 0 ? `${formatPace(d).replace(' /km', '')}/km mais lenta que a primeira` : 'mesmo pace da primeira'}. Mais alto = mais rápido. Ponto vazado = registro pessoal.
+        {(() => { const t = points.filter((p) => p.kind === 'teste').length; const r = points.length - t; return [r ? `${r} ${r === 1 ? 'prova' : 'provas'}` : null, t ? `${t} ${t === 1 ? 'teste' : 'testes'} em treino` : null].filter(Boolean).join(' e ') })()} · {d < 0 ? `${formatPace(-d).replace(' /km', '')}/km mais rápida que a primeira` : d > 0 ? `${formatPace(d).replace(' /km', '')}/km mais lenta que a primeira` : 'mesmo pace da primeira'}. Mais alto = mais rápido. Ponto vazado = registro pessoal; losango verde = teste em treino.
       </div>
     </div>
   )

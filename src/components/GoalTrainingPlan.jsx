@@ -8,9 +8,11 @@ import { planProgress } from '../lib/goalPlan.js'
 import { workoutTests } from '../lib/goals.js'
 import { formatDateBR, weekdayShort } from '../lib/dates.js'
 import { formatDuration } from '../lib/format.js'
+import { goalProgress } from '../lib/goals.js'
+import NextBlock from './NextBlock.jsx'
 
 export default function GoalTrainingPlan({ goal: g, today }) {
-  const { workouts, goals } = useStore()
+  const { workouts, goals, races } = useStore()
   const [picking, setPicking] = useState(false)
   const plan = planProgress(g, workouts, today)
   const tests = workoutTests(g, workouts)
@@ -34,6 +36,10 @@ export default function GoalTrainingPlan({ goal: g, today }) {
         </>
       ) : (
         <p className="small" style={{ marginTop: 0 }}>Ligue os treinos do seu plano a este objetivo para acompanhar quantos você já fez{g.type === 'tempo' ? ' e usar o teste final como marca' : ''}.</p>
+      )}
+      {/* Próximo bloco: objetivo de 5 km com plano no fim (última semana) ou com o teste feito. */}
+      {g.type === 'tempo' && g.distanceKm === 5 && plan && (tests.length > 0 || (plan.week != null && plan.week >= plan.weeks)) && (
+        <NextBlock goal={g} plan={plan} mark={tests[0]?.sec ?? (goalProgress(g, races, today, workouts).races[0]?.result?.netTime ?? null)} today={today} />
       )}
       <button type="button" className="btn btn-block" style={{ marginTop: 10 }} onClick={() => setPicking(true)} data-testid="goal-plan-pick">{plan ? 'Escolher treinos do plano' : 'Ligar treinos a este objetivo'}</button>
       {picking && <PickWorkouts goal={g} workouts={workouts} goals={goals} today={today} onClose={() => setPicking(false)} />}

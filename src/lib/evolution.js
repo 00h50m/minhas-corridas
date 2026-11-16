@@ -46,3 +46,25 @@ export function paceSeries(races) {
     .filter((g) => g.evolution.length >= 2)
     .map((g) => ({ key: g.key, km: g.km, points: g.evolution.filter((p) => p.pace).sort(byDateAsc) }))
 }
+
+/** Distâncias de teste que entram no gráfico (km). */
+const TEST_KM = [5, 10, 21.1, 42.195]
+
+/**
+ * Séries de pace por distância somando provas e testes de treino (treinos feitos com o arquivo do relógio
+ * cobrindo a distância: 98% a 105%). Cada ponto: { id, date, name, pace, isOfficial, kind: 'prova'|'teste' }.
+ * Só distâncias com 2+ pontos.
+ */
+export function paceSeriesWithTests(races, workouts = []) {
+  const byKey = new Map(recordsByDistance(races).map((g) => [g.key, { key: g.key, km: g.km, points: g.evolution.filter((p) => p.pace).map((p) => ({ ...p, kind: 'prova' })) }]))
+  for (const w of workouts) {
+    const r = w.result
+    if (w.status !== 'feito' || !w.date || !(r?.elapsedSec > 0) || !(r.distanceKm > 0)) continue
+    const km = TEST_KM.find((k) => r.distanceKm >= k * 0.98 && r.distanceKm <= k * 1.05)
+    if (!km) continue
+    const key = distanceKey(km)
+    if (!byKey.has(key)) byKey.set(key, { key, km, points: [] })
+    byKey.get(key).points.push({ id: w.id, date: w.date, name: w.name, pace: r.elapsedSec / r.distanceKm, isOfficial: false, kind: 'teste' })
+  }
+  return [...byKey.values()].map((s) => ({ ...s, points: s.points.sort(byDateAsc) })).filter((s) => s.points.length >= 2).sort((a, b) => a.km - b.km)
+}

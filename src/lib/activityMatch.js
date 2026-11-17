@@ -2,9 +2,18 @@
 import { daysBetween, toISODate } from './dates.js'
 import { normalizeWorkout } from './workout.js'
 
+/** Esporte do arquivo do relógio → tipo de atividade do app. */
+export function sportFromFile(a) {
+  const s = String(a?.sport ?? '').toLowerCase()
+  if (/cycl|bik|ride/.test(s)) return 'bike'
+  if (/walk|hik/.test(s)) return 'caminhada'
+  if (/swim/.test(s)) return 'natacao'
+  return 'corrida'
+}
+
 /** Resultado do treino a partir do resumo da atividade (readActivityFile). */
 export function resultFrom(a, prev = null) {
-  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
+  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
 }
 
 /** Data local da atividade (AAAA-MM-DD). */
@@ -14,8 +23,8 @@ export const activityDate = (a) => toISODate(new Date(a.startTime))
  * { auto: treino | null, candidates: [treinos] }
  * auto: único treino ainda sem resultado no mesmo dia. candidates: sem resultado, até 3 dias de diferença, mais perto primeiro.
  */
-export function matchActivity(workouts, date) {
-  const open = workouts.filter((w) => w.date && w.status !== 'feito' && !w.result)
+export function matchActivity(workouts, date, sport = 'corrida') {
+  const open = workouts.filter((w) => w.date && w.status !== 'feito' && !w.result && (w.sport ?? 'corrida') === sport)
   const sameDay = open.filter((w) => w.date === date)
   const candidates = open
     .map((w) => ({ w, d: Math.abs(daysBetween(date, w.date)) }))
@@ -35,8 +44,10 @@ export function alreadyImported(workouts, a) {
 export function freeWorkout(a) {
   const date = activityDate(a)
   const min = Math.max(1, Math.round(a.elapsedSec / 60))
+  const sport = sportFromFile(a)
+  const label = { corrida: 'Corrida', bike: 'Bike', caminhada: 'Caminhada', natacao: 'Natação' }[sport]
   return {
-    ...normalizeWorkout({ name: `Corrida ${date.slice(8, 10)}/${date.slice(5, 7)}`, date, status: 'feito', items: [{ type: 'corrida', duration: { kind: 'time', value: min * 60 } }] }),
+    ...normalizeWorkout({ name: `${label} ${date.slice(8, 10)}/${date.slice(5, 7)}`, date, status: 'feito', sport, plannedMin: min, items: [{ type: 'corrida', duration: { kind: 'time', value: min * 60 } }] }),
     status: 'feito',
     result: resultFrom(a)
   }

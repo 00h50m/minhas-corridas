@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconTrash, IconUpload } from '../components/Icons.jsx'
-import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, fmtPace, fmtSec, targetLabel } from '../lib/workout.js'
+import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
 import CopyBox from '../components/CopyBox.jsx'
@@ -29,6 +29,7 @@ function Detail({ w }) {
   const [gc, setGc] = useState(false)
   const est = estimate(w.items)
   const race = w.raceId ? getRace(w.raceId) : null
+  const run = isRun(w)
 
   const setStatus = (status) => {
     saveWorkout({ ...w, status })
@@ -52,7 +53,7 @@ function Detail({ w }) {
     try {
       if (file.size > 30 * 1024 * 1024) throw new Error('Arquivo grande demais (máx. 30 MB).')
       const a = await readActivityFile(file)
-      const result = { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], effort: w.result?.effort ?? null, notes: w.result?.notes ?? '' }
+      const result = { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, effort: w.result?.effort ?? null, notes: w.result?.notes ?? '' }
       const fileDate = toISODate(new Date(a.startTime))
       saveWorkout({ ...w, status: 'feito', result, date: w.date ?? fileDate })
       const notes = ['Atividade importada.']
@@ -68,6 +69,15 @@ function Detail({ w }) {
     <>
       <TopBar title={w.name} sub={w.date ? formatDateBR(w.date) : 'Sem data'} back="/treinos" right={<Link to={`/treinos/${w.id}/editar`} className="icon-btn" aria-label="Editar treino"><IconEdit /></Link>} />
       <div className="page" data-testid="workout-detail">
+        {!run && (
+          <div className="card" data-testid="wk-cross">
+            <div className="t" style={{ fontWeight: 700 }}>{sportOf(w).icon} {sportOf(w).label}</div>
+            <div className="chips" style={{ marginTop: 8 }}>{w.plannedMin && <span className="chip">{w.plannedMin} min planejados</span>}</div>
+            {race && <p className="small" style={{ margin: '10px 0 0' }}>Preparação para <Link to={`/corridas/${race.id}`}>{race.name}</Link></p>}
+            {w.notes && <p className="small muted" style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>{w.notes}</p>}
+          </div>
+        )}
+        {run && <>
         <div className="card">
           <div className="chips">
             <span className="chip">≈ {fmtSec(est.sec)}</span>
@@ -127,6 +137,7 @@ function Detail({ w }) {
           <CopyBox label="Copiar prompt para o Claude (Garmin Connect)" text={claudePrompt([w])} done="Prompt copiado: cole no Claude" testid="copy-claude"
             hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado. Ele cria o treino, agenda e envia para o relógio; confira o resultado no Garmin Connect." />
         </div>
+        </>}
 
         <div className="section-title"><h2>Como foi</h2></div>
         <div className="seg" role="group" aria-label="Status do treino">
@@ -169,10 +180,10 @@ function Executed({ w }) {
       <div className="chips">
         {r.distanceKm != null && <span className="chip">{String(r.distanceKm.toFixed(2)).replace('.', ',')} km</span>}
         {r.elapsedSec != null && <span className="chip">{fmtSec(r.elapsedSec)}</span>}
-        {r.distanceKm > 0 && r.elapsedSec > 0 && <span className="chip">{fmtPace(r.elapsedSec / r.distanceKm)}/km</span>}
+        {isRun(w) && r.distanceKm > 0 && r.elapsedSec > 0 && <span className="chip">{fmtPace(r.elapsedSec / r.distanceKm)}/km</span>}
         {r.avgHr && <span className="chip">FC média {r.avgHr}</span>}
       </div>
-      {r.laps.length > 0 && (
+      {isRun(w) && r.laps.length > 0 && (
         <>
           {scored.length > 0 && <p className="small" style={{ margin: '10px 0 4px' }} data-testid="wk-hits"><b>{hits} de {scored.length}</b> passos com pace dentro da faixa.</p>}
           <table className="wk-table">

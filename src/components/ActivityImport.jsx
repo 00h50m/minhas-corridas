@@ -6,7 +6,7 @@ import { getState, saveWorkout } from '../services/store.js'
 import { Sheet, useUI } from './ui.jsx'
 import { IconUpload } from './Icons.jsx'
 import { readActivityFile } from '../lib/activityFile.js'
-import { activityDate, alreadyImported, freeWorkout, matchActivity, resultFrom } from '../lib/activityMatch.js'
+import { activityDate, alreadyImported, freeWorkout, matchActivity, resultFrom, sportFromFile } from '../lib/activityMatch.js'
 import { formatDateBR, weekdayShort } from '../lib/dates.js'
 import { fmtSec } from '../lib/workout.js'
 
@@ -34,7 +34,7 @@ export default function ActivityImport() {
         const ws = getState().workouts
         const dupW = alreadyImported(ws, a)
         if (dupW) { lines.push(`${a.fileName}: já está em “${dupW.name}”.`); continue }
-        const { auto, candidates } = matchActivity(ws, activityDate(a))
+        const { auto, candidates } = matchActivity(ws, activityDate(a), sportFromFile(a))
         if (auto) lines.push(attach(auto, a))
         else pending.push({ a, candidates })
       } catch (err) {

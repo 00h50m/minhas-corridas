@@ -19,7 +19,7 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
   const current = start === weekStart(today)
   const label = current ? 'Esta semana' : start === addDaysISO(weekStart(today), 7) ? 'Próxima semana' : start === addDaysISO(weekStart(today), -7) ? 'Semana passada' : `${formatDateBR(start).slice(0, 5)} a ${formatDateBR(s.end).slice(0, 5)}`
   const totals = s.planned
-    ? `${s.done} de ${s.planned} ${s.planned === 1 ? 'treino' : 'treinos'} · ${mins(s.doneSec)} de ${mins(s.plannedSec)}${s.doneKm ? ` · ${String(s.doneKm).replace('.', ',')} km` : ''}`
+    ? `${s.done} de ${s.planned} ${s.planned === 1 ? 'treino' : 'treinos'} · ${mins(s.doneSec)} de ${mins(s.plannedSec)}${s.doneKm ? ` · ${String(s.doneKm).replace('.', ',')} km` : ''}${s.cross ? ` · ${s.cross} ${s.cross === 1 ? 'outra atividade' : 'outras atividades'}` : ''}`
     : 'Nenhum treino nesta semana'
   if (compact) {
     return (

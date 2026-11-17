@@ -1035,3 +1035,33 @@ details.link-import { margin-top: 0; }
 .nb-sum { display: grid; gap: 4px; box-shadow: none; background: var(--surface-2); }
 .nb-list { padding-left: 18px; margin: 10px 0 0; }
 .nb-list li { padding: 4px 0; }
+
+/* Mapa das corridas */
+.runs-map { height: 340px; }
+.map-top { margin: 0; padding: 12px 12px 12px 30px; }
+.map-top li + li { margin-top: 6px; }
+
+/* Passaporte */
+.pp-hero .pp-count { font-size: 15px; color: var(--ink-3); font-weight: 700; }
+.pp-hero .pp-count b { font-family: var(--display); font-size: 40px; color: var(--brand); margin-right: 4px; }
+.pp-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pp-links .btn { flex: 1 1 140px; font-size: 14.5px; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
+.pp-medal { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe7c2, #ffb36b 60%, #ff7a3d); font-size: 22px; flex: none; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12); }
+.pp-medal.big { width: 56px; height: 56px; font-size: 28px; }
+.pp-medal.dim { background: var(--surface-2); filter: grayscale(0.6); opacity: 0.8; box-shadow: none; }
+.pp-new { display: flex; gap: 12px; align-items: flex-start; border: 2px solid var(--brand); }
+.pp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pp-badge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 12px 6px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); color: inherit; text-decoration: none; }
+.pp-badge.new { outline: 2px solid var(--brand); }
+.pp-badge .pp-t { font-size: 12.5px; font-weight: 800; line-height: 1.2; }
+.pp-badge .pp-d { font-size: 11px; color: var(--ink-3); font-weight: 600; }
+.pp-next { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
+.pp-next + .pp-next { border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06)); }
+.pp-next .progress { margin-top: 6px; }
+.pp-rec { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 0; color: inherit; text-decoration: none; }
+.pp-rec + .pp-rec { border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06)); }
+.pp-rec b { font-family: var(--display); font-size: 20px; text-align: right; }
+.pp-rec .small { grid-column: 1 / -1; }
+.near-again { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 0; }
+.near-again + .near-again { border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06)); }
+.near-links { display: grid; gap: 8px; margin-top: 12px; }

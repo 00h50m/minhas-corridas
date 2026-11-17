@@ -265,14 +265,20 @@ function treino(ctx, s) {
   const lines = wrap(ctx, s.name, STORY.w - PAD * 2, 2)
   lines.forEach((l, i) => ctx.fillText(l, PAD, 620 + i * 74))
   let y = 620 + lines.length * 74 + 20
-  card(ctx, PAD, y, STORY.w - PAD * 2, 300)
-  ctx.fillStyle = DIM
-  ctx.font = `800 30px ${TEXT}`
-  ctx.fillText('PLANEJADO', PAD + 40, y + 60)
-  ctx.fillStyle = '#fff'
-  ctx.font = `700 38px ${TEXT}`
-  wrap(ctx, s.plan, STORY.w - PAD * 2 - 80, 4).forEach((l, i) => ctx.fillText(l, PAD + 40, y + 120 + i * 48))
-  y += 380
+  if (s.plan) {
+    card(ctx, PAD, y, STORY.w - PAD * 2, 300)
+    ctx.fillStyle = DIM
+    ctx.font = `800 30px ${TEXT}`
+    ctx.fillText('PLANEJADO', PAD + 40, y + 60)
+    ctx.fillStyle = '#fff'
+    ctx.font = `700 38px ${TEXT}`
+    wrap(ctx, s.plan, STORY.w - PAD * 2 - 80, 4).forEach((l, i) => ctx.fillText(l, PAD + 40, y + 120 + i * 48))
+    y += 380
+  } else if (s.icon) {
+    ctx.font = `200px ${TEXT}`
+    ctx.fillText(s.icon, PAD, y + 200)
+    y += 260
+  }
   const w = (STORY.w - PAD * 2) / s.stats.length
   s.stats.forEach((st, i) => stat(ctx, PAD + i * w, y + 120, w, st.value, st.label, i === 0 ? BRAND : '#fff'))
   if (s.hits) {
@@ -282,7 +288,60 @@ function treino(ctx, s) {
   }
 }
 
-const DRAW = { proximas, temporada, semana, contagem, evolucao, treino }
+function conquista(ctx, s) {
+  const cx = STORY.w / 2
+  ctx.textAlign = 'center'
+  ctx.fillStyle = DIM
+  ctx.font = `800 52px ${TEXT}`
+  ctx.fillText((s.kicker ?? 'Conquista').toUpperCase(), cx, 430)
+  // fita
+  const cy = 760
+  ctx.fillStyle = BRAND
+  ctx.beginPath()
+  ctx.moveTo(cx - 150, 470); ctx.lineTo(cx - 40, 470); ctx.lineTo(cx + 30, cy - 120); ctx.lineTo(cx - 80, cy - 120); ctx.closePath(); ctx.fill()
+  ctx.fillStyle = '#c2410c'
+  ctx.beginPath()
+  ctx.moveTo(cx + 150, 470); ctx.lineTo(cx + 40, 470); ctx.lineTo(cx - 30, cy - 120); ctx.lineTo(cx + 80, cy - 120); ctx.closePath(); ctx.fill()
+  // medalha
+  const g = ctx.createRadialGradient(cx - 60, cy - 70, 20, cx, cy, 230)
+  g.addColorStop(0, '#fff3dc')
+  g.addColorStop(0.55, '#ffb36b')
+  g.addColorStop(1, '#e8590c')
+  ctx.fillStyle = g
+  ctx.beginPath(); ctx.arc(cx, cy, 220, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'
+  ctx.lineWidth = 10
+  ctx.beginPath(); ctx.arc(cx, cy, 186, 0, Math.PI * 2); ctx.stroke()
+  ctx.font = `210px ${TEXT}`
+  ctx.textBaseline = 'middle'
+  ctx.fillText(s.icon, cx, cy + 12)
+  ctx.textBaseline = 'alphabetic'
+  // texto
+  ctx.fillStyle = '#fff'
+  const size = fit(ctx, s.name.toUpperCase(), (n) => `800 ${n}px ${DISPLAY}`, 130, STORY.w - PAD * 2, 70)
+  ctx.font = `800 ${size}px ${DISPLAY}`
+  ctx.fillText(s.name.toUpperCase(), cx, 1150)
+  ctx.fillStyle = DIM
+  ctx.font = `700 42px ${TEXT}`
+  const lines = wrap(ctx, s.desc, STORY.w - PAD * 2, 3)
+  lines.forEach((l, i) => ctx.fillText(l, cx, 1240 + i * 56))
+  let y = 1240 + lines.length * 56 + 40
+  ctx.fillStyle = BRAND
+  ctx.font = `800 44px ${TEXT}`
+  ctx.fillText(s.when, cx, y)
+  if (s.line) {
+    ctx.fillStyle = '#fff'
+    ctx.font = `700 38px ${TEXT}`
+    wrap(ctx, s.line, STORY.w - PAD * 2, 2).forEach((l, i) => ctx.fillText(l, cx, y + 64 + i * 50))
+  }
+  card(ctx, PAD + 120, 1600, STORY.w - PAD * 2 - 240, 110)
+  ctx.fillStyle = '#fff'
+  ctx.font = `800 40px ${TEXT}`
+  ctx.fillText(`🏅 ${s.total} ${s.total === 1 ? 'conquista' : 'conquistas'} no passaporte`, cx, 1670)
+  ctx.textAlign = 'left'
+}
+
+const DRAW = { proximas, temporada, semana, contagem, evolucao, treino, conquista }
 
 /** Desenha o story `id` com o conteúdo `s` (de storyFor). photo: ImageBitmap opcional. */
 export function drawStory(canvas, id, s, photo = null) {

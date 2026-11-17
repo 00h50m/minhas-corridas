@@ -70,7 +70,7 @@ export function formatGoalTarget(g) {
 export function workoutTests(g, workouts = []) {
   if (g.type !== 'tempo' || !g.distanceKm) return []
   return workouts
-    .filter((w) => w.goalId === g.id && w.status === 'feito' && w.result?.elapsedSec > 0 && w.result.distanceKm >= g.distanceKm * 0.98 && w.result.distanceKm <= g.distanceKm * 1.15)
+    .filter((w) => w.goalId === g.id && (w.sport ?? 'corrida') === 'corrida' && w.status === 'feito' && w.result?.elapsedSec > 0 && w.result.distanceKm >= g.distanceKm * 0.98 && w.result.distanceKm <= g.distanceKm * 1.15)
     .filter((w) => (!g.startDate || !w.date || w.date >= g.startDate) && (!g.deadline || !w.date || w.date <= g.deadline))
     .map((w) => ({ workout: w, sec: Math.round(w.result.elapsedSec), date: w.date }))
     .sort((a, b) => a.sec - b.sec)

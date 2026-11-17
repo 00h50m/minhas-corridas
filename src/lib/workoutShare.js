@@ -13,7 +13,7 @@ const fromB64Url = (s) => {
 }
 
 /** Forma enxuta de um treino (sem ids nem resultado). */
-const slim = (w) => ({ name: w.name, date: w.date ?? null, notes: w.notes || undefined, items: w.items.map(slimItem) })
+const slim = (w) => ({ name: w.name, date: w.date ?? null, notes: w.notes || undefined, ...(w.sport && w.sport !== 'corrida' ? { sport: w.sport, plannedMin: w.plannedMin } : {}), items: w.items.map(slimItem) })
 const slimItem = (it) => (it.kind === 'repeat'
   ? { kind: 'repeat', times: it.times, steps: it.steps.map(slimItem) }
   : { type: it.type, duration: it.duration, target: it.target.kind === 'none' ? undefined : it.target, name: it.name || undefined })

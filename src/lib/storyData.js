@@ -5,7 +5,8 @@ import { daysBetween, formatDateBR, weekdayShort, yearOf } from './dates.js'
 import { formatDuration, formatKm, formatPace } from './format.js'
 import { weekStart, weekStreak, weekSummary, workoutState, DOW_SHORT } from './trainingWeek.js'
 import { paceSeriesWithTests } from './evolution.js'
-import { compareLaps, estimate, summary } from './workout.js'
+import { passport } from './passport.js'
+import { compareLaps, isRun, plannedSec, sportOf, workoutLine } from './workout.js'
 
 export const STORY_TEMPLATES = [
   { id: 'proximas', label: 'Próximas provas' },
@@ -13,7 +14,8 @@ export const STORY_TEMPLATES = [
   { id: 'semana', label: 'Semana de treinos' },
   { id: 'contagem', label: 'Contagem' },
   { id: 'evolucao', label: 'Evolução nos 5 km' },
-  { id: 'treino', label: 'Treino concluído' }
+  { id: 'treino', label: 'Treino concluído' },
+  { id: 'conquista', label: 'Conquista' }
 ]
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
@@ -127,38 +129,62 @@ export function storyEvolucao(races, workouts, opts = {}) {
   }
 }
 
+const CROSS_DONE = { academia: 'Academia feita', bike: 'Bike feita', natacao: 'Natação feita', caminhada: 'Caminhada feita', alongamento: 'Alongamento feito' }
+
 /** Treino concluído: planejado × feito (do arquivo do relógio quando houver). */
 export function storyTreino(workouts, today, opts = {}, workoutId = null) {
   const done = workouts.filter((w) => w.status === 'feito' && w.date).sort((a, b) => (a.date < b.date ? 1 : -1))
   const w = workoutId ? workouts.find((x) => x.id === workoutId) : done[0]
   if (!w || w.status !== 'feito') return { ok: false, reason: 'Nenhum treino marcado como feito ainda.' }
   const r = w.result
-  const rows = r?.laps?.length ? compareLaps(w.items, r.laps) : []
+  const run = isRun(w)
+  const rows = run && r?.laps?.length ? compareLaps(w.items, r.laps) : []
   const scored = rows.filter((x) => x.inTarget != null)
   const stats = []
   if (r?.distanceKm) stats.push({ value: String(r.distanceKm.toFixed(2)).replace('.', ','), label: 'km' })
   if (opts.times && r?.elapsedSec) stats.push({ value: formatDuration(r.elapsedSec), label: 'tempo' })
-  if (opts.times && r?.distanceKm > 0 && r?.elapsedSec) stats.push({ value: formatPace(r.elapsedSec / r.distanceKm).replace(' /km', ''), label: 'pace /km' })
-  if (!stats.length) stats.push({ value: `≈ ${Math.round(estimate(w.items).sec / 60)}`, label: 'min' })
+  if (run && opts.times && r?.distanceKm > 0 && r?.elapsedSec) stats.push({ value: formatPace(r.elapsedSec / r.distanceKm).replace(' /km', ''), label: 'pace /km' })
+  if (!stats.length || (!run && !r?.elapsedSec)) stats.push({ value: String(Math.round(plannedSec(w) / 60)), label: 'min' })
   return {
     ok: true,
-    title: 'Treino feito ✓',
+    title: run ? 'Treino feito ✓' : `${CROSS_DONE[w.sport] ?? 'Atividade feita'} ✓`,
     name: w.name,
     when: `${dayMonth(w.date).weekday} ${formatDateBR(w.date)}`,
-    plan: summary(w.items),
+    plan: run ? workoutLine(w) : null,
+    icon: run ? null : sportOf(w).icon,
     stats,
     hits: scored.length && opts.times ? `${scored.filter((x) => x.inTarget).length} de ${scored.length} tiros no pace` : null
   }
 }
 
+/** Conquista do passaporte (a escolhida ou a mais recente). Conquistas de tempo só com tempos visíveis. */
+export function storyConquista(races, workouts, goals, today, opts = {}, badgeId = null) {
+  const p = passport({ races, workouts, goals, today, times: true })
+  const b = badgeId ? p.badges.find((x) => x.id === badgeId) : p.badges.find((x) => opts.times || !x.timed)
+  if (!b) return { ok: false, reason: badgeId ? 'Essa conquista ainda não foi alcançada.' : 'Nenhuma conquista ainda: complete uma prova ou marque treinos como feitos.' }
+  if (b.timed && !opts.times) return { ok: false, reason: 'Esta conquista é de tempo: ative “Mostrar tempos e pace”.' }
+  const race = b.raceId ? races.find((r) => r.id === b.raceId) : null
+  return {
+    ok: true,
+    icon: b.icon,
+    kicker: b.isNew ? 'Conquista nova' : 'Conquista',
+    name: b.title,
+    desc: b.desc,
+    when: formatDateBR(b.date),
+    line: race ? [race.name, place(race, opts)].filter(Boolean).join(' · ') : null,
+    total: p.badges.length
+  }
+}
+
 /** Monta o story pelo modelo. */
-export function storyFor(id, { races, workouts, today, opts, raceId, workoutId }) {
+export function storyFor(id, { races, workouts, goals = [], today, opts, raceId, workoutId, badgeId }) {
   if (id === 'proximas') return storyProximas(races, today, opts)
   if (id === 'temporada') return storyTemporada(races, today, opts)
   if (id === 'semana') return storySemana(workouts, today, opts)
   if (id === 'contagem') return storyContagem(races, today, opts, raceId)
   if (id === 'evolucao') return storyEvolucao(races, workouts, opts)
   if (id === 'treino') return storyTreino(workouts, today, opts, workoutId)
+  if (id === 'conquista') return storyConquista(races, workouts, goals, today, opts, badgeId)
   return { ok: false, reason: 'Modelo desconhecido.' }
 }
 

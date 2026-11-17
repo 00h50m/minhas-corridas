@@ -59,7 +59,7 @@ export function paceSeriesWithTests(races, workouts = []) {
   const byKey = new Map(recordsByDistance(races).map((g) => [g.key, { key: g.key, km: g.km, points: g.evolution.filter((p) => p.pace).map((p) => ({ ...p, kind: 'prova' })) }]))
   for (const w of workouts) {
     const r = w.result
-    if (w.status !== 'feito' || !w.date || !(r?.elapsedSec > 0) || !(r.distanceKm > 0)) continue
+    if (w.status !== 'feito' || (w.sport && w.sport !== 'corrida') || !w.date || !(r?.elapsedSec > 0) || !(r.distanceKm > 0)) continue
     const km = TEST_KM.find((k) => r.distanceKm >= k * 0.98 && r.distanceKm <= k * 1.05)
     if (!km) continue
     const key = distanceKey(km)

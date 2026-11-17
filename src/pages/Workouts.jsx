@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { DateTile, EmptyState, TopBar } from '../components/ui.jsx'
 import { IconPlus } from '../components/Icons.jsx'
-import { WORKOUT_STATUSES, estimate, fmtSec, summary } from '../lib/workout.js'
+import { WORKOUT_STATUSES, fmtSec, isRun, plannedSec, sportOf, workoutLine } from '../lib/workout.js'
 import { todayISO } from '../lib/dates.js'
 import TrainingWeek from '../components/TrainingWeek.jsx'
 import ActivityImport from '../components/ActivityImport.jsx'
@@ -31,6 +31,7 @@ export default function Workouts() {
   }
   const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
   const upcoming = workouts.filter((w) => w.date && w.date >= today && w.status === 'planejado').sort(byDate)
+  const upcomingRuns = upcoming.filter(isRun)
   const undated = workouts.filter((w) => !w.date && w.status === 'planejado').sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
   const past = workouts.filter((w) => !upcoming.includes(w) && !undated.includes(w)).sort((a, b) => -byDate(a, b))
   return (
@@ -47,11 +48,14 @@ export default function Workouts() {
         {undated.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
         {past.length > 0 && <div className="list-group-title">Anteriores</div>}
         {past.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
-        <Link to="/treinos/novo" className="btn btn-primary btn-block" style={{ marginTop: 16 }}><IconPlus /> Novo treino</Link>
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <Link to="/treinos/novo" className="btn btn-primary"><IconPlus /> Novo treino</Link>
+          <Link to="/treinos/novo?tipo=academia" className="btn" data-testid="new-cross">+ Outra atividade</Link>
+        </div>
         <Link to="/treinos/importar" className="link-btn" style={{ display: 'inline-block', marginTop: 8 }}>Importar treinos (link ou arquivo)</Link>
-        {upcoming.length > 0 && (
+        {upcomingRuns.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <CopyBox label={`Copiar prompt dos ${upcoming.length} próximos treinos para o Claude`} text={claudePrompt(upcoming)} done="Prompt copiado: cole no Claude" testid="copy-claude-all"
+            <CopyBox label={`Copiar prompt dos ${upcomingRuns.length} próximos treinos para o Claude`} text={claudePrompt(upcomingRuns)} done="Prompt copiado: cole no Claude" testid="copy-claude-all"
               hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado: ele cria todos, agenda nas datas e envia para o relógio." />
           </div>
         )}
@@ -62,16 +66,16 @@ export default function Workouts() {
 }
 
 export function WorkoutItem({ w, today }) {
-  const est = estimate(w.items)
+  const sec = plannedSec(w)
   const missed = w.status === 'planejado' && w.date && w.date < today
   return (
     <Link to={`/treinos/${w.id}`} className={`race-item wk-item wk-${w.status}`} data-testid="workout-item">
       <DateTile date={w.date} />
       <div className="race-body">
-        <div className="t">{w.name}</div>
-        <div className="s wk-sum">{summary(w.items)}</div>
+        <div className="t">{isRun(w) ? '' : `${sportOf(w).icon} `}{w.name}</div>
+        <div className="s wk-sum">{workoutLine(w)}</div>
         <div className="chips" style={{ marginTop: 6 }}>
-          <span className="chip">≈ {fmtSec(est.sec)}</span>
+          <span className="chip">≈ {fmtSec(sec)}</span>
           {w.date === today && w.status === 'planejado' && <span className="chip chip-hot">Hoje</span>}
           {w.status !== 'planejado' && <span className="chip">{STATUS_LABEL[w.status]}{w.status === 'feito' && w.result?.distanceKm ? ` · ${String(w.result.distanceKm.toFixed(2)).replace('.', ',')} km` : ''}</span>}
           {missed && <span className="chip chip-dim">Passou</span>}
@@ -83,7 +87,7 @@ export function WorkoutItem({ w, today }) {
 
 /** Treinos planejados sem objetivo: sugere ligar a um objetivo (ou criar um com eles). */
 function PlanGoalHint({ workouts, goals }) {
-  const free = workouts.filter((w) => !w.goalId)
+  const free = workouts.filter((w) => !w.goalId && isRun(w))
   if (free.length < 2) return null
   const active = goals.filter((g) => g.status === 'andamento' && ['tempo', 'primeira', 'manual'].includes(g.type))
   // Distância do teste do plano (o passo por distância mais longo), para já sugerir o objetivo.

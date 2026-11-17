@@ -1,6 +1,6 @@
 // Semana de treinos (segunda a domingo): planejado × feito, tempo e km, e sequência de semanas cumpridas.
 import { addDaysISO, parseISODate, toISODate } from './dates.js'
-import { estimate } from './workout.js'
+import { isRun, plannedSec } from './workout.js'
 
 /** Segunda-feira da semana de uma data ISO. */
 export function weekStart(iso) {
@@ -33,9 +33,11 @@ export function weekSummary(workouts, start, today) {
   })
   const states = inWeek.map((w) => workoutState(w, today))
   const done = inWeek.filter((w) => w.status === 'feito')
-  const plannedSec = inWeek.reduce((a, w) => a + estimate(w.items).sec, 0)
-  const doneSec = done.reduce((a, w) => a + (w.result?.elapsedSec ?? estimate(w.items).sec), 0)
-  const doneKm = Math.round(done.reduce((a, w) => a + (w.result?.distanceKm ?? 0), 0) * 100) / 100
+  const planSec = inWeek.reduce((a, w) => a + plannedSec(w), 0)
+  const doneSec = done.reduce((a, w) => a + (w.result?.elapsedSec ?? plannedSec(w)), 0)
+  // km: só corrida (bike e caminhada não somam na quilometragem)
+  const doneKm = Math.round(done.filter(isRun).reduce((a, w) => a + (w.result?.distanceKm ?? 0), 0) * 100) / 100
+  const cross = done.filter((w) => !isRun(w)).length
   return {
     start,
     end,
@@ -44,8 +46,9 @@ export function weekSummary(workouts, start, today) {
     done: done.length,
     skipped: states.filter((s) => s === 'pulado').length,
     missed: states.filter((s) => s === 'passou').length,
-    plannedSec,
+    plannedSec: planSec,
     doneSec,
+    cross,
     doneKm,
     complete: inWeek.length > 0 && done.length === inWeek.length
   }

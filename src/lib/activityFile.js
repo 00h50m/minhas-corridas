@@ -1,6 +1,8 @@
 // Leitura de arquivos de atividade exportados do relógio (Garmin Connect e outros): GPX e TCX.
-// Sem DOM, para funcionar também nos testes. Guardamos só o resumo, não o trajeto.
+// Sem DOM, para funcionar também nos testes. Guardamos o resumo e um traçado simplificado,
+// sem os primeiros e os últimos 200 m (zona de privacidade: não mostra onde você mora).
 import { decodeFit, fitFromZip } from './fit.js'
+import { encodePolyline } from './polyline.js'
 
 const num = (s) => (s == null ? null : Number(s))
 
@@ -27,7 +29,9 @@ function parseTCX(xml) {
     t: Date.parse(tag(b, 'Time')),
     d: num(tag(b, 'DistanceMeters')),
     hr: num(tag(blocks(b, 'HeartRateBpm')[0] ?? '', 'Value')),
-    alt: num(tag(b, 'AltitudeMeters'))
+    alt: num(tag(b, 'AltitudeMeters')),
+    lat: num(tag(b, 'LatitudeDegrees')),
+    lon: num(tag(b, 'LongitudeDegrees'))
   }))
   // Alguns arquivos não trazem DistanceMeters por ponto: calcula pela posição.
   if (pts.every((p) => p.d == null)) {
@@ -57,7 +61,7 @@ function parseGPX(xml) {
   let acc = 0
   const pts = raw.map((p, i) => {
     if (i > 0 && p.lat != null && raw[i - 1].lat != null) acc += haversine(raw[i - 1], p)
-    return { t: p.t, d: acc, hr: p.hr, alt: p.alt }
+    return { t: p.t, d: acc, hr: p.hr, alt: p.alt, lat: p.lat, lon: p.lon }
   })
   return { pts, lapDist: 0, lapTime: 0, sport: tag(xml, 'type') }
 }
@@ -101,6 +105,77 @@ export function splitsFrom(pts) {
   return out
 }
 
+const PRIVACY_M = 200
+const MAX_TRACK_PTS = 400
+
+/** Distância de um ponto ao segmento a–b (em graus aproximados por metros locais). */
+function segDist(p, a, b) {
+  const k = Math.cos((a[0] * Math.PI) / 180)
+  const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p[1] * k, py = p[0]
+  const dx = bx - ax, dy = by - ay
+  const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) * 111320
+}
+
+/** n pontos espaçados por igual, mantendo o primeiro e o último. */
+function sample(arr, n) {
+  return Array.from({ length: n }, (_, i) => arr[Math.round((i * (arr.length - 1)) / (n - 1))])
+}
+
+/** Douglas–Peucker iterativo: mantém a forma com menos pontos. */
+function simplify(coords, tol) {
+  if (coords.length < 3) return coords
+  const keep = new Uint8Array(coords.length)
+  keep[0] = keep[coords.length - 1] = 1
+  const stack = [[0, coords.length - 1]]
+  while (stack.length) {
+    const [i, j] = stack.pop()
+    let max = 0, idx = -1
+    for (let k = i + 1; k < j; k++) {
+      const d = segDist(coords[k], coords[i], coords[j])
+      if (d > max) { max = d; idx = k }
+    }
+    if (max > tol && idx > 0) { keep[idx] = 1; stack.push([i, idx], [idx, j]) }
+  }
+  return coords.filter((_, k) => keep[k])
+}
+
+/**
+ * Traçado para o mapa (polyline codificada), sem os primeiros e os últimos 200 m e com no máximo
+ * 400 pontos. null quando o arquivo não tem GPS (esteira, piscina) ou o percurso é curto demais.
+ */
+export function trackFrom(pts) {
+  const geo = pts.filter((p) => p.lat != null && p.lon != null && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180 && !(p.lat === 0 && p.lon === 0))
+  if (geo.length < 10) return null
+  let acc = 0
+  const withD = geo.map((p, i) => {
+    if (i > 0) acc += haversine(geo[i - 1], p)
+    return { ...p, cd: acc }
+  })
+  if (acc < PRIVACY_M * 2 + 300) return null
+  // Pontos a menos de 5 m do anterior não mudam o desenho; depois, no máximo 6000 para simplificar rápido.
+  let inner = []
+  let lastD = -Infinity
+  for (const p of withD) {
+    if (p.cd < PRIVACY_M || p.cd > acc - PRIVACY_M) continue
+    if (p.cd - lastD >= 5) { inner.push([p.lat, p.lon]); lastD = p.cd }
+  }
+  if (inner.length > 6000) inner = sample(inner, 6000)
+  let out = simplify(inner, 4)
+  if (out.length > MAX_TRACK_PTS) {
+    // A maior tolerância que ainda deixa até 400 pontos (busca binária).
+    let lo = 4, hi = 200, best = null
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2
+      const s = simplify(inner, mid)
+      if (s.length <= MAX_TRACK_PTS) { best = s; hi = mid } else lo = mid
+    }
+    // Percurso que a simplificação não resolve bem (muito vai e vem): amostra uniforme.
+    out = best && best.length >= MAX_TRACK_PTS / 4 ? best : sample(inner, MAX_TRACK_PTS)
+  }
+  return out.length >= 2 ? encodePolyline(out) : null
+}
+
 /** Monta o resumo a partir dos pontos {t, d, hr, alt} e dos totais do relógio (quando houver). */
 function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = {}, lapList = [] }, source, fileName) {
   const pts = all.filter((p) => isFinite(p.t) && p.d != null && isFinite(p.d))
@@ -122,6 +197,7 @@ function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = 
     maxHr: totals.maxHr ?? (hrs.length ? Math.max(...hrs) : null),
     elevGainM: totals.ascent ?? (all.some((p) => p.alt != null) ? elevationGain(all.map((p) => p.alt)) : null),
     splits: splitsFrom(pts),
+    track: trackFrom(all.filter((p) => isFinite(p.t)).sort((a, b) => a.t - b.t)),
     // Voltas do relógio (num treino estruturado, uma por passo): para o planejado × executado.
     laps: lapList.filter((l) => l.sec > 0).slice(0, 200).map((l) => ({ sec: Math.round(l.sec), distanceKm: Math.round(l.m || 0) / 1000 }))
   }
@@ -148,7 +224,8 @@ const FIT_SPORTS = { 0: 'generic', 1: 'running', 2: 'cycling', 11: 'walking', 17
 export function parseFitActivity(bytes, fileName = '') {
   const { records, laps, sessions } = decodeFit(bytes)
   const s = sessions[0] ?? {}
-  const pts = records.map((r) => ({ t: r.timestamp, d: r.distance, hr: r.heartRate, alt: r.enhancedAltitude ?? r.altitude }))
+  const SEMI = 180 / 2 ** 31
+  const pts = records.map((r) => ({ t: r.timestamp, d: r.distance, hr: r.heartRate, alt: r.enhancedAltitude ?? r.altitude, lat: r.positionLat != null ? r.positionLat * SEMI : null, lon: r.positionLong != null ? r.positionLong * SEMI : null }))
   const lapDist = s.totalDistance ?? laps.reduce((a, l) => a + (l.totalDistance || 0), 0)
   const lapTime = s.totalTimerTime ?? laps.reduce((a, l) => a + (l.totalTimerTime || 0), 0)
   return summarize(

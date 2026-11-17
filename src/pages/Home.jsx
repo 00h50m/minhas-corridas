@@ -16,7 +16,8 @@ import { activeGoals, goalProgress } from '../lib/goals.js'
 import BudgetCard from '../components/Budget.jsx'
 import { currentBudget } from '../lib/budget.js'
 import { candidates } from '../lib/decision.js'
-import { estimate, fmtSec, summary as workoutSummary } from '../lib/workout.js'
+import { fmtSec, plannedSec, workoutLine } from '../lib/workout.js'
+import { passport } from '../lib/passport.js'
 // Resumo da semana de treinos: carrega só quando há treinos (não pesa a abertura do app).
 const TrainingWeek = lazy(() => import('../components/TrainingWeek.jsx'))
 import { resultBadges } from '../lib/shareCard.js'
@@ -203,7 +204,8 @@ export default function Home() {
 
         {showLast && <LastRace race={last} races={races} />}
 
-        <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 16 }}>
+        <PassportLink races={races} workouts={workouts} goals={goals} today={today} />
+        <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 10 }}>
           <span style={{ fontSize: 26 }} aria-hidden="true">📲</span>
           <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, temporada, semana de treinos, contagem…</span></span>
           <span aria-hidden="true">›</span>
@@ -316,6 +318,18 @@ function LastRace({ race: r, races }) {
   )
 }
 
+function PassportLink({ races, workouts, goals, today }) {
+  const p = passport({ races, workouts, goals, today })
+  const fresh = p.badges.find((b) => b.isNew)
+  return (
+    <Link to="/passaporte" className="card decide-link" data-testid="passport-link" style={{ marginTop: 16 }}>
+      <span style={{ fontSize: 26 }} aria-hidden="true">{fresh ? fresh.icon : '🏅'}</span>
+      <span style={{ flex: 1, minWidth: 0 }}><b>Passaporte de corredora</b><br /><span className="muted small">{fresh ? <>Nova: <b>{fresh.title}</b></> : `${p.badges.length} ${p.badges.length === 1 ? 'conquista' : 'conquistas'} · mapa · provas perto`}</span></span>
+      <span aria-hidden="true">›</span>
+    </Link>
+  )
+}
+
 function NextWorkout({ w, today }) {
   const days = daysBetween(today, w.date)
   return (
@@ -323,8 +337,8 @@ function NextWorkout({ w, today }) {
       <div className="section-title"><h2>{days === 0 ? 'Treino de hoje' : 'Próximo treino'}</h2><Link to="/treinos">Treinos</Link></div>
       <Link to={`/treinos/${w.id}`} className="card wk-home" data-testid="home-workout">
         <div className="t">{w.name}{days > 0 && <span className="muted"> · {days === 1 ? 'amanhã' : formatDateBR(w.date).slice(0, 5)}</span>}</div>
-        <div className="muted small">{workoutSummary(w.items)}</div>
-        <div className="muted small" style={{ marginTop: 4 }}>≈ {fmtSec(estimate(w.items).sec)}</div>
+        <div className="muted small">{workoutLine(w)}</div>
+        <div className="muted small" style={{ marginTop: 4 }}>≈ {fmtSec(plannedSec(w))}</div>
       </Link>
     </>
   )

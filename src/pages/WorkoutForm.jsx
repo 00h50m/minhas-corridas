@@ -5,7 +5,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-
 import { getWorkout, saveWorkout, useStore } from '../services/store.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
 import { IconPlus } from '../components/Icons.jsx'
-import { STEP_TYPES, TEMPLATES, emptyWorkout, estimate, fmtPace, fmtSec, newRepeat, newStep, normalizeWorkout, summary, validateWorkout } from '../lib/workout.js'
+import { SPORTS, SPORT_BY_ID, STEP_TYPES, TEMPLATES, isRun, emptyWorkout, estimate, fmtPace, fmtSec, newRepeat, newStep, normalizeWorkout, summary, validateWorkout } from '../lib/workout.js'
 import { formatDateBR, isValidISODate, todayISO } from '../lib/dates.js'
 import { parseDuration } from '../lib/format.js'
 
@@ -15,7 +15,8 @@ export default function WorkoutForm() {
   const editing = id ? getWorkout(id) : null
   if (id && !editing) return <Navigate to="/treinos" replace />
   const copyOf = params.get('copiar') ? getWorkout(params.get('copiar')) : null
-  return <Editor key={id || 'novo'} initial={editing ?? (copyOf ? { ...copyOf, id: null, name: `${copyOf.name} (cópia)`.slice(0, 60), status: 'planejado', result: null, date: null } : { ...emptyWorkout(), date: isValidISODate(params.get('data')) ? params.get('data') : null })} isNew={!editing} />
+  const tipo = SPORT_BY_ID[params.get('tipo')] ? params.get('tipo') : 'corrida'
+  return <Editor key={id || 'novo'} initial={editing ?? (copyOf ? { ...copyOf, id: null, name: `${copyOf.name} (cópia)`.slice(0, 60), status: 'planejado', result: null, date: null } : { ...emptyWorkout(), sport: tipo, plannedMin: tipo === 'corrida' ? null : 45, date: isValidISODate(params.get('data')) ? params.get('data') : null })} isNew={!editing} />
 }
 
 function Editor({ initial, isNew }) {
@@ -46,10 +47,15 @@ function Editor({ initial, isNew }) {
 
   return (
     <>
-      <TopBar title={isNew ? 'Novo treino' : 'Editar treino'} back="/treinos" />
+      <TopBar title={isNew ? (isRun(w) ? 'Novo treino' : 'Nova atividade') : 'Editar treino'} back="/treinos" />
       <form className="page" onSubmit={submit} noValidate data-testid="workout-form">
+        <Field label="Atividade" htmlFor="wk-sport">
+          <select id="wk-sport" className="input" value={w.sport ?? 'corrida'} onChange={(e) => { const sp = e.target.value; set({ sport: sp, plannedMin: sp === 'corrida' ? null : w.plannedMin ?? 45 }); setErrors({}) }} data-testid="wk-sport">
+            {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+          </select>
+        </Field>
         <Field label="Nome" htmlFor="wk-name" error={errors.name}>
-          <input id="wk-name" className="input" value={w.name} onChange={(e) => { set({ name: e.target.value }); setErrors((x) => ({ ...x, name: null })) }} maxLength={60} placeholder="Ex.: Tiros 6×800" />
+          <input id="wk-name" className="input" value={w.name} onChange={(e) => { set({ name: e.target.value }); setErrors((x) => ({ ...x, name: null })) }} maxLength={60} placeholder={isRun(w) ? 'Ex.: Tiros 6×800' : 'Ex.: Fortalecimento de pernas'} />
         </Field>
         <div className="grid-2">
           <Field label="Data" optional htmlFor="wk-date">
@@ -72,7 +78,14 @@ function Editor({ initial, isNew }) {
           </Field>
         )}
 
-        {!picked ? (
+        {!isRun(w) ? (
+          <>
+            <Field label="Duração planejada (min)" htmlFor="wk-min" error={errors.plannedMin}>
+              <input id="wk-min" className="input" inputMode="numeric" value={w.plannedMin ?? ''} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 3); set({ plannedMin: v ? Number(v) : null }); setErrors((x) => ({ ...x, plannedMin: null })) }} placeholder="45" data-testid="wk-min" />
+            </Field>
+            <p className="note" style={{ marginTop: 0 }}>Entra na semana de treinos (tempo e dias cumpridos) e na sequência. Não conta no pace nem nos km de corrida.</p>
+          </>
+        ) : !picked ? (
           <div className="card" data-testid="wk-templates">
             <b>Como começar?</b>
             <p className="muted small" style={{ margin: '4px 0 10px' }}>Escolha uma estrutura para editar com os números da sua planilha ou do seu treinador. São só formatos de partida, não recomendações de treino.</p>

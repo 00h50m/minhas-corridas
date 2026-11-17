@@ -15,6 +15,20 @@ export const STEP_TYPES = [
   { id: 'desaquecimento', label: 'Desaquecimento', intensity: 'cooldown' }
 ]
 export const STEP_BY_ID = Object.fromEntries(STEP_TYPES.map((t) => [t.id, t]))
+/** Tipo de atividade. Só a corrida tem passos, pace, arquivo de treino e entra nas marcas. */
+export const SPORTS = [
+  { id: 'corrida', label: 'Corrida', icon: '🏃‍♀️' },
+  { id: 'academia', label: 'Academia / força', icon: '🏋️' },
+  { id: 'bike', label: 'Bike', icon: '🚴' },
+  { id: 'natacao', label: 'Natação', icon: '🏊' },
+  { id: 'caminhada', label: 'Caminhada', icon: '🚶' },
+  { id: 'alongamento', label: 'Alongamento / ioga', icon: '🧘' },
+  { id: 'outro', label: 'Outra atividade', icon: '✨' }
+]
+export const SPORT_BY_ID = Object.fromEntries(SPORTS.map((t) => [t.id, t]))
+export const isRun = (w) => (w?.sport ?? 'corrida') === 'corrida'
+export const sportOf = (w) => SPORT_BY_ID[w?.sport] ?? SPORT_BY_ID.corrida
+
 export const WORKOUT_STATUSES = [
   { id: 'planejado', label: 'Planejado' },
   { id: 'feito', label: 'Feito' },
@@ -74,18 +88,20 @@ function normalizeItem(raw) {
 }
 
 export function emptyWorkout() {
-  return { id: null, name: '', date: null, status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
+  return { id: null, name: '', sport: 'corrida', plannedMin: null, date: null, status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
 }
 
 export function normalizeWorkout(raw) {
   const w = { ...emptyWorkout(), ...(raw && typeof raw === 'object' ? raw : {}) }
   w.name = str(w.name, 60)
+  w.sport = SPORT_BY_ID[w.sport] ? w.sport : 'corrida'
+  w.plannedMin = w.sport === 'corrida' ? null : num(Math.round(Number(w.plannedMin)), 1, 600)
   w.date = isValidISODate(w.date) ? w.date : null
   w.status = WORKOUT_STATUSES.some((s) => s.id === w.status) ? w.status : 'planejado'
   w.raceId = str(w.raceId, 60) || null
   w.goalId = str(w.goalId, 60) || null // objetivo a que este treino pertence (plano)
   w.notes = str(w.notes, 1000)
-  w.items = (Array.isArray(w.items) ? w.items : []).map(normalizeItem).filter(Boolean).slice(0, 30)
+  w.items = w.sport === 'corrida' ? (Array.isArray(w.items) ? w.items : []).map(normalizeItem).filter(Boolean).slice(0, 30) : []
   w.result = normalizeResult(w.result)
   return w
 }
@@ -99,6 +115,8 @@ function normalizeResult(r) {
     avgHr: num(Number(r.avgHr), 30, 250),
     fileName: str(r.fileName, 120),
     laps,
+    // traçado (polyline codificada, sem início e fim): só caracteres do formato
+    track: typeof r.track === 'string' && r.track.length <= 12000 && /^[\x3f-\x7e]+$/.test(r.track) ? r.track : null,
     effort: num(Number(r.effort), 1, 10),
     notes: str(r.notes, 1000)
   }
@@ -107,7 +125,8 @@ function normalizeResult(r) {
 export function validateWorkout(w) {
   const e = {}
   if (!w.name) e.name = 'Dê um nome ao treino.'
-  if (!w.items.length) e.items = 'Adicione pelo menos um passo.'
+  if (isRun(w) && !w.items.length) e.items = 'Adicione pelo menos um passo.'
+  if (!isRun(w) && !w.plannedMin) e.plannedMin = 'Informe quantos minutos (ex.: 45).'
   return e
 }
 
@@ -172,6 +191,18 @@ export function estimate(items, refPace = 360) {
     }
   }
   return { sec: Math.round(sec), km: Math.round(m / 10) / 100, open }
+}
+
+/** Tempo planejado de qualquer atividade (s): estimativa dos passos na corrida, minutos nas outras. */
+export function plannedSec(w) {
+  return isRun(w) ? estimate(w.items).sec : (w.plannedMin ?? 0) * 60
+}
+
+/** Linha de resumo de qualquer atividade (passos na corrida; tipo e minutos nas outras). */
+export function workoutLine(w) {
+  if (isRun(w)) return summary(w.items)
+  const s = sportOf(w)
+  return `${s.icon} ${s.label}${w.plannedMin ? ` · ${w.plannedMin} min` : ''}`
 }
 
 /* ---------- Planejado x executado ---------- */

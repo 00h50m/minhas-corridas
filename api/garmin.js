@@ -125,8 +125,13 @@ export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } 
       const q = new URLSearchParams({ start: '0', limit: String(Math.min(50, Math.max(1, Number(b.limit) || 30))), startDate: b.start, endDate: b.end })
       const res = await authed(b.key, `/activitylist-service/activities/search/activities?${q}`, 'application/json', fetchImpl, now)
       const data = await res.json().catch(() => null)
-      const list = Array.isArray(data) ? data : Array.isArray(data?.activityList) ? data.activityList : []
-      return { status: 200, body: { activities: list.map(slimActivity).filter(Boolean) } }
+      const list = Array.isArray(data) ? data : Array.isArray(data?.activityList) ? data.activityList : Array.isArray(data?.activities) ? data.activities : []
+      const activities = list.map(slimActivity).filter(Boolean)
+      // Formato que o app não reconheceu: devolve só os NOMES dos campos (nunca os valores), para diagnóstico.
+      const shape = activities.length < list.length || (!list.length && data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length)
+        ? { top: Array.isArray(data) ? 'lista' : Object.keys(data ?? {}).slice(0, 12), item: list[0] && typeof list[0] === 'object' ? Object.keys(list[0]).slice(0, 15) : [], dropped: list.length - activities.length }
+        : null
+      return { status: 200, body: { activities, ...(shape ? { shape } : {}) } }
     }
     if (b.action === 'file') {
       const id = String(b.id ?? '')

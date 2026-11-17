@@ -62,9 +62,10 @@ let LIST = [
   { id: '101', name: 'Jundiaí Corrida', type: 'running', ...at(today, 6), distanceKm: 4, sec: 1800, avgHr: 150 },
   { id: '102', name: 'Corrida noturna', type: 'running', ...at(yest, 20), distanceKm: 5, sec: 2400, avgHr: 148 },
   { id: '103', name: 'Musculação', type: 'strength_training', ...at(today, 19), distanceKm: null, sec: 2700, avgHr: 110 },
-  { id: '104', name: 'Health Care Run', type: 'running', ...at(raceDay, 7), distanceKm: 5.01, sec: 2370, avgHr: 165 }
+  { id: '104', name: 'Health Care Run', type: 'running', ...at(raceDay, 7), distanceKm: 5.01, sec: 2370, avgHr: 165 },
+  { id: '106', name: 'Longão', type: 'running', ...at(shift(today, -4), 7), distanceKm: 6.02, sec: 2900, avgHr: 145 }
 ]
-const FILES = { 101: zip('101_ACTIVITY.fit', fitRun(today, 9, 4, 30)), 102: zip('102_ACTIVITY.fit', fitRun(yest, 23, 5, 40)), 104: zip('104_ACTIVITY.fit', fitRun(raceDay, 10, 5.01, 39.5)) }
+const FILES = { 106: zip('106_ACTIVITY.fit', fitRun(shift(today, -4), 10, 6.02, 48)), 101: zip('101_ACTIVITY.fit', fitRun(today, 9, 4, 30)), 102: zip('102_ACTIVITY.fit', fitRun(yest, 23, 5, 40)), 104: zip('104_ACTIVITY.fit', fitRun(raceDay, 10, 5.01, 39.5)) }
 const KEY = 'gk_TESTE_chave_pessoal_0123456789'
 const apiCalls = []
 await p.setRequestInterception(true)
@@ -81,7 +82,7 @@ p.on('request', (r) => {
 
 const run = (min) => [{ kind: 'step', type: 'corrida', duration: { kind: 'time', value: min * 60 }, target: { kind: 'none' } }]
 const W = (id, name, date) => ({ id, name, date, status: 'planejado', items: run(30), notes: '', result: null, goalId: null })
-const workouts = [W('rod', 'Rodagem hoje', today), W('tir', 'Tiros', shift(today, 1))]
+const workouts = [W('rod', 'Rodagem hoje', today), W('tir', 'Tiros', shift(today, 1)), { ...W('lon', 'Longão', shift(today, -4)), status: 'feito', result: { distanceKm: 6.0, elapsedSec: 2880, fileName: 'importado-a-mao.fit', laps: [] } }]
 const races = [{ id: 'hc', name: 'Health Care Run', date: raceDay, status: 'inscrita', city: 'Vinhedo', state: 'SP', distanceKm: 5 }]
 await p.evaluate((races, ws) => { localStorage.clear(); localStorage.setItem('minhas-corridas:v1', JSON.stringify({ version: 2, races, goals: [], workouts: ws })); localStorage.setItem('minhas-corridas:instalar-dispensado', String(Date.now())) }, races, workouts)
 
@@ -111,6 +112,11 @@ if (rod.status !== 'feito' || rod.result.garminId !== '101' || !rod.result.track
 const mus = st.workouts.find((w) => w.name === 'Musculação')
 if (!mus || mus.sport !== 'academia' || mus.status !== 'feito' || mus.result.elapsedSec !== 2700) throw new Error('Musculação: ' + JSON.stringify(mus))
 if (st.workouts.some((w) => w.result?.garminId === '104')) throw new Error('Corrida da prova virou treino')
+const lon = st.workouts.filter((w) => w.result?.garminId === '106')
+if (lon.length !== 1 || lon[0].id !== 'lon' || !lon[0].result.track || lon[0].result.fileName !== 'importado-a-mao.fit') throw new Error('Longão: ' + JSON.stringify(lon))
+if (st.workouts.length !== 4) throw new Error('Treinos a mais: ' + st.workouts.map((w) => w.name))
+const rep = await p.$eval('[data-testid=garmin-report]', (e) => e.innerText)
+if (!rep.includes('A Garmin mandou 5 atividades') || !rep.includes('1 já estava no app') || !rep.includes('1 ganhou o percurso') || !rep.includes('1 no dia de prova')) throw new Error('Relatório: ' + rep)
 // Corrida de ontem: escolhe “Tiros” (o único candidato)
 const cands = await p.$$eval('[data-testid=activity-pick] .ai-cands button', (b) => b.map((x) => x.innerText))
 if (cands.length !== 1 || !cands[0].startsWith('Tiros')) throw new Error('Candidatos: ' + cands)
@@ -122,7 +128,7 @@ if (st.workouts.find((w) => w.id === 'tir').result?.garminId !== '102') throw ne
 if (await p.$('[data-testid=activity-pick]')) throw new Error('Fila não andou')
 let g = await garminLS()
 if (g.pending.length || !g.done.includes('104') || g.races[0]?.raceId !== 'hc') throw new Error('Estado Garmin: ' + JSON.stringify({ ...g, key: '…' }))
-ok('Busca: corrida de hoje → “Rodagem hoje” (com voltas e percurso); musculação → atividade avulsa de academia; corrida de ontem → escolhida “Tiros”; corrida do dia da prova não virou treino')
+ok(`Busca: “${rep}”; o “Longão” importado à mão antes não duplicou e ganhou o percurso; corrida de hoje → “Rodagem hoje” (com voltas e percurso); musculação → atividade avulsa de academia; corrida de ontem → escolhida “Tiros”; corrida do dia da prova não virou treino`)
 
 // 3. Chave só no aparelho
 const raw = await p.evaluate(() => localStorage.getItem('minhas-corridas:v1'))
@@ -162,7 +168,7 @@ await p.waitForSelector('.dialog')
 await clickText('.dialog button', 'Desconectar')
 await p.waitForSelector('[data-testid=garmin-connect]')
 if (await garminLS()) throw new Error('Chave ficou depois de desconectar')
-if ((await stored()).workouts.filter((w) => w.result?.garminId).length !== 4) throw new Error('Treinos importados sumiram')
+if ((await stored()).workouts.filter((w) => w.result?.garminId).length !== 5) throw new Error('Treinos importados sumiram')
 const o = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
 if (o > 0) throw new Error('Rolagem lateral: ' + o)
 await p.screenshot({ path: `${SHOTS}/r30-treinos.png`, fullPage: true })

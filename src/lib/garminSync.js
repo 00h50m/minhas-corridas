@@ -20,9 +20,21 @@ export const WITH_FILE = new Set(['corrida', 'bike', 'caminhada'])
 /** Data local da atividade da lista (AAAA-MM-DD). */
 export const garminDate = (g) => (g.start ? g.start.slice(0, 10) : g.startGmt ? toISODate(new Date(`${g.startGmt.replace(' ', 'T')}Z`)) : null)
 
+/**
+ * A mesma atividade já registrada (ex.: arquivo importado à mão antes de conectar): mesmo dia,
+ * distância parecida (até 3% ou 150 m) e tempo parecido (até 2 min). Sem distância, só o tempo.
+ */
+export function sameActivity(result, g) {
+  if (!result || !g) return false
+  const dOk = g.distanceKm > 0 && result.distanceKm > 0 ? Math.abs(result.distanceKm - g.distanceKm) <= Math.max(0.15, g.distanceKm * 0.03) : !(g.distanceKm > 0) && !(result.distanceKm > 0)
+  const tOk = g.sec > 0 && result.elapsedSec > 0 ? Math.abs(result.elapsedSec - g.sec) <= 120 : false
+  return dOk && tOk
+}
+
 /** Período a buscar: desde 2 dias antes da última busca (atividades sincronizadas tarde), no máximo 30 dias. */
-export function syncWindow(lastSync, today) {
+export function syncWindow(lastSync, today, full = false) {
   const floor = addDaysISO(today, -30)
+  if (full) return { start: floor, end: today }
   const from = lastSync ? addDaysISO(String(lastSync).slice(0, 10), -2) : addDaysISO(today, -14)
   return { start: from < floor ? floor : from, end: today }
 }

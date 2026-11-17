@@ -1,7 +1,8 @@
 // Rodada 28: importação automática do Garmin (API pessoal, só leitura).
 import { describe, expect, it, vi } from 'vitest'
 import { handleGarmin, slimActivity, validKey } from '../../api/garmin.js'
-import { garminDate, planGarmin, sportFromGarmin, summaryFromList, syncWindow } from './garminSync.js'
+import { garminDate, planGarmin, sameActivity, sportFromGarmin, summaryFromList, syncWindow } from './garminSync.js'
+import { reportText } from '../components/GarminConnect.jsx'
 import { freeWorkout, matchActivity, resultFrom, alreadyImported } from './activityMatch.js'
 import { normalizeWorkout } from './workout.js'
 
@@ -97,5 +98,27 @@ describe('sincronização', () => {
     expect(fw.sport).toBe('academia')
     expect(fw.name).toBe('Musculação')
     expect(alreadyImported([{ ...fw, result: resultFrom(a) }], { ...a, fileName: 'outro' })).toBeTruthy()
+  })
+})
+
+describe('ligar ao que já está no app e diagnóstico', () => {
+  it('mesma atividade: distância até 3% (ou 150 m) e tempo até 2 min', () => {
+    expect(sameActivity({ distanceKm: 5.01, elapsedSec: 2370 }, { distanceKm: 5.0, sec: 2400 })).toBe(true)
+    expect(sameActivity({ distanceKm: 5.01, elapsedSec: 2370 }, { distanceKm: 5.4, sec: 2400 })).toBe(false)
+    expect(sameActivity({ distanceKm: 5.01, elapsedSec: 2370 }, { distanceKm: 5.0, sec: 2600 })).toBe(false)
+    expect(sameActivity({ distanceKm: null, elapsedSec: 2700 }, { distanceKm: null, sec: 2650 })).toBe(true)
+    expect(syncWindow('2026-11-16T22:00:00Z', '2026-11-17', true)).toEqual({ start: '2026-10-18', end: '2026-11-17' })
+  })
+  it('formato desconhecido: devolve só os nomes dos campos', async () => {
+    const fetchImpl = vi.fn(async (url) => (String(url).endsWith('/token') ? new Response(jwt(Math.floor(Date.now() / 1000) + 86400)) : new Response(JSON.stringify({ results: [{ id: 1, nome: 'x' }], total: 1 }))))
+    const r = await handleGarmin(req({ action: 'list', key: 'chave-de-formato-123', start: '2026-11-01', end: '2026-11-17' }), { fetchImpl })
+    expect(r.body.activities).toEqual([])
+    expect(r.body.shape).toEqual({ top: ['results', 'total'], item: [], dropped: 0 })
+    const ok = await handleGarmin(req({ action: 'list', key: 'chave-de-formato-123', start: '2026-11-01', end: '2026-11-17' }), { fetchImpl: vi.fn(async (url) => (String(url).endsWith('/token') ? new Response(jwt(9e9)) : new Response('[]'))) })
+    expect(ok.body.shape).toBeUndefined()
+  })
+  it('frase do relatório', () => {
+    expect(reportText({ start: '2026-11-02', end: '2026-11-16', total: 6, imported: 1, already: 5, enriched: 4, waiting: 0, prova: 0 })).toBe('A Garmin mandou 6 atividades de 02/11 a 16/11: 1 importada, 5 já estavam no app, 4 ganharam o percurso.')
+    expect(reportText({ start: '2026-11-02', end: '2026-11-16', total: 0, shape: { top: ['results'], item: [], dropped: 0 } })).toBe('A Garmin não mandou nenhuma atividade de 02/11 a 16/11. A resposta veio num formato que o app não reconheceu (campos: results) — mande um print para ajustar.')
   })
 })

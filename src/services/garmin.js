@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
 import { getState, saveWorkout } from './store.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { activityDate, alreadyImported, freeWorkout, matchActivity, resultFrom } from '../lib/activityMatch.js'
-import { WITH_FILE, planGarmin, summaryFromList, syncWindow } from '../lib/garminSync.js'
+import { WITH_FILE, garminDate, planGarmin, sameActivity, summaryFromList, syncWindow } from '../lib/garminSync.js'
 import { todayISO } from '../lib/dates.js'
 import { fmtSec } from '../lib/workout.js'
 
@@ -87,23 +87,38 @@ export async function garminActivityFor(date) {
  * Busca as atividades novas e importa. Retorna { lines, imported, pending, races } ou null se não conectado.
  * force: ignora o intervalo mínimo entre buscas automáticas.
  */
-export function syncGarmin({ force = false } = {}) {
+export function syncGarmin({ force = false, full = false } = {}) {
   if (!state) return Promise.resolve(null)
   if (!force && state.lastSync && Date.now() - Date.parse(state.lastSync) < AUTO_EVERY_MS) return Promise.resolve(null)
   if (running) return running
   running = (async () => {
     const s = state
     const today = todayISO()
-    const win = syncWindow(s.lastSync, today)
-    const { activities } = await api({ action: 'list', key: s.key, start: win.start, end: win.end, limit: 40 })
-    const plan = planGarmin(activities, { workouts: getState().workouts, races: getState().races, done: s.done })
+    const win = syncWindow(s.lastSync, today, full)
+    const { activities, shape = null } = await api({ action: 'list', key: s.key, start: win.start, end: win.end, limit: 50 })
+    const plan = planGarmin(activities, { workouts: getState().workouts, races: getState().races, done: full ? [] : s.done })
     const lines = []
     const done = [...s.done]
     const pending = [...s.pending]
     const races = [...s.races]
     let imported = 0
-    for (const x of plan.slice(0, 15)) {
-      done.push(x.g.id)
+    let linked = 0
+    let enriched = 0
+    for (const x of plan.slice(0, 20)) {
+      if (!done.includes(x.g.id)) done.push(x.g.id)
+      // Já registrada (arquivo importado à mão, ou a prova com o arquivo do relógio): só liga ao Garmin.
+      const twin = getState().workouts.find((w) => w.date === x.date && w.result && !w.result.garminId && sameActivity(w.result, x.g))
+      if (twin) {
+        let result = { ...twin.result, garminId: x.g.id }
+        if (!twin.result.track && WITH_FILE.has(x.sport) && x.g.distanceKm > 0) {
+          const a = await summaryOf(s.key, x)
+          if (a.track) { result = { ...result, track: a.track, laps: result.laps?.length ? result.laps : a.laps ?? [] }; enriched++ }
+        }
+        saveWorkout({ ...twin, result })
+        linked++
+        continue
+      }
+      if (x.kind === 'prova' && x.race.result?.watch && sameActivity({ distanceKm: x.race.result.watch.distanceKm, elapsedSec: x.race.result.watch.elapsedSec }, x.g)) { linked++; continue }
       if (x.kind === 'prova') {
         races.push({ raceId: x.race.id, garminId: x.g.id, date: x.date })
         lines.push(`${x.g.name || 'Corrida'} (${x.date.slice(8, 10)}/${x.date.slice(5, 7)}): é o dia de “${x.race.name}” — use em Resultado da prova → “Buscar no Garmin”.`)
@@ -111,7 +126,7 @@ export function syncGarmin({ force = false } = {}) {
       }
       const a = { ...(await summaryOf(s.key, x)), garminId: x.g.id, appSport: x.sport, title: x.g.name }
       const ws = getState().workouts
-      if (alreadyImported(ws, a)) continue
+      if (alreadyImported(ws, a)) { linked++; continue }
       const { auto, candidates } = matchActivity(ws, activityDate(a), x.sport)
       if (auto) {
         saveWorkout({ ...auto, status: 'feito', result: resultFrom(a, auto.result) })
@@ -126,8 +141,9 @@ export function syncGarmin({ force = false } = {}) {
         pending.push({ a, candidateIds: candidates.map((w) => w.id) })
       }
     }
-    write({ ...state, lastSync: new Date().toISOString(), done: done.slice(-400), pending: pending.slice(-20), races: races.slice(-20) })
-    return { lines, imported, pending: pending.length, races: races.length }
+    const report = { at: new Date().toISOString(), start: win.start, end: win.end, total: activities.length, already: activities.length - plan.length + linked, imported, linked, enriched, waiting: pending.length - s.pending.length, prova: races.length - s.races.length, types: [...new Set(activities.map((g) => g.type).filter(Boolean))].slice(0, 6), first: activities.map(garminDate).filter(Boolean).sort()[0] ?? null, shape }
+    write({ ...state, lastSync: report.at, done: done.slice(-400), pending: pending.slice(-20), races: races.slice(-20), report })
+    return { lines, imported, pending: pending.length, races: races.length, report }
   })().finally(() => { running = null })
   return running
 }

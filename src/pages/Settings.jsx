@@ -127,6 +127,7 @@ export default function Settings() {
     })
     if (!ok) return
     clearAll()
+    import('../services/garmin.js').then((m) => m.disconnectGarmin()).catch(() => {})
     await clearFiles().catch(() => {})
     refreshUsage()
     notify('Dados apagados')

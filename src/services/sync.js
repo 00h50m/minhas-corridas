@@ -111,6 +111,8 @@ function hasLocalData() {
 async function wipeDevice(ownerId) {
   wipeLocal()
   wipeLocalProfile()
+  // A chave do Garmin é deste aparelho e desta pessoa: sai junto.
+  await import('./garmin.js').then((m) => m.disconnectGarmin()).catch(() => {})
   await wipeLocalFiles().catch(() => {})
   resetMeta(ownerId)
 }

@@ -7,6 +7,7 @@ import { WORKOUT_STATUSES, fmtSec, isRun, plannedSec, sportOf, workoutLine } fro
 import { todayISO } from '../lib/dates.js'
 import TrainingWeek from '../components/TrainingWeek.jsx'
 import ActivityImport from '../components/ActivityImport.jsx'
+import GarminConnect from '../components/GarminConnect.jsx'
 import CopyBox from '../components/CopyBox.jsx'
 import { claudePrompt } from '../lib/workoutShare.js'
 
@@ -39,6 +40,7 @@ export default function Workouts() {
       <TopBar title="Treinos" sub={`${upcoming.length} ${upcoming.length === 1 ? 'planejado' : 'planejados'}`} back="/" right={<Link to="/treinos/novo" className="icon-btn" aria-label="Novo treino"><IconPlus /></Link>} />
       <div className="page">
         <TrainingWeek workouts={workouts} today={today} />
+        <div style={{ marginTop: 10 }}><GarminConnect /></div>
         <div style={{ marginTop: 10 }}><ActivityImport /></div>
         <PlanGoalHint workouts={upcoming} goals={goals} />
         <div className="list-group-title">Próximos</div>

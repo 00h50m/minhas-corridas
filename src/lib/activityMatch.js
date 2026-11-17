@@ -1,9 +1,10 @@
 // Atividade do relógio → treino planejado: o do mesmo dia (se for um só) ou candidatos próximos para escolher.
 import { daysBetween, toISODate } from './dates.js'
-import { normalizeWorkout } from './workout.js'
+import { normalizeWorkout, sportOf } from './workout.js'
 
 /** Esporte do arquivo do relógio → tipo de atividade do app. */
 export function sportFromFile(a) {
+  if (a?.appSport) return a.appSport
   const s = String(a?.sport ?? '').toLowerCase()
   if (/cycl|bik|ride/.test(s)) return 'bike'
   if (/walk|hik/.test(s)) return 'caminhada'
@@ -13,7 +14,7 @@ export function sportFromFile(a) {
 
 /** Resultado do treino a partir do resumo da atividade (readActivityFile). */
 export function resultFrom(a, prev = null) {
-  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
+  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, garminId: a.garminId ?? prev?.garminId ?? null, effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
 }
 
 /** Data local da atividade (AAAA-MM-DD). */
@@ -37,6 +38,7 @@ export function matchActivity(workouts, date, sport = 'corrida') {
 /** Atividade já importada (mesmo arquivo e mesma data)? */
 export function alreadyImported(workouts, a) {
   const date = activityDate(a)
+  if (a.garminId) { const g = workouts.find((w) => w.result?.garminId === a.garminId); if (g) return g }
   return workouts.find((w) => w.result?.fileName === a.fileName && w.date === date && Math.abs((w.result.elapsedSec ?? 0) - a.elapsedSec) < 5) ?? null
 }
 
@@ -45,9 +47,9 @@ export function freeWorkout(a) {
   const date = activityDate(a)
   const min = Math.max(1, Math.round(a.elapsedSec / 60))
   const sport = sportFromFile(a)
-  const label = { corrida: 'Corrida', bike: 'Bike', caminhada: 'Caminhada', natacao: 'Natação' }[sport]
+  const label = sport === 'corrida' ? 'Corrida' : sportOf({ sport }).label.split(' /')[0]
   return {
-    ...normalizeWorkout({ name: `${label} ${date.slice(8, 10)}/${date.slice(5, 7)}`, date, status: 'feito', sport, plannedMin: min, items: [{ type: 'corrida', duration: { kind: 'time', value: min * 60 } }] }),
+    ...normalizeWorkout({ name: (a.title || `${label} ${date.slice(8, 10)}/${date.slice(5, 7)}`).slice(0, 60), date, status: 'feito', sport, plannedMin: min, items: [{ type: 'corrida', duration: { kind: 'time', value: min * 60 } }] }),
     status: 'feito',
     result: resultFrom(a)
   }

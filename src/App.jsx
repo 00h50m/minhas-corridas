@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { nextConfirmed } from './lib/stats.js'
-import { BottomNav, UIProvider } from './components/ui.jsx'
+import { BottomNav, UIProvider, useUI } from './components/ui.jsx'
 import { useStore } from './services/store.js'
 import Home from './pages/Home.jsx'
 import Races from './pages/Races.jsx'
@@ -37,6 +37,31 @@ const RunsMap = lazy(() => import('./pages/RunsMap.jsx'))
 const NearRaces = lazy(() => import('./pages/NearRaces.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
+/** Busca sozinha as atividades novas do Garmin ao abrir e ao voltar para o app (só se conectado). */
+function GarminAuto({ ready }) {
+  const { notify } = useUI()
+  useEffect(() => {
+    if (!ready) return undefined
+    const run = () => {
+      let on = false
+      try { on = !!localStorage.getItem('minhas-corridas:garmin') } catch { /* sem armazenamento */ }
+      if (!on || document.visibilityState === 'hidden') return
+      import('./services/garmin.js')
+        .then((m) => m.syncGarmin())
+        .then((r) => {
+          if (!r) return
+          if (r.imported) notify(r.imported === 1 ? '⌚ 1 atividade nova do Garmin' : `⌚ ${r.imported} atividades novas do Garmin`)
+          else if (r.pending) notify('⌚ Atividade do Garmin esperando você escolher o treino (Treinos)')
+        })
+        .catch(() => { /* sem rede ou chave recusada: a tela Treinos mostra o motivo ao buscar */ })
+    }
+    run()
+    document.addEventListener('visibilitychange', run)
+    return () => document.removeEventListener('visibilitychange', run)
+  }, [ready])
+  return null
+}
+
 function ScrollTop() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -51,6 +76,7 @@ export default function App() {
     <UIProvider>
       <div className="app">
         <ScrollTop />
+        <GarminAuto ready={store.status === 'ready'} />
         {store.status === 'loading' && (
           <div className="loading"><div><div className="spinner" />Carregando suas corridas…</div></div>
         )}

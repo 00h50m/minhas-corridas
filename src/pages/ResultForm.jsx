@@ -6,6 +6,7 @@ import WatchSummary from '../components/WatchSummary.jsx'
 import TimeInput from '../components/TimeInput.jsx'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { getRace, saveRace } from '../services/store.js'
+import { dropRaceHint, garminActivityFor, useGarmin } from '../services/garmin.js'
 import { getProfile } from '../services/profile.js'
 import { ageCategory } from '../lib/profile.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -43,6 +44,9 @@ export default function ResultForm() {
   const [photos, setPhotos] = useState([])
   const [watch, setWatch] = useState(base.watch ?? null)
   const [watchMsg, setWatchMsg] = useState(null)
+  const garmin = useGarmin()
+  const [garminBusy, setGarminBusy] = useState(false)
+  const garminHint = !!garmin?.races?.some((h) => h.raceId === race.id)
   const watchRef = useRef()
   const [saving, setSaving] = useState(false)
   const photoRef = useRef()
@@ -129,7 +133,29 @@ export default function ResultForm() {
     setWatchMsg(null)
     try {
       if (file.size > 30 * 1024 * 1024) throw new Error('Arquivo grande demais (máx. 30 MB).')
-      const w = await readActivityFile(file)
+      applyWatch(await readActivityFile(file), 'Arquivo lido.')
+    } catch (err) {
+      setWatchMsg({ ok: false, text: err.message })
+    }
+  }
+
+  const onGarmin = async () => {
+    setWatchMsg(null)
+    setGarminBusy(true)
+    try {
+      const w = await garminActivityFor(race.date)
+      if (!w) throw new Error(`Nenhuma corrida no Garmin em ${formatDateBR(race.date)}.`)
+      applyWatch(w, `Corrida do Garmin${w.title ? ` “${w.title}”` : ''} lida.`)
+      dropRaceHint(race.id)
+    } catch (err) {
+      setWatchMsg({ ok: false, text: err.message })
+    } finally {
+      setGarminBusy(false)
+    }
+  }
+
+  const applyWatch = (w, okText) => {
+    {
       setWatch(w)
       const notes = []
       setF((p) => {
@@ -144,9 +170,7 @@ export default function ResultForm() {
       })
       const fileDate = toISODate(new Date(w.startTime))
       if (race.date && fileDate !== race.date) notes.push(`Atenção: a atividade é de ${formatDateBR(fileDate)}, mas a prova está em ${formatDateBR(race.date)}.`)
-      setWatchMsg({ ok: true, text: ['Arquivo lido.', ...notes].join(' ') })
-    } catch (err) {
-      setWatchMsg({ ok: false, text: err.message })
+      setWatchMsg({ ok: true, text: [okText, ...notes].join(' ') })
     }
   }
 
@@ -241,13 +265,14 @@ export default function ResultForm() {
           </div>
         </details>
 
-        <details className="section" open={!!watch || !!watchMsg}>
+        <details className="section" open={!!watch || !!watchMsg || garminHint}>
           <summary>Arquivo do relógio<span className="sum">{watch ? `${watch.source.toUpperCase()} · ${formatKm(watch.distanceKm)}` : 'FIT, TCX ou GPX'}</span></summary>
           <div className="body" style={{ paddingBottom: 16 }}>
             {watch ? <WatchSummary watch={watch} officialKm={off} /> : <p className="hint" style={{ marginTop: 0 }}>No Garmin Connect: abra a atividade → ⚙ → “Exportar original” (.ZIP com o .FIT) ou “Exportar para TCX”. Também aceita .FIT e .GPX. O app guarda só o resumo: distância, tempo, frequência cardíaca, subida e parciais por km.</p>}
             {watchMsg && <div className={`alert small ${watchMsg.ok ? 'alert-ok' : 'alert-error'}`} role={watchMsg.ok ? 'status' : 'alert'} style={{ margin: '10px 0' }}><div>{watchMsg.text}</div></div>}
             <div className="btn-row" style={{ marginTop: 10, gridTemplateColumns: watch ? '1fr 1fr' : '1fr' }}>
               <button type="button" className="btn" onClick={() => watchRef.current?.click()}>{watch ? 'Trocar arquivo' : 'Escolher arquivo'}</button>
+              {garmin && race.date && !watch && <button type="button" className="btn btn-primary" disabled={garminBusy} onClick={onGarmin} data-testid="watch-garmin">{garminBusy ? 'Buscando no Garmin…' : '⌚ Buscar no Garmin'}</button>}
               {watch && <button type="button" className="btn btn-danger" onClick={() => { setWatch(null); setWatchMsg(null) }}>Remover</button>}
             </div>
             <input ref={watchRef} type="file" accept=".gpx,.tcx,.fit,.zip,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml" hidden onChange={onWatchFile} data-testid="watch-input" />

@@ -32,9 +32,12 @@ reportagens; confira de novo antes de agir, porque o programa mudou bastante em 
   conta → token de API pessoal), sem pedido nem aprovação.
 - **O que dá:** as suas atividades (resumo em JSON e o arquivo .FIT completo) e dados de saúde.
 - **O que não dá:** **enviar treinos** para o relógio (isso continua só na Training API das empresas).
-- **Uso possível no PaceOn (a fazer, se você quiser):** importar sozinho as corridas do relógio para
-  os treinos do dia, sem baixar arquivo. Exigiria guardar a chave com segurança no servidor (nunca no
-  aparelho) e um aviso na política de privacidade.
+- **No PaceOn (feito na 0.36.0):** Treinos → “Importar do Garmin sozinho”. A chave fica só no aparelho
+  (fora da conta e do backup); `api/garmin.js` (Vercel) troca a chave por um token de 24 h, lista as
+  atividades (`/activitylist-service/activities/search/activities`) e baixa o original
+  (`/download-service/files/activity/{id}`, .ZIP com o .FIT), sem guardar nada. Busca ao abrir o app
+  (no máximo a cada 30 min), dos últimos 14 dias na primeira vez. Corrida no dia de uma prova fica para
+  Resultado → “Buscar no Garmin”. Endpoints conferidos no cliente oficial `garmin/connect-personal-api-python`.
 
 ## 3. Enquanto isso (já funciona no app)
 

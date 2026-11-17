@@ -1065,3 +1065,8 @@ details.link-import { margin-top: 0; }
 .near-again { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 0; }
 .near-again + .near-again { border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06)); }
 .near-links { display: grid; gap: 8px; margin-top: 12px; }
+
+/* Garmin */
+.garmin-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.garmin-row.link-like { background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.garmin-card .btn { flex: none; }

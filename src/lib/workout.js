@@ -116,6 +116,7 @@ function normalizeResult(r) {
     fileName: str(r.fileName, 120),
     laps,
     // traçado (polyline codificada, sem início e fim): só caracteres do formato
+    garminId: typeof r.garminId === 'string' && /^\d{1,20}$/.test(r.garminId) ? r.garminId : null,
     track: typeof r.track === 'string' && r.track.length <= 12000 && /^[\x3f-\x7e]+$/.test(r.track) ? r.track : null,
     effort: num(Number(r.effort), 1, 10),
     notes: str(r.notes, 1000)

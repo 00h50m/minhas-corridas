@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { nextConfirmed } from './lib/stats.js'
-import { BottomNav, UIProvider, useUI } from './components/ui.jsx'
+import { BottomNav, SideNav, UIProvider, useUI } from './components/ui.jsx'
 import { useStore } from './services/store.js'
 import Home from './pages/Home.jsx'
 import Races from './pages/Races.jsx'
@@ -132,6 +132,7 @@ export default function App() {
         )}
       </div>
       <BottomNav />
+      <SideNav />
       <ImportPrompt />
       <UpdatePrompt />
     </UIProvider>

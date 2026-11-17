@@ -1070,3 +1070,59 @@ details.link-import { margin-top: 0; }
 .garmin-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
 .garmin-row.link-like { background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .garmin-card .btn { flex: none; }
+
+/* ---------- Computador (telas largas) ---------- */
+.side-nav { display: none; }
+.home-col { min-width: 0; }
+
+@media (min-width: 1024px) {
+  :root { --side-w: 248px; }
+  .bottom-nav { display: none; }
+  .side-nav {
+    display: flex; flex-direction: column; gap: 2px; position: fixed; left: 0; top: 0; bottom: 0; z-index: 25;
+    width: var(--side-w); padding: 22px 14px 18px; background: var(--surface); border-right: 1px solid var(--line); overflow-y: auto;
+  }
+  .side-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-style: italic; font-weight: 800; font-size: 22px; letter-spacing: 0.5px; padding: 0 8px 18px; }
+  .side-brand img { border-radius: 10px; }
+  .side-brand .on { color: var(--brand); }
+  .side-new { margin: 0 0 14px; }
+  .side-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; color: var(--ink-2, var(--ink)); text-decoration: none; font-weight: 700; font-size: 15px; }
+  .side-item svg { width: 22px; height: 22px; flex: none; }
+  .side-emoji { width: 22px; text-align: center; font-size: 18px; flex: none; }
+  .side-item:hover { background: var(--surface-2); }
+  .side-item.active { background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand-ink); }
+  .side-sep { height: 1px; background: var(--line); margin: 10px 8px; }
+  .side-grow { flex: 1; min-height: 12px; }
+
+  .app { max-width: none; margin: 0 0 0 var(--side-w); padding-bottom: 40px; box-shadow: none; background: transparent; }
+  /* Conteúdo até 1120 px, centralizado na área à direita do menu */
+  .topbar { padding-left: max(32px, calc((100% - 1120px) / 2 + 32px)); padding-right: max(32px, calc((100% - 1120px) / 2 + 32px)); }
+  .page { max-width: 1120px; margin: 0 auto; padding: 16px 32px 40px; }
+
+  /* Formulários e textos longos: coluna confortável de ler */
+  .page.form, .page[data-testid=workout-form], .page.legal, .page[data-testid=near-races], .page[data-testid=passport] { max-width: 860px; margin-left: max(0px, calc((100% - 1120px) / 2)); }
+
+  /* Início em duas colunas */
+  .page.home { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .home-side > .card:first-child, .home-side > a:first-child { margin-top: 0 !important; }
+
+  /* Listas e cartões */
+  .stats { gap: 14px; }
+  .pp-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .route-map { height: 420px; }
+  .runs-map { height: 600px; }
+
+  /* Stories: prévia à esquerda, opções à direita */
+  .page[data-testid=stories] { display: grid; grid-template-columns: 380px minmax(0, 1fr); column-gap: 32px; align-items: start; }
+  .page[data-testid=stories] > * { grid-column: 2; }
+  .page[data-testid=stories] > .card-preview, .page[data-testid=stories] > [data-testid=story-empty] { grid-column: 1; grid-row: 1 / span 8; margin-top: 0 !important; position: sticky; top: 90px; }
+
+  /* Painéis e avisos centralizados na área do conteúdo */
+  .sheet-backdrop { padding-left: var(--side-w); align-items: center; }
+  .sheet { border-radius: 22px; max-height: 86vh; overflow-y: auto; }
+  .sheet .grab { display: none; }
+  .toast { margin-left: calc(var(--side-w) / 2); bottom: 28px; }
+  .dialog-backdrop { padding-left: calc(var(--side-w) + 20px); }
+  .sim-bar { margin-left: calc(var(--side-w) / 2); bottom: 0; }
+  .update-bar, .upd { margin-left: calc(var(--side-w) / 2); }
+}

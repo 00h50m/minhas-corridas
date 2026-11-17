@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { STATUS_BY_ID } from '../lib/model.js'
 import { dayOfMonth, formatDateBR, monthShort, weekdayShort } from '../lib/dates.js'
 import { formatKm } from '../lib/format.js'
-import { IconBack, IconHistory, IconHome, IconPlus, IconFlag, IconTarget, RunnerArt } from './Icons.jsx'
+import { IconBack, IconHistory, IconHome, IconPlus, IconFlag, IconTarget, IconTrophy, IconSettings, IconWorkout, RunnerArt } from './Icons.jsx'
 import { GOAL_STATUS_BY_ID } from '../lib/model.js'
 
 export function TopBar({ title, sub, back, right }) {
@@ -36,6 +36,32 @@ export function BottomNav() {
         <NavLink to="/objetivos" className={cls}><IconTarget /><span>Objetivos</span></NavLink>
         <NavLink to="/historico" className={cls}><IconHistory /><span>Histórico</span></NavLink>
       </div>
+    </nav>
+  )
+}
+
+/** Menu lateral do computador (telas largas); no celular fica escondido e vale o menu de baixo. */
+export function SideNav() {
+  const cls = ({ isActive }) => 'side-item' + (isActive ? ' active' : '')
+  return (
+    <nav className="side-nav" aria-label="Menu">
+      <Link to="/" className="side-brand" aria-label="PaceOn — início">
+        <img src="/logo-256.png" alt="" width="36" height="36" />
+        <span aria-hidden="true">PACE<span className="on">ON</span></span>
+      </Link>
+      <Link to="/corridas/nova" className="btn btn-primary btn-block side-new"><IconPlus /> Cadastrar corrida</Link>
+      <NavLink to="/" end className={cls}><IconHome /><span>Início</span></NavLink>
+      <NavLink to="/corridas" className={cls}><IconFlag /><span>Corridas</span></NavLink>
+      <NavLink to="/treinos" className={cls}><IconWorkout /><span>Treinos</span></NavLink>
+      <NavLink to="/objetivos" className={cls}><IconTarget /><span>Objetivos</span></NavLink>
+      <NavLink to="/historico" className={cls}><IconHistory /><span>Histórico</span></NavLink>
+      <div className="side-sep" />
+      <NavLink to="/passaporte" className={cls}><IconTrophy /><span>Passaporte</span></NavLink>
+      <NavLink to="/mapa" className={cls}><span className="side-emoji" aria-hidden="true">🗺️</span><span>Mapa</span></NavLink>
+      <NavLink to="/stories" className={cls}><span className="side-emoji" aria-hidden="true">📲</span><span>Stories</span></NavLink>
+      <NavLink to="/provas-perto" className={cls}><span className="side-emoji" aria-hidden="true">🔎</span><span>Provas perto</span></NavLink>
+      <div className="side-grow" />
+      <NavLink to="/ajustes" className={cls}><IconSettings /><span>Ajustes</span></NavLink>
     </nav>
   )
 }

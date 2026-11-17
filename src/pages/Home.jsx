@@ -17,10 +17,10 @@ import BudgetCard from '../components/Budget.jsx'
 import { currentBudget } from '../lib/budget.js'
 import { candidates } from '../lib/decision.js'
 import { fmtSec, plannedSec, workoutLine } from '../lib/workout.js'
-import { passport } from '../lib/passport.js'
-import { weekRecap } from '../lib/trainingWeek.js'
 // Resumo da semana de treinos: carrega só quando há treinos (não pesa a abertura do app).
 const TrainingWeek = lazy(() => import('../components/TrainingWeek.jsx'))
+// Semana que fechou e passaporte: calculam conquistas e mapa, então carregam logo depois da abertura.
+const HomeLinks = lazy(() => import('../components/HomeLinks.jsx'))
 import { resultBadges } from '../lib/shareCard.js'
 import { compareToTarget } from '../lib/targetCompare.js'
 import { formatDiff } from '../lib/compare.js'
@@ -139,6 +139,7 @@ export default function Home() {
     <>
       <TopBar title={<Brand />} sub={<span className="greet">{hello}</span>} right={settings} />
       <div className="page home">
+        <div className="home-col home-main">
         {showInstall && <InstallBanner />}
         {invite && <ProfileInvite />}
         {pending.length > 0 && (
@@ -204,9 +205,9 @@ export default function Home() {
         )}
 
         {showLast && <LastRace race={last} races={races} />}
-
-        <WeekRecapCard workouts={workouts} today={today} />
-        <PassportLink races={races} workouts={workouts} goals={goals} today={today} />
+        </div>
+        <div className="home-col home-side">
+        <Suspense fallback={null}><HomeLinks races={races} workouts={workouts} goals={goals} today={today} /></Suspense>
         <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 10 }}>
           <span style={{ fontSize: 26 }} aria-hidden="true">📲</span>
           <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, semana, mês, prova concluída, conquistas…</span></span>
@@ -254,6 +255,7 @@ export default function Home() {
         {undatedCount > 0 && list.length > 0 && (
           <p className="note"><Link to="/corridas?semdata=1">{undatedCount} {undatedCount === 1 ? 'prova' : 'provas'} com data a confirmar</Link></p>
         )}
+        </div>
       </div>
     </>
   )
@@ -317,31 +319,6 @@ function LastRace({ race: r, races }) {
         <Link to={`/corridas/${r.id}/compartilhar`} className="btn btn-primary btn-block" style={{ marginTop: 12 }}><IconShare /> Compartilhar resultado</Link>
       </div>
     </>
-  )
-}
-
-/** Domingo e segunda: a semana que fechou, com atalho para o story. */
-function WeekRecapCard({ workouts, today }) {
-  const r = weekRecap(workouts, today)
-  if (!r) return null
-  return (
-    <Link to={`/stories?modelo=semana&semana=${r.start}`} className="card decide-link week-recap" data-testid="week-recap" style={{ marginTop: 16 }}>
-      <span style={{ fontSize: 26 }} aria-hidden="true">{r.complete ? '🔥' : '📲'}</span>
-      <span style={{ flex: 1, minWidth: 0 }}><b>{r.complete ? `Semana fechada: ${r.done} de ${r.planned} treinos` : `Sua semana: ${r.done} de ${r.planned} treinos`}</b><br /><span className="muted small">{r.streak >= 2 ? `${r.streak} semanas seguidas · ` : ''}Postar no story</span></span>
-      <span aria-hidden="true">›</span>
-    </Link>
-  )
-}
-
-function PassportLink({ races, workouts, goals, today }) {
-  const p = passport({ races, workouts, goals, today })
-  const fresh = p.badges.find((b) => b.isNew)
-  return (
-    <Link to="/passaporte" className="card decide-link" data-testid="passport-link" style={{ marginTop: 16 }}>
-      <span style={{ fontSize: 26 }} aria-hidden="true">{fresh ? fresh.icon : '🏅'}</span>
-      <span style={{ flex: 1, minWidth: 0 }}><b>Passaporte de corredora</b><br /><span className="muted small">{fresh ? <>Nova: <b>{fresh.title}</b></> : `${p.badges.length} ${p.badges.length === 1 ? 'conquista' : 'conquistas'} · mapa · provas perto`}</span></span>
-      <span aria-hidden="true">›</span>
-    </Link>
   )
 }
 

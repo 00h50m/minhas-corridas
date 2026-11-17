@@ -223,7 +223,7 @@ function PrefsEditor({ userId }) {
       ))}
       <label className="check">
         <input type="checkbox" checked={prefs.weekly} disabled={off} onChange={(e) => save({ ...prefs, weekly: e.target.checked })} />
-        Resumo da semana às segundas
+        Resumo da semana às segundas (compromissos da semana e como foram os treinos, com atalho para o story)
       </label>
       <label className="check">
         <input type="checkbox" checked={prefs.orcamento} disabled={off} onChange={(e) => save({ ...prefs, orcamento: e.target.checked })} />

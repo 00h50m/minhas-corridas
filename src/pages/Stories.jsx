@@ -29,7 +29,7 @@ export default function Stories() {
   const fileRef = useRef(null)
   useEffect(() => { loadCardFonts().then(() => setFontsReady(true)) }, [])
   useEffect(() => { try { localStorage.setItem(PREF, JSON.stringify({ tpl, times, cities })) } catch { /* sem armazenamento: tudo bem */ } }, [tpl, times, cities])
-  const s = useMemo(() => storyFor(tpl, { races, workouts, goals, today, opts: { times, cities }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista') }), [tpl, races, workouts, goals, times, cities])
+  const s = useMemo(() => storyFor(tpl, { races, workouts, goals, today, opts: { times, cities }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }), [tpl, races, workouts, goals, times, cities])
   useEffect(() => {
     if (s.ok && fontsReady && canvasRef.current) drawStory(canvasRef.current, tpl, s, photo)
   }, [s, tpl, photo, fontsReady])

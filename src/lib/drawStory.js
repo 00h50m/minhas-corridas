@@ -288,21 +288,16 @@ function treino(ctx, s) {
   }
 }
 
-function conquista(ctx, s) {
-  const cx = STORY.w / 2
+/** Medalha com fita; dentro, um emoji (210px) ou um texto curto (ex.: "5 km"). */
+function medal(ctx, cx, cy, icon, label = null) {
+  ctx.save()
   ctx.textAlign = 'center'
-  ctx.fillStyle = DIM
-  ctx.font = `800 52px ${TEXT}`
-  ctx.fillText((s.kicker ?? 'Conquista').toUpperCase(), cx, 430)
-  // fita
-  const cy = 760
   ctx.fillStyle = BRAND
   ctx.beginPath()
-  ctx.moveTo(cx - 150, 470); ctx.lineTo(cx - 40, 470); ctx.lineTo(cx + 30, cy - 120); ctx.lineTo(cx - 80, cy - 120); ctx.closePath(); ctx.fill()
+  ctx.moveTo(cx - 150, cy - 290); ctx.lineTo(cx - 40, cy - 290); ctx.lineTo(cx + 30, cy - 120); ctx.lineTo(cx - 80, cy - 120); ctx.closePath(); ctx.fill()
   ctx.fillStyle = '#c2410c'
   ctx.beginPath()
-  ctx.moveTo(cx + 150, 470); ctx.lineTo(cx + 40, 470); ctx.lineTo(cx - 30, cy - 120); ctx.lineTo(cx + 80, cy - 120); ctx.closePath(); ctx.fill()
-  // medalha
+  ctx.moveTo(cx + 150, cy - 290); ctx.lineTo(cx + 40, cy - 290); ctx.lineTo(cx - 30, cy - 120); ctx.lineTo(cx + 80, cy - 120); ctx.closePath(); ctx.fill()
   const g = ctx.createRadialGradient(cx - 60, cy - 70, 20, cx, cy, 230)
   g.addColorStop(0, '#fff3dc')
   g.addColorStop(0.55, '#ffb36b')
@@ -312,10 +307,149 @@ function conquista(ctx, s) {
   ctx.strokeStyle = 'rgba(255,255,255,0.65)'
   ctx.lineWidth = 10
   ctx.beginPath(); ctx.arc(cx, cy, 186, 0, Math.PI * 2); ctx.stroke()
-  ctx.font = `210px ${TEXT}`
   ctx.textBaseline = 'middle'
-  ctx.fillText(s.icon, cx, cy + 12)
-  ctx.textBaseline = 'alphabetic'
+  if (label) {
+    ctx.fillStyle = '#7c2d12'
+    const size = fit(ctx, label, (n) => `800 ${n}px ${DISPLAY}`, 150, 300, 60)
+    ctx.font = `800 ${size}px ${DISPLAY}`
+    ctx.fillText(label, cx, cy + 10)
+  } else {
+    ctx.font = `210px ${TEXT}`
+    ctx.fillText(icon, cx, cy + 12)
+  }
+  ctx.restore()
+}
+
+function resultado(ctx, s) {
+  const cx = STORY.w / 2
+  ctx.textAlign = 'center'
+  ctx.fillStyle = DIM
+  ctx.font = `800 52px ${TEXT}`
+  ctx.fillText('PROVA CONCLUÍDA', cx, 340)
+  medal(ctx, cx, 730, '🏅', s.distance)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#fff'
+  ctx.font = `800 64px ${TEXT}`
+  const lines = wrap(ctx, s.name, STORY.w - PAD * 2, 2)
+  lines.forEach((l, i) => ctx.fillText(l, cx, 1040 + i * 74))
+  let y = 1040 + lines.length * 74
+  ctx.fillStyle = DIM
+  ctx.font = `700 38px ${TEXT}`
+  ctx.fillText([s.when, s.line].filter(Boolean).join(' · '), cx, y + 6)
+  ctx.fillStyle = BRAND
+  const size = fit(ctx, s.big, (n) => `800 ${n}px ${DISPLAY}`, 200, STORY.w - PAD * 2, 90)
+  ctx.font = `800 ${size}px ${DISPLAY}`
+  ctx.fillText(s.big, cx, y + 70 + size * 0.85)
+  y += 70 + size * 0.85
+  if (!s.official && s.big !== 'CONCLUÍDA') {
+    ctx.fillStyle = DIM
+    ctx.font = `700 30px ${TEXT}`
+    ctx.fillText('tempo do relógio', cx, y + 46)
+    y += 30
+  }
+  ctx.textAlign = 'left'
+  if (s.stats.length) {
+    const w = (STORY.w - PAD * 2) / s.stats.length
+    s.stats.forEach((st, i) => {
+      const x = PAD + i * w
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#fff'
+      const sz = fit(ctx, st.value, (n) => `800 ${n}px ${DISPLAY}`, 96, w - 40, 50)
+      ctx.font = `800 ${sz}px ${DISPLAY}`
+      ctx.fillText(st.value, x + w / 2, y + 140)
+      ctx.fillStyle = DIM
+      ctx.font = `700 30px ${TEXT}`
+      ctx.fillText(st.label, x + w / 2, y + 184)
+    })
+    ctx.textAlign = 'left'
+    y += 200
+  }
+  if (s.badges.length) {
+    ctx.font = `800 36px ${TEXT}`
+    const chips = s.badges.map((b) => ({ b, w: ctx.measureText(b).width + 56 }))
+    let row = []
+    const rows = []
+    let rw = 0
+    for (const c of chips) {
+      if (rw + c.w > STORY.w - PAD * 2 && row.length) { rows.push(row); row = []; rw = 0 }
+      row.push(c); rw += c.w + 16
+    }
+    if (row.length) rows.push(row)
+    rows.slice(0, 2).forEach((r, ri) => {
+      const total = r.reduce((a, c) => a + c.w, 0) + 16 * (r.length - 1)
+      let x = cx - total / 2
+      const by = y + 50 + ri * 86
+      for (const c of r) {
+        ctx.fillStyle = BRAND
+        roundRect(ctx, x, by, c.w, 68, 34)
+        ctx.fill()
+        ctx.fillStyle = '#fff'
+        ctx.textAlign = 'center'
+        ctx.fillText(c.b, x + c.w / 2, by + 46)
+        ctx.textAlign = 'left'
+        x += c.w + 16
+      }
+    })
+  }
+}
+
+const KIND_COLOR = { corrida: BRAND, prova: '#ffd166', outra: '#5b8def' }
+
+function mes(ctx, s) {
+  title(ctx, s.title, s.counts, 420)
+  const cols = 7
+  const gap = 12
+  const cw = (STORY.w - PAD * 2 - gap * (cols - 1)) / cols
+  const ch = 104
+  const y0 = 600
+  ctx.textAlign = 'center'
+  ctx.fillStyle = DIM
+  ctx.font = `800 28px ${TEXT}`
+  ;['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].forEach((d, i) => ctx.fillText(d, PAD + i * (cw + gap) + cw / 2, y0 - 18))
+  s.days.forEach((d, i) => {
+    const k = i + s.offset
+    const x = PAD + (k % cols) * (cw + gap)
+    const y = y0 + Math.floor(k / cols) * (ch + gap)
+    ctx.fillStyle = d.kind ? KIND_COLOR[d.kind] : 'rgba(255,244,236,0.06)'
+    roundRect(ctx, x, y, cw, ch, 22)
+    ctx.fill()
+    if (d.today) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke() }
+    ctx.fillStyle = d.kind === 'prova' ? '#3b2a00' : d.kind ? '#fff' : DIM
+    ctx.font = `800 40px ${DISPLAY}`
+    ctx.fillText(String(d.day), x + cw / 2, y + ch / 2 + 6)
+    if (d.kind === 'prova') { ctx.font = `30px ${TEXT}`; ctx.fillText('🏅', x + cw / 2, y + ch - 12) }
+  })
+  const rows = Math.ceil((s.days.length + s.offset) / cols)
+  let y = y0 + rows * (ch + gap) + 40
+  // legenda
+  ctx.textAlign = 'left'
+  ctx.font = `700 30px ${TEXT}`
+  let lx = PAD
+  for (const [k, label] of [['corrida', 'corrida'], ['prova', 'prova'], ['outra', 'outra atividade']]) {
+    ctx.fillStyle = KIND_COLOR[k]
+    roundRect(ctx, lx, y - 24, 28, 28, 8)
+    ctx.fill()
+    ctx.fillStyle = DIM
+    ctx.fillText(label, lx + 40, y)
+    lx += 40 + ctx.measureText(label).width + 40
+  }
+  y += 150
+  const w = (STORY.w - PAD * 2) / s.stats.length
+  s.stats.forEach((st, i) => stat(ctx, PAD + i * w, y, w, st.value, st.label, i === 0 ? BRAND : '#fff'))
+  if (s.badges.length) {
+    ctx.fillStyle = '#fff'
+    ctx.font = `800 36px ${TEXT}`
+    s.badges.forEach((b, i) => ctx.fillText(wrap(ctx, b, STORY.w - PAD * 2, 1)[0], PAD, y + 160 + i * 52))
+  }
+}
+
+function conquista(ctx, s) {
+  const cx = STORY.w / 2
+  ctx.textAlign = 'center'
+  ctx.fillStyle = DIM
+  ctx.font = `800 52px ${TEXT}`
+  ctx.fillText((s.kicker ?? 'Conquista').toUpperCase(), cx, 430)
+  medal(ctx, cx, 760, s.icon)
   // texto
   ctx.fillStyle = '#fff'
   const size = fit(ctx, s.name.toUpperCase(), (n) => `800 ${n}px ${DISPLAY}`, 130, STORY.w - PAD * 2, 70)
@@ -341,7 +475,7 @@ function conquista(ctx, s) {
   ctx.textAlign = 'left'
 }
 
-const DRAW = { proximas, temporada, semana, contagem, evolucao, treino, conquista }
+const DRAW = { proximas, temporada, semana, contagem, evolucao, treino, conquista, resultado, mes }
 
 /** Desenha o story `id` com o conteúdo `s` (de storyFor). photo: ImageBitmap opcional. */
 export function drawStory(canvas, id, s, photo = null) {

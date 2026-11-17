@@ -159,6 +159,7 @@ export default function RaceDetail() {
                   <button className="btn" disabled title="Registre outra prova para comparar"><IconCompare /> Comparar</button>
                 )}
               </div>
+              {r.status === 'concluida' && <Link to={`/stories?modelo=resultado&prova=${r.id}`} className="btn btn-block" style={{ marginTop: 8 }} data-testid="race-result-story">📲 Story da prova (medalha)</Link>}
               <div className="list-group-title" style={{ marginTop: 16 }}>Fotos</div>
               <Attachments raceId={r.id} mode="photos" />
               {res.officialUrl && <a className="btn btn-ghost btn-block" href={res.officialUrl} target="_blank" rel="noreferrer"><IconExternal /> Resultado oficial</a>}

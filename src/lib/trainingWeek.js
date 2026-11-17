@@ -74,6 +74,19 @@ export function weekStreak(workouts, today) {
 export const DOW_SHORT = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
 /**
+ * Semana que acabou de fechar: no domingo, a semana atual; na segunda, a passada. Só se houve treino feito.
+ * { start, done, planned, doneSec, doneKm, cross, complete, streak } ou null.
+ */
+export function weekRecap(workouts, today) {
+  const dow = (parseISODate(today).getDay() + 6) % 7
+  if (dow !== 6 && dow !== 0) return null
+  const start = dow === 6 ? weekStart(today) : addDaysISO(weekStart(today), -7)
+  const s = weekSummary(workouts, start, today)
+  if (!s.done) return null
+  return { start, done: s.done, planned: s.planned, doneSec: s.doneSec, doneKm: s.doneKm, cross: s.cross, complete: s.complete, streak: weekStreak(workouts, today) }
+}
+
+/**
  * Carga da semana × semanas anteriores (tempo de treino).
  * { thisSec (feito, ou planejado se ainda não terminou), plannedSec, lastSec, avg4Sec, pct (vs semana passada), warn }
  * warn: a semana (planejada ou feita, o que for maior) passa de 10% acima da passada, com pelo menos 5 min a mais.

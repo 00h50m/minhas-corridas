@@ -3,6 +3,7 @@
 import { pushNotificationsFor } from './alerts.js'
 import { todayInTimeZone } from './dates.js'
 import { normalizeGoal, normalizeRace } from './model.js'
+import { normalizeWorkout } from './workout.js'
 
 /**
  * db: {
@@ -10,6 +11,7 @@ import { normalizeGoal, normalizeRace } from './model.js'
  *   races(userId): [race]
  *   prefs(userId): preferências salvas ou null (opcional; sem a tabela, vale o padrão)
  *   goals(userId): objetivos (opcional; usado no aviso de orçamento)
+ *   workouts(userId): treinos (opcional; resumo da semana de treinos às segundas)
  *   claim(userId, keys): keys ainda não enviadas (e já marcadas como enviadas)
  *   release(userId, keys): desfaz a marcação (quando nenhum aparelho recebeu)
  *   removeSubscription(endpoint)
@@ -33,7 +35,13 @@ export async function runPushJob({ db, send, now = new Date() }) {
       prefs = null // tabela ainda não criada: usa o padrão
     }
     const goals = db.goals ? (await db.goals(userId)).map(normalizeGoal) : []
-    const due = pushNotificationsFor(races, today, prefs, goals)
+    let workouts = []
+    try {
+      workouts = db.workouts ? (await db.workouts(userId)).map(normalizeWorkout) : []
+    } catch {
+      workouts = [] // sem treinos na nuvem: segue só com as provas
+    }
+    const due = pushNotificationsFor(races, today, prefs, goals, workouts)
     if (!due.length) continue
     const fresh = new Set(await db.claim(userId, due.map((n) => n.key)))
     const toSend = due.filter((n) => fresh.has(n.key))

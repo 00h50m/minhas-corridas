@@ -4,6 +4,7 @@ import { budgetStatus, currentBudget } from './budget.js'
 import { formatMoney } from './format.js'
 import { raceKitSchedule, raceSchedule } from './logistics.js'
 import { minToHm } from './schedule.js'
+import { weekRecap } from './trainingWeek.js'
 
 const BEFORE_SIGNUP = ['interesse', 'aberta']
 
@@ -102,6 +103,24 @@ const PUSH_TEXT = {
 const SHORT_LABEL = { prova: 'prova', kit: 'kit', inscricao: 'fim da inscrição', lote: 'muda o lote' }
 const WEEKDAY = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
+/** Segunda-feira: como foi a semana de treinos que fechou, com o atalho para o story. */
+export function trainingWeekPush(workouts, today) {
+  const [y, m, d] = today.split('-').map(Number)
+  if (new Date(y, m - 1, d).getDay() !== 1) return null
+  const r = weekRecap(workouts, today)
+  if (!r) return null
+  const min = Math.round(r.doneSec / 60)
+  const time = min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`
+  return {
+    key: `treinos-semana:${r.start}`,
+    type: 'semana',
+    raceId: null,
+    url: `/stories?modelo=semana&semana=${r.start}`,
+    title: r.complete ? `Semana fechada: ${r.done} de ${r.planned} treinos 🔥` : `Semana passada: ${r.done} de ${r.planned} treinos`,
+    body: `${time} de treino${r.doneKm ? ` · ${String(r.doneKm).replace('.', ',')} km` : ''}${r.streak >= 2 ? ` · ${r.streak} semanas seguidas` : ''}. Toque para postar no story.`
+  }
+}
+
 /** Resumo da semana (segunda-feira): o que vem nos próximos 7 dias. */
 export function weeklySummary(races, today) {
   const [y, m, d] = today.split('-').map(Number)
@@ -120,7 +139,7 @@ export function weeklySummary(races, today) {
  * Notificações do dia para uma pessoa, conforme as preferências. Cada uma tem `key` única
  * (prova, tipo, data e antecedência), usada pelo servidor para nunca mandar a mesma duas vezes.
  */
-export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null, goals = []) {
+export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null, goals = [], workouts = []) {
   const prefs = normalizePushPrefs(rawPrefs)
   const max = Math.max(0, ...PUSH_TYPES.flatMap((t) => prefs[t]))
   const out = upcomingAlerts(races, today, max)
@@ -135,6 +154,8 @@ export function pushNotificationsFor(races, today = todayISO(), rawPrefs = null,
   if (prefs.weekly) {
     const w = weeklySummary(races, today)
     if (w) out.unshift(w)
+    const t = trainingWeekPush(workouts, today)
+    if (t) out.unshift(t)
   }
   if (prefs.orcamento) {
     const b = budgetAlert(goals, races, today)

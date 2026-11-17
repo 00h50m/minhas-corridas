@@ -18,6 +18,7 @@ import { currentBudget } from '../lib/budget.js'
 import { candidates } from '../lib/decision.js'
 import { fmtSec, plannedSec, workoutLine } from '../lib/workout.js'
 import { passport } from '../lib/passport.js'
+import { weekRecap } from '../lib/trainingWeek.js'
 // Resumo da semana de treinos: carrega só quando há treinos (não pesa a abertura do app).
 const TrainingWeek = lazy(() => import('../components/TrainingWeek.jsx'))
 import { resultBadges } from '../lib/shareCard.js'
@@ -204,10 +205,11 @@ export default function Home() {
 
         {showLast && <LastRace race={last} races={races} />}
 
+        <WeekRecapCard workouts={workouts} today={today} />
         <PassportLink races={races} workouts={workouts} goals={goals} today={today} />
         <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 10 }}>
           <span style={{ fontSize: 26 }} aria-hidden="true">📲</span>
-          <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, temporada, semana de treinos, contagem…</span></span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, semana, mês, prova concluída, conquistas…</span></span>
           <span aria-hidden="true">›</span>
         </Link>
 
@@ -315,6 +317,19 @@ function LastRace({ race: r, races }) {
         <Link to={`/corridas/${r.id}/compartilhar`} className="btn btn-primary btn-block" style={{ marginTop: 12 }}><IconShare /> Compartilhar resultado</Link>
       </div>
     </>
+  )
+}
+
+/** Domingo e segunda: a semana que fechou, com atalho para o story. */
+function WeekRecapCard({ workouts, today }) {
+  const r = weekRecap(workouts, today)
+  if (!r) return null
+  return (
+    <Link to={`/stories?modelo=semana&semana=${r.start}`} className="card decide-link week-recap" data-testid="week-recap" style={{ marginTop: 16 }}>
+      <span style={{ fontSize: 26 }} aria-hidden="true">{r.complete ? '🔥' : '📲'}</span>
+      <span style={{ flex: 1, minWidth: 0 }}><b>{r.complete ? `Semana fechada: ${r.done} de ${r.planned} treinos` : `Sua semana: ${r.done} de ${r.planned} treinos`}</b><br /><span className="muted small">{r.streak >= 2 ? `${r.streak} semanas seguidas · ` : ''}Postar no story</span></span>
+      <span aria-hidden="true">›</span>
+    </Link>
   )
 }
 

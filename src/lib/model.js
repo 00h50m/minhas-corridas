@@ -179,6 +179,8 @@ export function normalizeRace(raw) {
   r.logistics = normalizeLogistics(r.logistics)
   r.dayLog = normalizeDayLog(r.dayLog)
   r.kitOnRaceDay = !!r.kitOnRaceDay
+  // Reta final: itens marcados à mão (lib/finalStretch.js)
+  r.stretchDone = Array.isArray(r.stretchDone) ? [...new Set(r.stretchDone.filter((x) => typeof x === 'string' && /^[a-z0-9-]{1,20}$/.test(x)))].slice(0, 30) : []
   if (r.kitOnRaceDay && r.date) r.kitPickupDate = r.date
   r.companionIds = Array.isArray(r.companionIds) ? [...new Set(r.companionIds.filter((x) => typeof x === 'string' && x).map((x) => x.slice(0, 20)))].slice(0, 20) : []
   r.scheduleFeed = Array.isArray(r.scheduleFeed)

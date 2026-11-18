@@ -62,11 +62,11 @@ export const PUSH_OPTIONS = {
 export const PUSH_TYPES = Object.keys(PUSH_OPTIONS)
 
 // Padrão de quem nunca mexeu nas preferências.
-export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false, orcamento: true, resultado: true }
+export const DEFAULT_PUSH_PREFS = { inscricao: [3, 0], lote: [1], kit: [1, 0], prova: [1], weekly: false, orcamento: true, resultado: true, treino: true, reta: true }
 
 /** Aceita preferências salvas (ou nada) e devolve um objeto válido. */
 export function normalizePushPrefs(raw) {
-  const out = { weekly: DEFAULT_PUSH_PREFS.weekly, orcamento: DEFAULT_PUSH_PREFS.orcamento, resultado: DEFAULT_PUSH_PREFS.resultado }
+  const out = { weekly: DEFAULT_PUSH_PREFS.weekly, orcamento: DEFAULT_PUSH_PREFS.orcamento, resultado: DEFAULT_PUSH_PREFS.resultado, treino: DEFAULT_PUSH_PREFS.treino, reta: DEFAULT_PUSH_PREFS.reta }
   for (const t of PUSH_TYPES) {
     const v = raw && Array.isArray(raw[t]) ? raw[t] : DEFAULT_PUSH_PREFS[t]
     out[t] = [...new Set(v.filter((d) => PUSH_OPTIONS[t].includes(d)))].sort((a, b) => b - a)
@@ -74,6 +74,8 @@ export function normalizePushPrefs(raw) {
   if (raw && typeof raw.weekly === 'boolean') out.weekly = raw.weekly
   out.orcamento = raw && typeof raw.orcamento === 'boolean' ? raw.orcamento : DEFAULT_PUSH_PREFS.orcamento
   out.resultado = raw && typeof raw.resultado === 'boolean' ? raw.resultado : DEFAULT_PUSH_PREFS.resultado
+  out.treino = raw && typeof raw.treino === 'boolean' ? raw.treino : DEFAULT_PUSH_PREFS.treino
+  out.reta = raw && typeof raw.reta === 'boolean' ? raw.reta : DEFAULT_PUSH_PREFS.reta
   return out
 }
 

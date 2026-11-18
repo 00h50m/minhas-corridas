@@ -1148,3 +1148,17 @@ details.link-import { margin-top: 0; }
 .mc-rule { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; color: var(--ink-3); font-weight: 700; }
 .mc-rule .input { width: auto; padding: 6px 10px; font-size: 14px; min-height: 0; }
 .mc-rule-only { margin: 8px 2px 0; }
+
+/* Reta final */
+.stretch .st-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.st-list { list-style: none; margin: 10px 0 8px; padding: 0; }
+.st-item { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 10px 0; }
+.st-item + .st-item { border-top: 1px solid var(--line); }
+.st-mark { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); font-weight: 900; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.st-feito .st-mark { background: #22a06b; border-color: #22a06b; color: #fff; }
+.st-hoje .st-mark { border-color: var(--brand); color: var(--brand); }
+.st-passou .st-mark { border-color: #e2b203; color: #b38600; }
+.st-feito .st-body b { text-decoration: line-through; opacity: 0.7; }
+.st-hoje { background: color-mix(in srgb, var(--brand) 6%, transparent); border-radius: 12px; padding-left: 6px; padding-right: 6px; }
+.st-when { font-weight: 800; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.4px; font-size: 11.5px; }
+.st-warn { margin-top: 4px; color: #a15c00; font-weight: 700; }

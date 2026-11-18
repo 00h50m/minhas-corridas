@@ -12,7 +12,7 @@ describe('preferências das notificações', () => {
   it('normaliza: ignora antecedências inválidas e completa com o padrão', () => {
     expect(normalizePushPrefs(null)).toEqual(normalizePushPrefs(DEFAULT_PUSH_PREFS))
     const p = normalizePushPrefs({ inscricao: [0, 7, 7, 99], kit: [], weekly: true, lixo: 1 })
-    expect(p).toEqual({ inscricao: [7, 0], lote: [1], kit: [], prova: [1], weekly: true, orcamento: true, resultado: true })
+    expect(p).toEqual({ inscricao: [7, 0], lote: [1], kit: [], prova: [1], weekly: true, orcamento: true, resultado: true, treino: true, reta: true })
   })
   it('respeita o que foi escolhido', () => {
     const today = '2026-11-04' // quarta
@@ -55,7 +55,8 @@ describe('preferências das notificações', () => {
       cleanup: async () => {}
     }
     await runPushJob({ db, send: async (d, p) => sent.push(`${d.endpoint} ${p.tag}`), now: new Date('2026-11-04T11:00:00Z') })
-    expect(sent).toEqual(['https://a p:prova:2026-11-06:2'])
+    // A reta final (2 dias antes: kit e “a noite que mais importa”) vem ligada por padrão para as duas pessoas.
+    expect(sent).toEqual(['https://a p:prova:2026-11-06:2', 'https://a reta:p:2026-11-04', 'https://b reta:p:2026-11-04'])
   })
 })
 

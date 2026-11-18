@@ -118,6 +118,7 @@ describe('notificações push de prazos', () => {
         { endpoint: 'https://push/2', user_id: 'u2', tz: 'Fuso/Invalido' }
       ],
       races: async (u) => (u === 'u1' ? rs : [race({ id: 'z', status: 'inscrita', date: '2026-11-05' })]),
+      prefs: async () => ({ treino: false, reta: false }), // este teste é sobre repetição e erros de envio
       claim: async (u, keys) => keys.filter((k) => !claimed.has(u + k) && claimed.add(u + k)),
       release: async (u, keys) => { released.push(...keys); keys.forEach((k) => claimed.delete(u + k)) },
       removeSubscription: async (e) => removed.push(e),

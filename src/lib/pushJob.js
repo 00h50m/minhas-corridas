@@ -4,6 +4,8 @@ import { pushNotificationsFor } from './alerts.js'
 import { todayInTimeZone } from './dates.js'
 import { normalizeGoal, normalizeRace } from './model.js'
 import { normalizeWorkout } from './workout.js'
+import { normalizePushPrefs } from './alerts.js'
+import { workoutPushes } from './workoutPush.js'
 
 /**
  * db: {
@@ -41,7 +43,7 @@ export async function runPushJob({ db, send, now = new Date() }) {
     } catch {
       workouts = [] // sem treinos na nuvem: segue só com as provas
     }
-    const due = pushNotificationsFor(races, today, prefs, goals, workouts)
+    const due = [...pushNotificationsFor(races, today, prefs, goals, workouts), ...workoutPushes(workouts, races, today, normalizePushPrefs(prefs))]
     if (!due.length) continue
     const fresh = new Set(await db.claim(userId, due.map((n) => n.key)))
     const toSend = due.filter((n) => fresh.has(n.key))

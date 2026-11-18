@@ -233,6 +233,14 @@ function PrefsEditor({ userId }) {
         <input type="checkbox" checked={prefs.resultado} disabled={off} onChange={(e) => save({ ...prefs, resultado: e.target.checked })} />
         “Como foi?” no dia seguinte à prova, para registrar o resultado
       </label>
+      <label className="check">
+        <input type="checkbox" checked={prefs.treino} disabled={off} onChange={(e) => save({ ...prefs, treino: e.target.checked })} data-testid="pref-treino" />
+        Treino do dia (de manhã) e treino de ontem que ficou sem marcar
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={prefs.reta} disabled={off} onChange={(e) => save({ ...prefs, reta: e.target.checked })} data-testid="pref-reta" />
+        Reta final da prova: o item do dia (último treino forte, kit, separar tudo…)
+      </label>
       {state === 'saving' && <div className="muted small">Salvando…</div>}
       {error && <div className="alert alert-error small" role="alert"><div>{error}</div></div>}
     </div>

@@ -9,6 +9,8 @@ import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '
 import { distanceKey, nearbyRaces } from '../lib/stats.js'
 import { raceCosts } from '../lib/costs.js'
 import Checklist from '../components/Checklist.jsx'
+import FinalStretch from '../components/FinalStretch.jsx'
+import { showStretch } from '../lib/finalStretch.js'
 import Attachments from '../components/Attachments.jsx'
 import WatchSummary from '../components/WatchSummary.jsx'
 import { RaceAnalysis, RacePlan } from '../components/Analysis.jsx'
@@ -124,6 +126,13 @@ export default function RaceDetail() {
               {near.adjacent.length > 0 && <div><b>Dia seguido:</b> {near.adjacent.map((x) => `${x.name} (${formatDateBR(x.date)})`).join(', ')}</div>}
             </div>
           </div>
+        )}
+
+        {showStretch(r, today) && (
+          <>
+            <div className="section-title"><h2>Reta final</h2></div>
+            <FinalStretch race={r} />
+          </>
         )}
 
         {res ? (

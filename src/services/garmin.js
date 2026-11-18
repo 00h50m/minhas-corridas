@@ -77,7 +77,7 @@ if (typeof window !== 'undefined') {
 
 /** Resumo da atividade: o arquivo original (voltas, parciais, traçado) ou, sem ele, os dados da lista. */
 async function summaryOf(key, x) {
-  if (WITH_FILE.has(x.sport) && x.g.distanceKm > 0) {
+  if (WITH_FILE.has(x.sport)) {
     try {
       const buf = await api({ action: 'file', key, id: x.g.id }, true)
       const a = await readActivityFile(new File([buf], `garmin-${x.g.id}.zip`))
@@ -88,10 +88,18 @@ async function summaryOf(key, x) {
 }
 
 /** Acrescenta ao resultado o que faltar (percurso, FC por zona, FC de cada volta). Mesmo objeto se nada mudou. */
+/** Falta o que só o arquivo traz (FC por zona, calorias, percurso de quem tem distância)? */
+function lacksDetail(r) {
+  return !r.hrHist || r.calories == null || (r.distanceKm > 0 && (!r.track || !r.splits?.length))
+}
+
 function enrich(result, a) {
   const patch = {}
   if (!result.track && a.track) patch.track = a.track
   if (!result.hrHist && a.hrHist) patch.hrHist = a.hrHist
+  for (const k of ['calories', 'aerobicTE', 'anaerobicTE', 'cadence', 'maxHr', 'elevGainM']) if (result[k] == null && a[k] != null) patch[k] = a[k]
+  if (!result.sets?.length && a.sets?.length) patch.sets = a.sets
+  if (!result.splits?.length && a.splits?.length) patch.splits = a.splits
   if (a.laps?.length) {
     if (!result.laps?.length) patch.laps = a.laps
     else if (result.laps.length === a.laps.length && !result.laps.some((l) => l.avgHr) && a.laps.some((l) => l.avgHr)) patch.laps = result.laps.map((l, i) => ({ ...l, ...(a.laps[i].avgHr ? { avgHr: a.laps[i].avgHr } : {}) }))
@@ -138,7 +146,7 @@ export function syncGarmin({ force = false, full = false } = {}) {
       const twin = getState().workouts.find((w) => w.date === x.date && w.result && !w.result.garminId && sameActivity(w.result, x.g))
       if (twin) {
         let result = { ...twin.result, garminId: x.g.id }
-        if ((!twin.result.track || !twin.result.hrHist) && WITH_FILE.has(x.sport) && x.g.distanceKm > 0) {
+        if (lacksDetail(twin.result) && WITH_FILE.has(x.sport)) {
           const a = await summaryOf(s.key, x)
           const before = result
           result = enrich(result, a)
@@ -174,11 +182,11 @@ export function syncGarmin({ force = false, full = false } = {}) {
     // Revisão completa: completa percurso e FC por zona de treinos já ligados ao Garmin que não têm
     if (full) {
       const byId = new Map(activities.map((g) => [g.id, g]))
-      const missing = getState().workouts.filter((w) => w.result?.garminId && byId.has(w.result.garminId) && (!w.result.hrHist || !w.result.track)).slice(0, 15)
+      const missing = getState().workouts.filter((w) => w.result?.garminId && byId.has(w.result.garminId) && lacksDetail(w.result)).slice(0, 15)
       for (const w of missing) {
         const g = byId.get(w.result.garminId)
         const sport = sportFromGarmin(g.type)
-        if (!WITH_FILE.has(sport) || !(g.distanceKm > 0)) continue
+        if (!WITH_FILE.has(sport)) continue
         const a = await summaryOf(s.key, { g, sport })
         const result = enrich(w.result, a)
         if (result !== w.result) { saveWorkout({ ...w, result }); enriched++ }

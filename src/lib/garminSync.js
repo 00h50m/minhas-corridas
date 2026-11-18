@@ -15,7 +15,8 @@ export function sportFromGarmin(type) {
 }
 
 /** Esportes em que vale baixar o arquivo (voltas, parciais e traçado). */
-export const WITH_FILE = new Set(['corrida', 'bike', 'caminhada'])
+// Todas: corrida/bike/caminhada trazem parciais e percurso; força traz as séries; todas, FC, calorias e efeito do treino.
+export const WITH_FILE = new Set(['corrida', 'bike', 'caminhada', 'natacao', 'academia', 'alongamento', 'outro'])
 
 /** Data local da atividade da lista (AAAA-MM-DD). */
 export const garminDate = (g) => (g.start ? g.start.slice(0, 10) : g.startGmt ? toISODate(new Date(`${g.startGmt.replace(' ', 'T')}Z`)) : null)

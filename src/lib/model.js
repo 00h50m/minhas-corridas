@@ -1,5 +1,5 @@
 import { isValidISODate, isValidTimeHM } from './dates.js'
-import { isValidWatch } from './activityFile.js'
+import { isValidWatch } from './watchBasics.js'
 import { normalizeLogistics } from './logistics.js'
 
 export const STATUSES = [

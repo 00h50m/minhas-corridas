@@ -1,6 +1,6 @@
 // Zonas de frequência cardíaca: de onde vêm (Garmin, digitadas, FC máxima informada, a maior registrada
 // ou a idade) e quanto tempo cada atividade passou em cada uma (pelo histograma de 5 bpm do arquivo).
-import { HR_FROM, HR_STEP } from './activityFile.js'
+import { HR_FROM, HR_STEP } from './watchBasics.js'
 
 export const ZONE_NAMES = ['Z1 · muito leve', 'Z2 · leve', 'Z3 · moderado', 'Z4 · forte', 'Z5 · máximo']
 export const ZONE_COLORS = ['#9aa5b1', '#3b82f6', '#22a06b', '#f59e0b', '#ef4444']

@@ -176,8 +176,8 @@ export function trackFrom(pts) {
   return out.length >= 2 ? encodePolyline(out) : null
 }
 
-export const HR_FROM = 60
-export const HR_STEP = 5
+import { HR_FROM, HR_STEP } from './watchBasics.js'
+export { HR_FROM, HR_STEP, isValidWatch } from './watchBasics.js'
 const HR_BINS = 32 // 60 a 219 bpm
 
 /**
@@ -200,9 +200,42 @@ export function hrHistogram(pts) {
 }
 
 /** Monta o resumo a partir dos pontos {t, d, hr, alt} e dos totais do relógio (quando houver). */
+/** Dados extras do relógio (calorias, efeito do treino, cadência, séries de força), só os que vieram. */
+function extras(totals) {
+  const out = {}
+  if (totals.calories > 0) out.calories = Math.round(totals.calories)
+  if (totals.aerobicTE > 0) out.aerobicTE = Math.round(totals.aerobicTE * 10) / 10
+  if (totals.anaerobicTE > 0) out.anaerobicTE = Math.round(totals.anaerobicTE * 10) / 10
+  if (totals.cadence > 0) out.cadence = Math.round(totals.cadence)
+  if (Array.isArray(totals.sets) && totals.sets.length) out.sets = totals.sets
+  return out
+}
+
 function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = {}, lapList = [] }, source, fileName) {
   const pts = all.filter((p) => isFinite(p.t) && p.d != null && isFinite(p.d))
-  if (pts.length < 2) throw new Error('O arquivo não tem pontos de tempo e distância suficientes.')
+  if (pts.length < 2) {
+    // Sem distância (força, ioga, esteira sem sensor): resumo pelo tempo da sessão e pela FC dos pontos.
+    const timed = all.filter((p) => isFinite(p.t)).sort((a, b) => a.t - b.t)
+    const hrs = timed.map((p) => p.hr).filter((h) => h > 30 && h < 250)
+    const secs = lapTime > 0 ? Math.round(lapTime) : timed.length > 1 ? Math.round((timed.at(-1).t - timed[0].t) / 1000) : 0
+    if (!(secs > 0) || (!timed.length && !totals.startTime)) throw new Error('O arquivo não tem pontos de tempo e distância suficientes.')
+    return {
+      source,
+      fileName: fileName.slice(0, 120),
+      sport: sport || null,
+      startTime: new Date(timed[0]?.t ?? totals.startTime).toISOString(),
+      distanceKm: lapDist > 0 ? Math.round(lapDist) / 1000 : 0,
+      elapsedSec: secs,
+      avgHr: totals.avgHr ?? (hrs.length ? Math.round(hrs.reduce((a, h) => a + h, 0) / hrs.length) : null),
+      maxHr: totals.maxHr ?? (hrs.length ? Math.max(...hrs) : null),
+      elevGainM: null,
+      splits: [],
+      track: null,
+      laps: [],
+      hrHist: hrHistogram(timed),
+      ...extras(totals)
+    }
+  }
   pts.sort((a, b) => a.t - b.t)
   const elapsedSec = Math.round((pts[pts.length - 1].t - pts[0].t) / 1000)
   const trackDist = pts[pts.length - 1].d
@@ -224,7 +257,8 @@ function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = 
     // Voltas do relógio (num treino estruturado, uma por passo): para o planejado × executado.
     laps: lapList.filter((l) => l.sec > 0).slice(0, 200).map((l) => ({ sec: Math.round(l.sec), distanceKm: Math.round(l.m || 0) / 1000, ...(l.hr > 30 && l.hr < 250 ? { avgHr: Math.round(l.hr) } : {}) })),
     // Tempo em cada faixa de 5 bpm (para as zonas de FC, recalculadas quando as zonas mudam)
-    hrHist: hrHistogram(pts)
+    hrHist: hrHistogram(pts),
+    ...extras(totals)
   }
 }
 
@@ -243,11 +277,11 @@ export function parseActivity(text, fileName = '') {
   return summarize(isTCX ? parseTCX(text) : parseGPX(text), isTCX ? 'tcx' : 'gpx', fileName)
 }
 
-const FIT_SPORTS = { 0: 'generic', 1: 'running', 2: 'cycling', 11: 'walking', 17: 'hiking' }
+const FIT_SPORTS = { 0: 'generic', 1: 'running', 2: 'cycling', 4: 'fitness_equipment', 5: 'swimming', 10: 'training', 11: 'walking', 17: 'hiking' }
 
 /** Lê um .FIT (bytes já descompactados). */
 export function parseFitActivity(bytes, fileName = '') {
-  const { records, laps, sessions } = decodeFit(bytes)
+  const { records, laps, sessions, sets } = decodeFit(bytes)
   const s = sessions[0] ?? {}
   const SEMI = 180 / 2 ** 31
   const pts = records.map((r) => ({ t: r.timestamp, d: r.distance, hr: r.heartRate, alt: r.enhancedAltitude ?? r.altitude, lat: r.positionLat != null ? r.positionLat * SEMI : null, lon: r.positionLong != null ? r.positionLong * SEMI : null }))
@@ -259,7 +293,13 @@ export function parseFitActivity(bytes, fileName = '') {
       lapDist,
       lapTime,
       sport: s.sport != null ? FIT_SPORTS[s.sport] ?? String(s.sport) : null,
-      totals: { avgHr: s.avgHeartRate ?? null, maxHr: s.maxHeartRate ?? null, ascent: s.totalAscent ?? null },
+      totals: {
+        avgHr: s.avgHeartRate ?? null, maxHr: s.maxHeartRate ?? null, ascent: s.totalAscent ?? null, startTime: s.startTime ?? null,
+        calories: s.totalCalories ?? null, aerobicTE: s.aerobicTE ?? null, anaerobicTE: s.anaerobicTE ?? null,
+        // Corrida: o relógio grava passos por minuto de uma perna; dobra para passos por minuto (spm)
+        cadence: s.avgCadence ? (s.sport === 1 ? s.avgCadence * 2 : s.avgCadence) : null,
+        sets: (sets ?? []).filter((x) => x.setType === 1).slice(0, 80).map((x) => ({ cat: x.category ?? null, reps: x.repetitions ?? null, kg: x.weight != null ? Math.round(x.weight * 10) / 10 : null, sec: x.duration != null ? Math.round(x.duration) : null }))
+      },
       lapList: laps.map((l) => ({ sec: l.totalTimerTime ?? l.totalElapsedTime, m: l.totalDistance, hr: l.avgHeartRate }))
     },
     'fit',
@@ -275,7 +315,3 @@ export async function readActivityFile(file) {
   return parseActivity(await file.text(), name)
 }
 
-/** Valida o resumo guardado no resultado (vindo de backup ou da nuvem). */
-export function isValidWatch(w) {
-  return !!w && typeof w === 'object' && w.distanceKm > 0 && w.elapsedSec > 0 && Array.isArray(w.splits)
-}

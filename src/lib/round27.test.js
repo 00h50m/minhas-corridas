@@ -201,6 +201,6 @@ describe('story de conquista', () => {
     expect(s.title).toBe('Academia feita ✓')
     expect(s.plan).toBeNull()
     expect(s.sport).toBe('Academia')
-    expect(s.stats).toEqual([{ value: '50', label: 'min' }])
+    expect(s.stats).toEqual([{ value: '50', label: 'minutos' }])
   })
 })

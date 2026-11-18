@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useProfile } from '../services/profile.js'
 import { useStore } from '../services/store.js'
 import { ZONE_COLORS, ZONE_NAMES, timeInZones, zoneRead, zonesFor } from '../lib/hrZones.js'
-import { HR_FROM, HR_STEP } from '../lib/activityFile.js'
+import { HR_FROM, HR_STEP } from '../lib/watchBasics.js'
 import { todayISO } from '../lib/dates.js'
 
 /** Zonas em uso (do perfil, do Garmin, da maior FC registrada ou da idade). */

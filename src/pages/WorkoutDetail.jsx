@@ -1,4 +1,6 @@
 // Detalhe do treino: passos, arquivo para o relógio, status e planejado × executado (voltas do relógio).
+import { resultFrom } from '../lib/activityMatch.js'
+import ActivityDetails from '../components/ActivityDetails.jsx'
 import { useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
@@ -59,7 +61,7 @@ function Detail({ w }) {
     try {
       if (file.size > 30 * 1024 * 1024) throw new Error('Arquivo grande demais (máx. 30 MB).')
       const a = await readActivityFile(file)
-      const result = { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, hrHist: a.hrHist ?? null, effort: w.result?.effort ?? null, notes: w.result?.notes ?? '' }
+      const result = resultFrom(a, w.result)
       const fileDate = toISODate(new Date(a.startTime))
       saveWorkout({ ...w, status: 'feito', result, date: w.date ?? fileDate })
       const notes = ['Atividade importada.']
@@ -196,13 +198,9 @@ function Executed({ w }) {
   const hits = scored.filter((x) => x.inTarget).length
   return (
     <div className="card" style={{ marginTop: 12 }} data-testid="wk-executed">
-      <div className="chips">
-        {r.distanceKm != null && <span className="chip">{String(r.distanceKm.toFixed(2)).replace('.', ',')} km</span>}
-        {r.elapsedSec != null && <span className="chip">{fmtSec(r.elapsedSec)}</span>}
-        {isRun(w) && r.distanceKm > 0 && r.elapsedSec > 0 && <span className="chip">{fmtPace(r.elapsedSec / r.distanceKm)}/km</span>}
-        {r.avgHr && <span className="chip">FC média {r.avgHr}</span>}
-      </div>
-      {r.hrHist && <div style={{ marginTop: 10 }}><HrZones hist={r.hrHist} hasIntervals={hasIntervals || !isRun(w)} /></div>}
+      <div className="det-head"><b>Do relógio</b>{r.fileName && <span className="muted small">{r.garminId ? 'Garmin' : 'arquivo'}</span>}</div>
+      <ActivityDetails w={w} />
+      {r.hrHist && <div className="det-block"><HrZones hist={r.hrHist} hasIntervals={hasIntervals || !isRun(w)} /></div>}
       {isRun(w) && r.laps.length > 0 && (
         <>
           {scored.length > 0 && <p className="small" style={{ margin: '10px 0 4px' }} data-testid="wk-hits"><b>{hits} de {scored.length}</b> passos com pace dentro da faixa.</p>}

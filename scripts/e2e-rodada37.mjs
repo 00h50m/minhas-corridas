@@ -24,7 +24,7 @@ for (const W of [320, 360, 390, 768, 1024, 1280]) {
       for (const el of document.querySelectorAll('.page *')) {
         const rc = el.getBoundingClientRect()
         if (rc.width === 0) continue
-        if (rc.right > vw + 1 && !el.closest('.quick-status, .seg, .chips-scroll, .leaflet-container, [data-testid=story-canvas]')) {
+        if (rc.right > vw + 1 && !el.closest('.quick-status, .seg, .chips-scroll, .st-thumb, .leaflet-container, [data-testid=story-canvas]')) {
           bad.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 2).join('.')} → ${Math.round(rc.right - vw)}px "${(el.innerText || '').slice(0, 30).replace(/\s+/g, ' ')}"`)
         }
       }

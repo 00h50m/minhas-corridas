@@ -87,7 +87,9 @@ export function WorkoutItem({ w, today }) {
         <div className="chips" style={{ marginTop: 6 }}>
           <span className="chip">≈ {fmtSec(sec)}</span>
           {w.date === today && w.status === 'planejado' && <span className="chip chip-hot">Hoje</span>}
-          {w.status !== 'planejado' && <span className="chip">{STATUS_LABEL[w.status]}{w.status === 'feito' && w.result?.distanceKm ? ` · ${String(w.result.distanceKm.toFixed(2)).replace('.', ',')} km` : ''}</span>}
+          {w.status !== 'planejado' && <span className="chip">{STATUS_LABEL[w.status]}{w.status === 'feito' && w.result?.distanceKm > 0 ? ` · ${String(w.result.distanceKm.toFixed(2)).replace('.', ',')} km` : w.status === 'feito' && w.result?.elapsedSec ? ` · ${fmtSec(w.result.elapsedSec)}` : ''}</span>}
+          {w.status === 'feito' && w.result?.avgHr ? <span className="chip">♥ {w.result.avgHr}</span> : null}
+          {w.status === 'feito' && w.result?.calories ? <span className="chip">{w.result.calories} kcal</span> : null}
           {missed && <span className="chip chip-dim">Passou</span>}
           {w.moves?.length > 0 && <span className="chip chip-moved" data-testid="wk-moved-chip">↷ {movedLabel(w)}</span>}
         </div>

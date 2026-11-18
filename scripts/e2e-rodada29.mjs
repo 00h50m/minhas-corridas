@@ -135,13 +135,28 @@ await need('Madrugadora')
 await need('Meta batida')
 await need('Primeiros 10 km')
 await need('Sub 38 nos 5 km')
+const count = await p.$eval('[data-testid=pp-count]', (e) => e.innerText)
+if (!/^\d+ de \d+ conquistas$/.test(count.trim())) throw new Error('Contagem: ' + count)
+// Medalha que falta: o painel mostra quanto falta
+await p.$$eval('[data-testid=pp-badge]', (b) => b.find((x) => x.innerText.includes('Sub 38 nos 5 km')).click())
+await p.waitForSelector('[data-testid=pp-sheet]')
 await need('melhor: 39:30 · faltam 1:30')
+await p.keyboard.press('Escape')
+await wait(200)
+// Aba de recordes e números
+await p.$eval('[data-testid=pp-tab-records]', (b) => b.click())
+await p.waitForSelector('[data-testid=pp-records-tab]')
 await need('Jundiaí/SP')
 await need('1 atividade além da corrida')
-const count = await p.$eval('[data-testid=pp-count]', (e) => e.innerText)
 await noOverflow('Passaporte')
+await p.$eval('[data-testid=pp-tab-badges]', (b) => b.click())
+await p.waitForSelector('[data-testid=pp-badges]')
 await p.screenshot({ path: `${SHOTS}/r29-passaporte.png`, fullPage: true })
-ok(`Passaporte: ${count}; novas, próximas com quanto falta (Sub 38: faltam 1:30), recordes, cidades`)
+ok(`Passaporte: ${count}; coleção por categoria (as que faltam apagadas), painel com quanto falta (Sub 38: faltam 1:30), aba de recordes e cidades`)
+
+// Nova conquista → painel → “Postar no story”
+await p.$eval('[data-testid=pp-fresh]', (b) => b.click())
+await p.waitForSelector('[data-testid=pp-share]')
 
 // 5. Story da conquista
 await p.$eval('[data-testid=pp-share]', (a) => a.click())

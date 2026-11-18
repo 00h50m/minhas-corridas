@@ -280,15 +280,31 @@ function treino(ctx, s) {
     const size = fit(ctx, s.sport.toUpperCase(), (n) => `800 ${n}px ${DISPLAY}`, 120, STORY.w - PAD * 2, 60)
     ctx.font = `800 ${size}px ${DISPLAY}`
     ctx.fillText(s.sport.toUpperCase(), PAD, y + 110)
-    y += 170
+    y += 150
+    if (s.exercises?.length) {
+      card(ctx, PAD, y, STORY.w - PAD * 2, 90 + s.exercises.length * 62 + (s.setsTotal ? 50 : 0))
+      ctx.fillStyle = DIM
+      ctx.font = `800 30px ${TEXT}`
+      ctx.fillText('EXERCÍCIOS', PAD + 40, y + 60)
+      ctx.font = `700 38px ${TEXT}`
+      s.exercises.forEach((e, i) => { dot(ctx, PAD + 50, y + 108 + i * 62, 9); ctx.fillStyle = '#fff'; ctx.fillText(wrap(ctx, e, STORY.w - PAD * 2 - 110, 1)[0], PAD + 76, y + 120 + i * 62) })
+      if (s.setsTotal) { ctx.fillStyle = DIM; ctx.font = `700 32px ${TEXT}`; ctx.fillText(s.setsTotal, PAD + 40, y + 120 + s.exercises.length * 62) }
+      y += 120 + s.exercises.length * 62 + (s.setsTotal ? 50 : 0)
+    }
   }
   const w = (STORY.w - PAD * 2) / s.stats.length
   s.stats.forEach((st, i) => stat(ctx, PAD + i * w, y + 120, w, st.value, st.label, i === 0 ? BRAND : '#fff'))
   if (s.hits) {
-    ctx.fillStyle = '#fff'
     ctx.font = `800 48px ${TEXT}`
     ctx.fillStyle = BRAND
     ctx.fillText(s.hits, PAD, y + 330)
+  }
+  if (s.week) {
+    card(ctx, PAD, STORY.h - 330, STORY.w - PAD * 2, 110)
+    dot(ctx, PAD + 52, STORY.h - 275, 12)
+    ctx.fillStyle = '#fff'
+    ctx.font = `800 44px ${TEXT}`
+    ctx.fillText(s.week, PAD + 84, STORY.h - 260)
   }
 }
 

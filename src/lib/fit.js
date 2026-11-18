@@ -4,7 +4,7 @@
 
 const FIT_EPOCH = 631065600 // 31/12/1989 00:00 UTC, em segundos Unix
 
-const MESG = { RECORD: 20, LAP: 19, SESSION: 18 }
+const MESG = { RECORD: 20, LAP: 19, SESSION: 18, SET: 225 }
 
 // Tamanho e leitura de cada tipo base; `invalid` = valor que significa "sem dado".
 const BASE = {
@@ -26,7 +26,9 @@ const BASE = {
 const FIELDS = {
   [MESG.RECORD]: { 253: ['timestamp', 1, 0], 0: ['positionLat', 1, 0], 1: ['positionLong', 1, 0], 5: ['distance', 100, 0], 3: ['heartRate', 1, 0], 2: ['altitude', 5, 500], 78: ['enhancedAltitude', 5, 500] },
   [MESG.LAP]: { 253: ['timestamp', 1, 0], 7: ['totalElapsedTime', 1000, 0], 8: ['totalTimerTime', 1000, 0], 9: ['totalDistance', 100, 0], 15: ['avgHeartRate', 1, 0], 16: ['maxHeartRate', 1, 0] },
-  [MESG.SESSION]: { 253: ['timestamp', 1, 0], 2: ['startTime', 1, 0], 5: ['sport', 1, 0], 7: ['totalElapsedTime', 1000, 0], 8: ['totalTimerTime', 1000, 0], 9: ['totalDistance', 100, 0], 16: ['avgHeartRate', 1, 0], 17: ['maxHeartRate', 1, 0], 22: ['totalAscent', 1, 0] }
+  [MESG.SESSION]: { 253: ['timestamp', 1, 0], 2: ['startTime', 1, 0], 5: ['sport', 1, 0], 6: ['subSport', 1, 0], 7: ['totalElapsedTime', 1000, 0], 8: ['totalTimerTime', 1000, 0], 9: ['totalDistance', 100, 0], 11: ['totalCalories', 1, 0], 16: ['avgHeartRate', 1, 0], 17: ['maxHeartRate', 1, 0], 18: ['avgCadence', 1, 0], 22: ['totalAscent', 1, 0], 24: ['aerobicTE', 10, 0], 137: ['anaerobicTE', 10, 0] },
+  // Séries de força: duração, repetições, carga (kg), tipo (0 descanso, 1 ativa), categoria do exercício
+  [MESG.SET]: { 254: ['timestamp', 1, 0], 0: ['duration', 1000, 0], 3: ['repetitions', 1, 0], 4: ['weight', 16, 0], 5: ['setType', 1, 0], 6: ['startTime', 1, 0], 7: ['category', 1, 0] }
 }
 
 function fail(msg) {
@@ -37,7 +39,7 @@ function fail(msg) {
 export function decodeFit(bytes) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
   const view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength)
-  const out = { records: [], laps: [], sessions: [] }
+  const out = { records: [], laps: [], sessions: [], sets: [] }
   if (u8.length < 14) fail('Este arquivo não é um FIT válido.')
   let pos = 0
   // Um arquivo pode ter vários blocos FIT encadeados.
@@ -120,6 +122,7 @@ function readBlock(view, start, end, out) {
     for (const k of ['timestamp', 'startTime']) if (msg[k] != null) msg[k] = (msg[k] + FIT_EPOCH) * 1000
     if (def.global === MESG.RECORD) out.records.push(msg)
     else if (def.global === MESG.LAP) out.laps.push(msg)
+    else if (def.global === MESG.SET) out.sets.push(msg)
     else out.sessions.push(msg)
   }
 }

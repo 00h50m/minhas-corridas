@@ -118,6 +118,16 @@ function normalizeResult(r) {
     fileName: str(r.fileName, 120),
     laps,
     // traçado (polyline codificada, sem início e fim): só caracteres do formato
+    maxHr: num(Number(r.maxHr), 30, 250),
+    // Parciais por km (corrida/caminhada/bike), como no resultado da prova
+    splits: (Array.isArray(r.splits) ? r.splits : []).filter((x) => x && num(Number(x.km), 0, 500) != null && num(Number(x.sec), 1, 86400) != null).slice(0, 60).map((x) => ({ km: x.km, sec: Math.round(x.sec), ...(x.partial ? { partial: Math.round(x.partial) } : {}) })),
+    elevGainM: num(Number(r.elevGainM), 0, 20000),
+    calories: num(Number(r.calories), 1, 20000),
+    aerobicTE: num(Number(r.aerobicTE), 0.1, 5),
+    anaerobicTE: num(Number(r.anaerobicTE), 0.1, 5),
+    cadence: num(Number(r.cadence), 20, 260),
+    // Séries de força: { cat (categoria Garmin), reps, kg, sec }
+    sets: (Array.isArray(r.sets) ? r.sets : []).filter((x) => x && typeof x === 'object').slice(0, 80).map((x) => { const n = (v, a, b) => (v == null || v === '' ? null : num(Number(v), a, b)); return { cat: n(x.cat, 0, 65535), reps: n(x.reps, 0, 1000), kg: n(x.kg, 0, 1000), sec: n(x.sec, 0, 7200) } }),
     // Tempo em cada faixa de 5 bpm a partir de 60 bpm (32 faixas): zonas de FC
     hrHist: Array.isArray(r.hrHist) && r.hrHist.length === 32 && r.hrHist.every((x) => Number.isFinite(x) && x >= 0 && x < 86400) ? r.hrHist.map(Math.round) : null,
     garminId: typeof r.garminId === 'string' && /^\d{1,20}$/.test(r.garminId) ? r.garminId : null,

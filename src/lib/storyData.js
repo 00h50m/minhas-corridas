@@ -8,6 +8,7 @@ import { paceSeriesWithTests } from './evolution.js'
 import { passport } from './passport.js'
 import { resultBadges } from './shareCard.js'
 import { compareLaps, isRun, plannedSec, sportOf, workoutLine } from './workout.js'
+import { groupSets } from './strength.js'
 
 export const STORY_TEMPLATES = [
   { id: 'proximas', label: 'Próximas provas' },
@@ -148,7 +149,22 @@ export function storyTreino(workouts, today, opts = {}, workoutId = null) {
   if (opts.times && r?.elapsedSec) stats.push({ value: formatDuration(r.elapsedSec), label: 'tempo' })
   if (run && opts.times && r?.distanceKm > 0 && r?.elapsedSec) stats.push({ value: formatPace(r.elapsedSec / r.distanceKm).replace(' /km', ''), label: 'pace /km' })
   if (!stats.length || (!run && !r?.elapsedSec)) stats.push({ value: String(Math.round(plannedSec(w) / 60)), label: 'min' })
+  // Outras atividades: tempo sempre (é o principal), calorias e FC do relógio; séries de força por exercício
+  if (!run) {
+    stats.length = 0
+    stats.push({ value: String(Math.round((r?.elapsedSec ?? plannedSec(w)) / 60)), label: 'minutos' })
+    if (r?.calories) stats.push({ value: String(r.calories), label: 'kcal' })
+    if (r?.avgHr) stats.push({ value: String(r.avgHr), label: 'FC média' })
+  }
+  const strength = !run && r?.sets?.length ? groupSets(r.sets) : null
+  const exercises = strength ? strength.groups.slice(0, 5).map((g) => `${g.name} · ${g.reps.length ? `${g.sets}×${g.reps.join('/')}` : `${g.sets} ${g.sets === 1 ? 'série' : 'séries'}`}${g.maxKg && opts.times ? ` · até ${String(g.maxKg).replace('.', ',')} kg` : ''}`) : []
+  // Lugar na semana: “3º treino da semana”
+  const ws = weekStart(w.date)
+  const nth = workouts.filter((x) => x.status === 'feito' && x.date && x.date >= ws && (x.date < w.date || (x.date === w.date && x.id <= w.id))).length
   return {
+    exercises,
+    setsTotal: strength ? `${strength.totals.sets} séries · ${strength.totals.reps} repetições` : null,
+    week: nth ? `${nth}º treino da semana` : null,
     ok: true,
     title: run ? 'Treino feito ✓' : `${CROSS_DONE[w.sport] ?? 'Atividade feita'} ✓`,
     name: w.name,

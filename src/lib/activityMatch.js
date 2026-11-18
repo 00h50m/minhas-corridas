@@ -9,12 +9,18 @@ export function sportFromFile(a) {
   if (/cycl|bik|ride/.test(s)) return 'bike'
   if (/walk|hik/.test(s)) return 'caminhada'
   if (/swim/.test(s)) return 'natacao'
+  if (/train|strength|fitness/.test(s)) return 'academia'
   return 'corrida'
 }
 
 /** Resultado do treino a partir do resumo da atividade (readActivityFile). */
 export function resultFrom(a, prev = null) {
-  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, hrHist: a.hrHist ?? null, garminId: a.garminId ?? prev?.garminId ?? null, effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
+  return {
+    distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, maxHr: a.maxHr ?? null, fileName: a.fileName, laps: a.laps ?? [], splits: a.splits ?? [],
+    track: a.track ?? null, hrHist: a.hrHist ?? null, elevGainM: a.elevGainM ?? null, calories: a.calories ?? null, aerobicTE: a.aerobicTE ?? null,
+    anaerobicTE: a.anaerobicTE ?? null, cadence: a.cadence ?? null, sets: a.sets ?? [], garminId: a.garminId ?? prev?.garminId ?? null,
+    effort: prev?.effort ?? null, notes: prev?.notes ?? ''
+  }
 }
 
 /** Data local da atividade (AAAA-MM-DD). */

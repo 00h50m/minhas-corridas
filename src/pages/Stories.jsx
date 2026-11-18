@@ -4,19 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { TopBar, useUI } from '../components/ui.jsx'
-import { IconCalendar, IconCheck, IconDownload, IconFlag, IconHistory, IconMedal, IconMonth, IconShare, IconStopwatch, IconTrophy, IconWorkout } from '../components/Icons.jsx'
+import { IconDownload, IconShare } from '../components/Icons.jsx'
 import { STORY_TEMPLATES, storyFor } from '../lib/storyData.js'
 import { drawStory } from '../lib/drawStory.js'
 import { canvasToBlob, loadCardFonts } from '../lib/drawCard.js'
 import { todayISO } from '../lib/dates.js'
 
 const PREF = 'minhas-corridas:stories'
-// Modelos agrupados por assunto (mesmo visual dos atalhos do Início)
-const GROUPS = [
-  { title: 'Provas', items: [['proximas', 'Próximas', IconCalendar], ['contagem', 'Contagem', IconStopwatch], ['resultado', 'Concluída', IconFlag], ['temporada', 'Temporada', IconTrophy]] },
-  { title: 'Treinos', items: [['semana', 'Semana', IconWorkout], ['treino', 'Treino feito', IconCheck], ['mes', 'Mês', IconMonth], ['evolucao', 'Evolução 5 km', IconHistory]] },
-  { title: 'Conquistas', items: [['conquista', 'Conquista', IconMedal]] }
-]
+// Ordem das miniaturas: provas, treinos e conquistas
+const ORDER = [['proximas', 'Próximas'], ['contagem', 'Contagem'], ['resultado', 'Prova concluída'], ['temporada', 'Temporada'], ['semana', 'Semana'], ['treino', 'Treino feito'], ['mes', 'Mês'], ['evolucao', 'Evolução 5 km'], ['conquista', 'Conquista']]
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(PREF) || '{}') } catch { return {} } }
 
 export default function Stories() {
@@ -75,44 +71,60 @@ export default function Stories() {
     }
   }
 
+  const all = useMemo(() => ORDER.map(([id, label]) => ({ id, label, s: storyFor(id, { races, workouts, goals, today, opts: { times, cities }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }) })), [races, workouts, goals, times, cities])
+
   return (
     <>
       <TopBar title="Stories" sub="Sua rotina de corredora" back="/" />
-      <div className="page" data-testid="stories">
-        <div className="st-picker" role="group" aria-label="Modelo do story">
-          {GROUPS.map((g) => (
-            <div key={g.title} className="st-group">
-              <div className="st-group-title">{g.title}</div>
-              <div className="st-tiles">
-                {g.items.map(([id, label, Icon]) => (
-                  <button key={id} type="button" className={`st-tile${tpl === id ? ' on' : ''}`} aria-pressed={tpl === id} onClick={() => setTpl(id)} data-testid={`story-${id}`}><Icon /><span>{label}</span></button>
-                ))}
-              </div>
+      <div className="page stories-page" data-testid="stories">
+        <div className="st-stage">
+          {s.ok ? (
+            <div className="card-preview fmt-story">
+              <canvas ref={canvasRef} role="img" aria-label={`Story: ${STORY_TEMPLATES.find((t) => t.id === tpl).label}`} data-testid="story-canvas" />
             </div>
+          ) : (
+            <div className="card muted small st-empty" data-testid="story-empty">{s.reason}</div>
+          )}
+        </div>
+
+        <div className="st-strip" role="group" aria-label="Modelo do story">
+          {all.map((t) => (
+            <button key={t.id} type="button" className={`st-thumb${tpl === t.id ? ' on' : ''}${t.s.ok ? '' : ' off'}`} aria-pressed={tpl === t.id} onClick={() => setTpl(t.id)} data-testid={`story-${t.id}`}>
+              <Thumb id={t.id} s={t.s} ready={fontsReady} />
+              <span>{t.label}</span>
+            </button>
           ))}
         </div>
-        {s.ok ? (
-          <div className="card-preview fmt-story" style={{ marginTop: 12 }}>
-            <canvas ref={canvasRef} role="img" aria-label={`Story: ${STORY_TEMPLATES.find((t) => t.id === tpl).label}`} data-testid="story-canvas" />
-          </div>
-        ) : (
-          <div className="card muted small" style={{ marginTop: 12 }} data-testid="story-empty">{s.reason}</div>
-        )}
-        <div className="card st-options" style={{ marginTop: 12 }}>
-          <label className="check"><input type="checkbox" checked={times} onChange={(e) => setTimes(e.target.checked)} data-testid="story-times" /> Mostrar tempos e pace</label>
-          <label className="check"><input type="checkbox" checked={cities} onChange={(e) => setCities(e.target.checked)} data-testid="story-cities" /> Mostrar cidades das provas</label>
-          <div className="list-group-title" style={{ marginTop: 8 }}>Fundo</div>
-          <div className="btn-inline">
-            <button type="button" className={`chip-btn${!photo ? ' on' : ''}`} onClick={() => setPhoto(null)}>Cor do app</button>
-            <button type="button" className={`chip-btn${photo ? ' on' : ''}`} onClick={() => fileRef.current?.click()}>{photo ? 'Trocar foto' : 'Foto do celular'}</button>
-          </div>
+
+        <div className="st-opts">
+          <label className={`st-toggle${times ? ' on' : ''}`}><input type="checkbox" checked={times} onChange={(e) => setTimes(e.target.checked)} data-testid="story-times" /> Tempos e pace</label>
+          <label className={`st-toggle${cities ? ' on' : ''}`}><input type="checkbox" checked={cities} onChange={(e) => setCities(e.target.checked)} data-testid="story-cities" /> Cidades</label>
+          <button type="button" className={`st-toggle${photo ? ' on' : ''}`} onClick={() => (photo ? setPhoto(null) : fileRef.current?.click())}>{photo ? 'Tirar foto do fundo' : 'Foto de fundo'}</button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} data-testid="story-photo" />
-          <p className="note" style={{ marginBottom: 0 }}>Sem endereços nem valores. A foto só é usada para gerar a imagem e não fica salva.</p>
         </div>
-        <button className="btn btn-primary btn-block" style={{ marginTop: 14 }} disabled={busy || !fontsReady || !s.ok} onClick={onShare} data-testid="story-share"><IconShare /> {busy ? 'Gerando…' : 'Compartilhar'}</button>
-        <button className="btn btn-block" style={{ marginTop: 10 }} disabled={!fontsReady || !s.ok} onClick={async () => { download(await getFile()); notify('Imagem baixada') }} data-testid="story-download"><IconDownload /> Baixar imagem (PNG)</button>
-        <p className="note">No celular, “Compartilhar” abre a lista de apps: escolha o Instagram e depois “Story”.</p>
+        <p className="note st-note">Nunca vão endereços nem valores. A foto só é usada para gerar a imagem e não fica salva. No celular, “Compartilhar” abre a lista de apps: escolha o Instagram e depois “Story”.</p>
+
+        <div className="st-actions">
+          <button className="btn btn-primary" disabled={busy || !fontsReady || !s.ok} onClick={onShare} data-testid="story-share"><IconShare /> {busy ? 'Gerando…' : 'Compartilhar'}</button>
+          <button className="btn st-dl" disabled={!fontsReady || !s.ok} onClick={async () => { download(await getFile()); notify('Imagem baixada') }} data-testid="story-download" aria-label="Baixar imagem (PNG)" title="Baixar imagem (PNG)"><IconDownload /><span className="st-dl-label">Baixar</span></button>
+        </div>
       </div>
     </>
   )
+}
+
+/** Miniatura real do modelo (desenhada numa tela grande e reduzida). */
+const big = typeof document !== 'undefined' ? document.createElement('canvas') : null
+function Thumb({ id, s, ready }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const c = ref.current
+    if (!c || !ready || !big) return
+    const ctx = c.getContext('2d')
+    ctx.clearRect(0, 0, c.width, c.height)
+    if (!s.ok) return
+    drawStory(big, id, s, null)
+    ctx.drawImage(big, 0, 0, c.width, c.height)
+  }, [id, s, ready])
+  return <canvas ref={ref} width={108} height={192} aria-hidden="true" />
 }

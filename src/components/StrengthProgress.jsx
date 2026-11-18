@@ -48,14 +48,14 @@ export default function StrengthProgress({ workouts, today }) {
         <div className="sp-list">
           {shown.map((h) => {
             const useKg = h.bestKg != null
-            const vals = h.sessions.map((s) => (useKg ? s.maxKg : s.volume || s.reps)).filter((v) => v != null)
+            const vals = h.sessions.map((s) => (useKg ? s.maxKg : s.volume || s.reps || s.sets)).filter((v) => v != null)
             const up = useKg && h.firstKg != null && h.lastKg > h.firstKg
             return (
               <button key={h.name} type="button" className="sp-row" onClick={() => setOpen(h.name)} data-testid="sp-row">
                 <span className="sp-name"><b>{h.name}</b><span className="muted small">{h.sessions.length} {h.sessions.length === 1 ? 'treino' : 'treinos'}{useKg ? ` · recorde ${kgLabel(h.bestKg)}` : ''}</span></span>
                 <Spark values={vals} />
                 <span className={`sp-delta${up ? ' up' : ''}`}>
-                  {useKg ? (h.sessions.length > 1 && h.firstKg !== h.lastKg ? `${String(h.firstKg).replace('.', ',')} → ${kgLabel(h.lastKg)}` : kgLabel(h.lastKg)) : `${h.sessions.at(-1).reps} reps`}
+                  {useKg ? (h.sessions.length > 1 && h.firstKg !== h.lastKg ? `${String(h.firstKg).replace('.', ',')} → ${kgLabel(h.lastKg)}` : kgLabel(h.lastKg)) : h.sessions.at(-1).reps ? `${h.sessions.at(-1).reps} reps` : `${h.sessions.at(-1).sets} ${h.sessions.at(-1).sets === 1 ? 'série' : 'séries'}`}
                 </span>
               </button>
             )

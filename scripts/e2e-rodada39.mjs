@@ -42,7 +42,7 @@ await p.evaluate((w, r) => { localStorage.clear(); localStorage.setItem('minhas-
 // 1. Evolução na academia
 await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=strength-progress]')
-await has('[data-testid=strength-progress]', ['Evolução na academia', 'Último treino de força ontem', '2 nas últimas 4 semanas', 'Agachamento', '3 treinos', 'recorde 50 kg', '40 → 50 kg', 'Afundo', '16 → 20 kg', 'Prancha'])
+await has('[data-testid=strength-progress]', ['Evolução na academia', 'Último treino de força ontem', '2 nas últimas 4 semanas', 'Agachamento', '3 treinos', 'recorde 50 kg', '40 → 50 kg', 'Afundo', '16 → 20 kg', 'Prancha', '1 série'])
 await p.$eval('[data-testid=sp-row]', (e) => e.click())
 await p.waitForSelector('[data-testid=sp-sheet]')
 await has('[data-testid=sp-sheet]', ['3 treinos', '50 kg', 'recorde de carga', '17/11/2026', '3 séries · 30 reps', '03/11/2026', '45 kg', '20/10/2026', '40 kg'])

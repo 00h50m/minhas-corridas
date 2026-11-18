@@ -2,7 +2,8 @@
 // séries de força, parciais por km e o percurso no mapa.
 import { lazy, Suspense } from 'react'
 import { fmtSec, isRun } from '../lib/workout.js'
-import { groupSets, speedLabel, teLabel } from '../lib/strength.js'
+import { groupSets, speedLabel, strengthRecords, teLabel } from '../lib/strength.js'
+import { getState } from '../services/store.js'
 
 const RouteMap = lazy(() => import('./RouteMap.jsx'))
 const nf = (n, d = 2) => String(Number(n).toFixed(d)).replace('.', ',')
@@ -27,6 +28,7 @@ export default function ActivityDetails({ w }) {
   const hasKm = r.distanceKm > 0
   const speed = hasKm ? speedLabel(sport, r.distanceKm, r.elapsedSec) : null
   const strength = r.sets?.length ? groupSets(r.sets) : null
+  const prs = strength ? strengthRecords(w, getState().workouts) : new Set()
   const splits = (r.splits ?? []).filter((s) => !s.partial)
   const best = splits.length ? Math.min(...splits.map((s) => s.sec)) : null
   const worst = splits.length ? Math.max(...splits.map((s) => s.sec)) : null
@@ -58,7 +60,7 @@ export default function ActivityDetails({ w }) {
           <ul className="det-sets">
             {strength.groups.map((g, i) => (
               <li key={i}>
-                <b>{g.name}</b>
+                <b>{g.name}{prs.has(g.name) && g.maxKg && <span className="sp-pr" data-testid="det-pr">recorde</span>}</b>
                 <span className="muted small">{g.sets} {g.sets === 1 ? 'série' : 'séries'}{g.reps.length ? ` · ${g.reps.join(', ')} reps` : ''}{g.maxKg ? ` · até ${String(g.maxKg).replace('.', ',')} kg` : ''}</span>
               </li>
             ))}

@@ -51,7 +51,7 @@ function Editor({ initial, isNew }) {
       <form className="page" onSubmit={submit} noValidate data-testid="workout-form">
         <Field label="Atividade" htmlFor="wk-sport">
           <select id="wk-sport" className="input" value={w.sport ?? 'corrida'} onChange={(e) => { const sp = e.target.value; set({ sport: sp, plannedMin: sp === 'corrida' ? null : w.plannedMin ?? 45 }); setErrors({}) }} data-testid="wk-sport">
-            {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+            {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </Field>
         <Field label="Nome" htmlFor="wk-name" error={errors.name}>

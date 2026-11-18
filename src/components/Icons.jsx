@@ -61,3 +61,18 @@ export const IconMoon = () => (<svg {...base}><path d="M19.5 14.8A7.8 7.8 0 1 1 
 export const IconUsers = () => (<svg {...base}><circle cx="9" cy="8.5" r="3.5" /><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5" /><path d="M15.5 5.3a3.3 3.3 0 0 1 0 6.4M17.5 14.8c1.9.6 3.1 2.2 3.5 4.7" /></svg>)
 export const IconMove = () => (<svg {...base}><rect x="3.5" y="5" width="12" height="12.5" rx="2.5" /><path d="M3.5 9.5h12M7 3v4M12 3v4" /><path d="M14 19.5h6.5M18 17l2.5 2.5L18 22" /></svg>)
 export const IconMonth = () => (<svg {...base}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /><path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01" strokeWidth="2.6" /></svg>)
+
+// Esportes (ícones de linha, sem emoji)
+export const IconRun = () => (<svg {...base}><circle cx="15" cy="4.5" r="2" /><path d="M7 21l3.2-5.5 3.3 2.5v4M5.5 11.5 9 8.5l4 .8 2.5 3.2 3 .5M10.2 15.5l2.6-6.2" /></svg>)
+export const IconDumbbell = () => (<svg {...base}><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11" /></svg>)
+export const IconBike = () => (<svg {...base}><circle cx="5.8" cy="16" r="3.6" /><circle cx="18.2" cy="16" r="3.6" /><path d="M5.8 16 9.5 9h6l2.7 7M9.5 9l3.3 7H5.8M14 6h2.5" /></svg>)
+export const IconSwim = () => (<svg {...base}><circle cx="16.5" cy="6.5" r="2" /><path d="M5 13.5l5-4 3.5 2.5 2.5-1.5" /><path d="M3 17.5c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0" /></svg>)
+export const IconWalk = () => (<svg {...base}><circle cx="13" cy="4.5" r="2" /><path d="M12.5 8 11 13.5l3 3 1 4.5M11 13.5 9 21M11.6 9.6 8 12.5M12.8 9.2l3.2 2.8" /></svg>)
+export const IconStretch = () => (<svg {...base}><circle cx="12" cy="5" r="2" /><path d="M12 8.5v5.5M4.5 10.5l7.5 1.5 7.5-1.5M8 21l4-7 4 7" /></svg>)
+
+const SPORT_ICONS = { corrida: IconRun, academia: IconDumbbell, bike: IconBike, natacao: IconSwim, caminhada: IconWalk, alongamento: IconStretch, outro: IconWorkout }
+/** Ícone do esporte do treino (corrida se não houver). */
+export function SportIcon({ sport }) {
+  const C = SPORT_ICONS[sport] ?? IconRun
+  return <C />
+}

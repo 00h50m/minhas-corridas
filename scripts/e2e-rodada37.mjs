@@ -10,7 +10,7 @@ await p.evaluateOnNewDocument(() => { const fixed = Date.parse('2026-11-18T13:00
 await p.setViewport({ width: 390, height: 800 })
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.evaluate(seed)
-const routes = ['/', '/treinos', '/treinos/feito', '/treinos/hoje', '/corridas/na', '/corridas/hc', '/ciclo', '/passaporte', '/mapa', '/provas-perto', '/stories', '/stories?modelo=mes', '/perfil', '/treinos/novo?tipo=academia']
+const routes = ['/', '/treinos', '/treinos?ver=mes', '/treinos/feito', '/treinos/hoje', '/corridas/na', '/corridas/hc', '/ciclo', '/passaporte', '/mapa', '/provas-perto', '/stories', '/stories?modelo=mes', '/perfil', '/treinos/novo?tipo=academia']
 const problems = []
 for (const W of [320, 360, 390, 768, 1024, 1280]) {
   await p.setViewport({ width: W, height: 800, isMobile: W < 1000, hasTouch: W < 1000 })
@@ -35,5 +35,5 @@ for (const W of [320, 360, 390, 768, 1024, 1280]) {
 }
 await b.close()
 if (problems.length) { console.log('Elementos passando da tela:\n' + problems.join('\n')); process.exit(1) }
-console.log('✓ 14 telas × 6 larguras (320, 360, 390, 768, 1024, 1280 px): nada passa da tela')
+console.log('✓ 15 telas × 6 larguras (320, 360, 390, 768, 1024, 1280 px): nada passa da tela')
 console.log('\nTodos os testes da rodada 37 passaram.')

@@ -54,3 +54,76 @@ export function speedLabel(sport, km, sec) {
   const p = sec / km
   return `${Math.floor(p / 60)}:${String(Math.round(p % 60)).padStart(2, '0')} /km`
 }
+
+const isStrength = (w) => w.status === 'feito' && w.date && w.result?.sets?.length > 0
+
+/**
+ * Evolução por exercício a partir dos treinos feitos com séries do relógio (mais antigos primeiro):
+ * [{ name, sessions: [{ date, workoutId, sets, reps, maxKg, volume }], bestKg, bestKgDate, bestVolume, firstKg, lastKg, last }]
+ * Ordem: mais sessões primeiro; empate, o feito mais recente.
+ */
+export function strengthHistory(workouts = []) {
+  const by = new Map()
+  const done = workouts.filter(isStrength).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  for (const w of done) {
+    const merged = new Map()
+    for (const g of groupSets(w.result.sets).groups) {
+      if (g.name === 'Exercício' || g.name === 'Aquecimento') continue
+      const m = merged.get(g.name) ?? { date: w.date, workoutId: w.id, sets: 0, reps: 0, maxKg: null, volume: 0 }
+      m.sets += g.sets
+      m.reps += g.reps.reduce((a, b) => a + b, 0)
+      if (g.maxKg) m.maxKg = Math.max(m.maxKg ?? 0, g.maxKg)
+      m.volume += g.volume
+      merged.set(g.name, m)
+    }
+    for (const [name, s] of merged) {
+      s.volume = Math.round(s.volume)
+      if (!by.has(name)) by.set(name, [])
+      by.get(name).push(s)
+    }
+  }
+  const out = []
+  for (const [name, sessions] of by) {
+    const withKg = sessions.filter((s) => s.maxKg)
+    const best = withKg.reduce((b, s) => (!b || s.maxKg > b.maxKg ? s : b), null)
+    out.push({
+      name,
+      sessions,
+      bestKg: best?.maxKg ?? null,
+      bestKgDate: best?.date ?? null,
+      bestVolume: Math.max(0, ...sessions.map((s) => s.volume)),
+      firstKg: withKg[0]?.maxKg ?? null,
+      lastKg: withKg.at(-1)?.maxKg ?? null,
+      last: sessions.at(-1).date
+    })
+  }
+  return out.sort((a, b) => b.sessions.length - a.sessions.length || (a.last < b.last ? 1 : a.last > b.last ? -1 : 0))
+}
+
+/** Exercícios em que este treino bateu o recorde de carga (precisa de um treino anterior com carga). */
+export function strengthRecords(w, workouts = []) {
+  if (!isStrength(w)) return new Set()
+  const out = new Set()
+  for (const h of strengthHistory(workouts)) {
+    const mine = h.sessions.find((s) => s.workoutId === w.id)
+    if (!mine?.maxKg) continue
+    const before = h.sessions.filter((s) => s.workoutId !== w.id && s.date <= w.date && s.maxKg)
+    if (before.length && before.every((s) => mine.maxKg > s.maxKg)) out.add(h.name)
+  }
+  return out
+}
+
+/**
+ * Força no período: último treino de força feito (com ou sem séries), dias desde ele e quantos nas
+ * últimas 4 semanas. Null se nunca houve.
+ */
+export function strengthRecency(workouts = [], today) {
+  const done = workouts.filter((w) => w.status === 'feito' && w.date && w.date <= today && w.sport === 'academia').map((w) => w.date).sort()
+  if (!done.length) return null
+  const last = done.at(-1)
+  const days = Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${last}T12:00:00Z`)) / 86400000)
+  const from = new Date(Date.parse(`${today}T12:00:00Z`) - 27 * 86400000).toISOString().slice(0, 10)
+  return { last, days, in4w: done.filter((d) => d >= from).length }
+}
+
+export const kgLabel = (v) => `${String(Math.round(v * 10) / 10).replace('.', ',')} kg`

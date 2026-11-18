@@ -1,6 +1,6 @@
 // Lista de treinos: próximos, sem data e já feitos.
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getState, saveWorkout, useStore } from '../services/store.js'
 import { saveProfile, useProfile } from '../services/profile.js'
 import { useUI } from '../components/ui.jsx'
@@ -16,12 +16,17 @@ import GarminConnect from '../components/GarminConnect.jsx'
 import Readiness from '../components/Readiness.jsx'
 import CopyBox from '../components/CopyBox.jsx'
 import { claudePrompt } from '../lib/workoutShare.js'
+import WorkoutMonth from '../components/WorkoutMonth.jsx'
+import StrengthProgress from '../components/StrengthProgress.jsx'
 
 const STATUS_LABEL = Object.fromEntries(WORKOUT_STATUSES.map((s) => [s.id, s.label]))
 
 export default function Workouts() {
-  const { workouts, goals } = useStore()
+  const { workouts, goals, races } = useStore()
   const today = todayISO()
+  const [params, setParams] = useSearchParams()
+  const view = params.get('ver') === 'mes' ? 'mes' : 'lista'
+  const setView = (v) => setParams(v === 'mes' ? { ver: 'mes' } : {}, { replace: true })
   if (workouts.length === 0) {
     return (
       <>
@@ -45,19 +50,33 @@ export default function Workouts() {
     <>
       <TopBar title="Treinos" sub={`${upcoming.length} ${upcoming.length === 1 ? 'planejado' : 'planejados'}`} back="/" right={<Link to="/treinos/novo" className="icon-btn" aria-label="Novo treino"><IconPlus /></Link>} />
       <div className="page">
-        <TrainingWeek workouts={workouts} today={today} />
-        <Readiness date={today} style={{ marginTop: 10 }} />
-        <MissedCard workouts={workouts} today={today} />
-        <div style={{ marginTop: 10 }}><GarminConnect /></div>
-        <div style={{ marginTop: 10 }}><ActivityImport /></div>
-        <PlanGoalHint workouts={upcoming} goals={goals} />
-        <div className="list-group-title">Próximos</div>
-        {upcoming.length === 0 && <div className="card muted small">Nenhum treino com data à frente.</div>}
-        {upcoming.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
-        {undated.length > 0 && <div className="list-group-title">Sem data</div>}
-        {undated.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
-        {past.length > 0 && <div className="list-group-title">Anteriores</div>}
-        {past.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
+        <div className="tabs wk-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={view === 'lista'} onClick={() => setView('lista')} data-testid="wk-view-list">Lista</button>
+          <button type="button" role="tab" aria-selected={view === 'mes'} onClick={() => setView('mes')} data-testid="wk-view-month">Mês</button>
+        </div>
+        {view === 'mes' ? (
+          <>
+            <WorkoutMonth workouts={workouts} races={races} today={today} />
+            <StrengthProgress workouts={workouts} today={today} />
+          </>
+        ) : (
+          <>
+            <div style={{ marginTop: 12 }}><TrainingWeek workouts={workouts} today={today} /></div>
+            <Readiness date={today} style={{ marginTop: 10 }} />
+            <MissedCard workouts={workouts} today={today} />
+            <StrengthProgress workouts={workouts} today={today} />
+            <div style={{ marginTop: 10 }}><GarminConnect /></div>
+            <div style={{ marginTop: 10 }}><ActivityImport /></div>
+            <PlanGoalHint workouts={upcoming} goals={goals} />
+            <div className="list-group-title">Próximos</div>
+            {upcoming.length === 0 && <div className="card muted small">Nenhum treino com data à frente.</div>}
+            {upcoming.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
+            {undated.length > 0 && <div className="list-group-title">Sem data</div>}
+            {undated.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
+            {past.length > 0 && <div className="list-group-title">Anteriores</div>}
+            {past.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
+          </>
+        )}
         <div className="btn-row" style={{ marginTop: 16 }}>
           <Link to="/treinos/novo" className="btn btn-primary"><IconPlus /> Novo treino</Link>
           <Link to="/treinos/novo?tipo=academia" className="btn" data-testid="new-cross">+ Outra atividade</Link>

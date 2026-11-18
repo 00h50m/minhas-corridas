@@ -10,6 +10,7 @@ import { passport } from '../lib/passport.js'
 import { distanceLabel } from '../lib/stats.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatPace } from '../lib/format.js'
+import { kgLabel, strengthHistory } from '../lib/strength.js'
 
 const nf = (n) => String(n).replace('.', ',')
 
@@ -116,7 +117,7 @@ export default function Passport() {
             <p className="note">As conquistas saem do que já está no app (provas, treinos, objetivos e arquivos do relógio). Toque numa medalha para ver os detalhes.</p>
           </>
         ) : (
-          <Records p={p} />
+          <Records p={p} workouts={workouts} />
         )}
       </div>
       {open && <BadgeSheet b={badgeOf(open)} onClose={() => setOpen(null)} />}
@@ -150,8 +151,9 @@ function BadgeSheet({ b, onClose }) {
   )
 }
 
-function Records({ p }) {
+function Records({ p, workouts }) {
   const n = p.numbers
+  const lifts = strengthHistory(workouts).filter((h) => h.bestKg != null).slice(0, 8)
   return (
     <div data-testid="pp-records-tab">
       <div className="stats" style={{ marginTop: 4 }}>
@@ -174,6 +176,20 @@ function Records({ p }) {
                 </Link>
               )
             })}
+          </div>
+        </>
+      )}
+      {lifts.length > 0 && (
+        <>
+          <div className="list-group-title">Força · carga máxima</div>
+          <div className="card" data-testid="pp-lifts">
+            {lifts.map((h) => (
+              <Link key={h.name} to="/treinos" className="pp-rec">
+                <span>{h.name}</span>
+                <b>{kgLabel(h.bestKg)}</b>
+                <span className="muted small">{formatDateBR(h.bestKgDate)}</span>
+              </Link>
+            ))}
           </div>
         </>
       )}

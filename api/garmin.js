@@ -176,6 +176,34 @@ export function mergeWellness(...lists) {
   return [...by.values()].sort((a, b) => (a.date < b.date ? -1 : 1))
 }
 
+
+/* ---------- Ciclo menstrual (Garmin Connect → periodichealth) ---------- */
+
+const ISO = /^\d{4}-\d{2}-\d{2}/
+/**
+ * Procura, em qualquer formato de resposta, os inícios de menstruação e as durações.
+ * Aceita chaves como cycleStartDate, periodStartDate, startDate (dentro de objetos de ciclo).
+ */
+export function cycleFromResponse(data) {
+  const starts = new Set()
+  let periodLen = null
+  let cycleLen = null
+  const walk = (v, path) => {
+    if (Array.isArray(v)) return v.forEach((x) => walk(x, path))
+    if (!v || typeof v !== 'object') return
+    for (const [k, x] of Object.entries(v)) {
+      const p = `${path}.${k}`.toLowerCase()
+      if (typeof x === 'string' && ISO.test(x) && /start/i.test(k) && /(cycle|period|menstru|bleed)/.test(p)) starts.add(x.slice(0, 10))
+      else if (typeof x === 'number' && x > 0 && x < 100) {
+        if (/(period|bleed|menstru).*(length|days|duration)/i.test(k) && x <= 14) periodLen = periodLen ?? Math.round(x)
+        else if (/cycle.*(length|days|duration)/i.test(k) && x >= 15 && x <= 60) cycleLen = cycleLen ?? Math.round(x)
+      } else walk(x, p)
+    }
+  }
+  walk(data, '')
+  return { starts: [...starts].sort(), periodLen, cycleLen }
+}
+
 export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } = {}) {
   if (req.method !== 'POST') return { status: 405, body: { error: 'Método não permitido.' } }
   if (!sameOrigin(req)) return { status: 403, body: { error: 'Origem não permitida.' } }
@@ -230,6 +258,25 @@ export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } 
       const keysOf = (d) => { const l = dailyList(d); const first = l[0]?.dailySleepDTO ?? l[0]; return first && typeof first === 'object' ? Object.keys(first).slice(0, 20) : d && typeof d === 'object' ? Object.keys(d).slice(0, 12) : [] }
       const shape = days.length ? null : { sleep: keysOf(sleep), daily: keysOf(daily), bb: keysOf(bb) }
       return { status: 200, body: { days, ...(shape ? { shape } : {}) } }
+    }
+    if (b.action === 'cycle') {
+      if (!isoDate(b.end)) return { status: 400, body: { error: 'Data inválida.' } }
+      // Resumo do ciclo em algumas datas para trás (cada uma traz o ciclo daquele momento).
+      const dates = [0, 30, 60, 90, 120, 150].map((d) => new Date(Date.parse(`${b.end}T12:00:00Z`) - d * 864e5).toISOString().slice(0, 10))
+      const raw = []
+      for (const d of dates) {
+        try {
+          const res = await authed(b.key, `/periodichealth-service/menstrualcycle/summary/${d}`, 'application/json', fetchImpl, now)
+          raw.push(await res.json().catch(() => null))
+        } catch (e) {
+          if (e.status === 401 || e.status === 429) throw e
+          raw.push(null)
+        }
+      }
+      const found = cycleFromResponse(raw.filter(Boolean))
+      const first = raw.find((x) => x && typeof x === 'object')
+      const shape = found.starts.length ? null : { keys: first ? (Array.isArray(first) ? Object.keys(first[0] ?? {}) : Object.keys(first)).slice(0, 20) : [] }
+      return { status: 200, body: { ...found, ...(shape ? { shape } : {}) } }
     }
     if (b.action === 'check') {
       await getToken(b.key, fetchImpl, now, true)

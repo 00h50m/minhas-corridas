@@ -7,7 +7,9 @@ cuidados. Prioridade e ordem são decididas na hora de fazer.
 
 ## 1. Ciclo menstrual nos treinos e nas provas
 
-**Status:** especificado, não iniciado · **Pedido em:** 18/11/2026
+**Status:** MVP feito na 0.42.0 (registro, previsão, prova/reta final, “como você chega hoje”, pontos na semana, sinais, importação do Garmin, sincronização). **Falta:** Fase 2 (o padrão dela por fase) e o aviso ao remanejar (item f). · **Pedido em:** 18/11/2026
+
+**Decisões da usuária (18/11):** registra o ciclo no Garmin e no Flo; não usa anticoncepcional hormonal; tudo sincroniza com a conta. O Flo não tem acesso para apps → histórico entra à mão (“Adicionar menstruação passada”). A chave do Garmin é a exceção: credencial, fica só no aparelho.
 
 ### Por que
 

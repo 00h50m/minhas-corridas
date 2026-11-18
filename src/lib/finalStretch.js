@@ -4,6 +4,7 @@ import { addDaysISO, daysBetween } from './dates.js'
 import { formatPace } from './format.js'
 import { flatten, isRun, newStep, normalizeWorkout, plannedSec } from './workout.js'
 import { dayLabel } from './reschedule.js'
+import { cycleStretchItems, raceCycleNote } from './cycle.js'
 
 const KIT_RE = /kit retirado/i
 
@@ -47,7 +48,7 @@ export function showStretch(race, today) {
  * Itens da reta final: [{ id, date, title, desc, link?, linkLabel?, action?, done, auto, warn?, state }].
  * state: feito | hoje | passou | futuro. done = automático (o app sabe) ou marcado à mão (race.stretchDone).
  */
-export function finalStretch(race, { workouts = [], today } = {}) {
+export function finalStretch(race, { workouts = [], today, cycle = null } = {}) {
   const D = race.date
   const km = race.distanceKm ?? null
   const pace = race.targetTime && km ? Math.round(race.targetTime / km) : null
@@ -111,6 +112,9 @@ export function finalStretch(race, { workouts = [], today } = {}) {
   add({ id: 'dia', date: D, title: 'Dia da prova', desc: 'O modo Dia da prova mostra o passo a passo, os horários e o clima.', link: `/corridas/${race.id}/dia`, linkLabel: 'Abrir modo prova' })
   // 10. Depois
   add({ id: 'resultado', date: addDaysISO(D, 1), title: 'Registrar o resultado e postar a medalha', desc: 'Tempo, colocação e o arquivo do relógio (ou “Buscar no Garmin”); depois o story da prova concluída.', link: race.result ? `/stories?modelo=resultado&prova=${race.id}` : `/corridas/${race.id}/resultado`, linkLabel: race.result ? '📲 Story da prova' : 'Registrar resultado', auto: !!race.result })
+
+  // Ciclo menstrual (se ativado): itens extras quando a prova cai perto da menstruação prevista
+  for (const it of cycleStretchItems(race, raceCycleNote(cycle, race, today))) add(it)
 
   return items
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))

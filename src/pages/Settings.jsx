@@ -127,7 +127,8 @@ export default function Settings() {
     })
     if (!ok) return
     clearAll()
-    import('../services/garmin.js').then((m) => m.disconnectGarmin()).catch(() => {})
+    // Ciclo e dados do Garmin também (e saem da conta)
+    import('../services/kv.js').then((m) => { m.setKV('cycle', null); m.setKV('garmin', null) }).catch(() => {})
     await clearFiles().catch(() => {})
     refreshUsage()
     notify('Dados apagados')

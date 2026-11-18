@@ -136,6 +136,13 @@ export default function Profile() {
           </span>
           <span aria-hidden="true">›</span>
         </Link>
+        <Link to="/ciclo" className="card account-card" style={{ marginTop: 12 }} data-testid="cycle-link">
+          <span style={{ fontSize: 26 }} aria-hidden="true">🌸</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b>Ciclo menstrual</b><br /><span className="small muted">Opcional: registro em 2 toques, previsão pelo seu histórico e as provas no seu ciclo.</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
 
         <div className="section-title"><h2>Emergência</h2></div>
         <div className="card">

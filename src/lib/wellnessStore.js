@@ -25,8 +25,9 @@ export function readWellness() {
 
 function subscribe(l) {
   window.addEventListener(GARMIN_EVENT, l)
+  window.addEventListener('paceon-kv', l)
   window.addEventListener('storage', l)
-  return () => { window.removeEventListener(GARMIN_EVENT, l); window.removeEventListener('storage', l) }
+  return () => { window.removeEventListener(GARMIN_EVENT, l); window.removeEventListener('paceon-kv', l); window.removeEventListener('storage', l) }
 }
 
 export function useWellness() {

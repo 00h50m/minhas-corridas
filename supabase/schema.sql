@@ -275,3 +275,10 @@ alter table public.profiles add constraint profiles_data_check check (pg_column_
 --     Enquanto este trecho não rodar, os treinos ficam guardados só no aparelho, sem se perder.
 alter table public.records drop constraint if exists records_kind_check;
 alter table public.records add constraint records_kind_check check (kind in ('race', 'goal', 'file', 'workout'));
+
+-- 12) Ciclo menstrual e dados do Garmin (sono, body battery, relatório da importação) sincronizados
+--     com a conta, um registro de cada (id 'main'), com as mesmas regras de acesso (só a dona lê e
+--     escreve) e apagados junto com a conta. A chave pessoal do Garmin NÃO vai para o banco.
+--     Enquanto este trecho não rodar, esses dados ficam só no aparelho, sem se perder.
+alter table public.records drop constraint if exists records_kind_check;
+alter table public.records add constraint records_kind_check check (kind in ('race', 'goal', 'file', 'workout', 'cycle', 'garmin'));

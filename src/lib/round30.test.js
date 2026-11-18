@@ -64,7 +64,7 @@ describe('como você chega ao treino', () => {
     expect(fmtSleep(21900)).toBe('6h05')
   })
   it('linha do cartão do Garmin', () => {
-    expect(wellnessText({ wellness: { a: {}, b: {} } })).toBe('Sono e body battery: 2 dias (ficam só neste aparelho).')
+    expect(wellnessText({ wellness: { a: {}, b: {} } })).toBe('Sono e body battery: 2 dias (sincronizados com a sua conta).')
     expect(wellnessText({ wellness: {}, wellnessShape: { sleep: ['entries'], daily: [], bb: [] } })).toMatch(/formato que o app não reconheceu \(campos: entries\)/)
     expect(wellnessText({ wellness: {} })).toMatch(/não mandou dados/)
   })

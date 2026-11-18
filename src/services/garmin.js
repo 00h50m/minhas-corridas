@@ -10,27 +10,22 @@ import { addDaysISO, todayISO } from '../lib/dates.js'
 import { GARMIN_EVENT } from '../lib/wellnessStore.js'
 import { fmtSec } from '../lib/workout.js'
 
-const KEY = 'minhas-corridas:garmin'
+import { KV_EVENT, getLocalKV, setKV } from './kv.js'
+
 const AUTO_EVERY_MS = 30 * 60 * 1000
 const listeners = new Set()
 
+/** Conectado = há chave NESTE aparelho (a chave nunca sincroniza; o resto sim). */
 function read() {
-  try {
-    const s = JSON.parse(localStorage.getItem(KEY) || 'null')
-    return s && typeof s === 'object' && typeof s.key === 'string' ? { done: [], pending: [], races: [], ...s } : null
-  } catch {
-    return null
-  }
+  const s = getLocalKV('garmin')
+  return s && typeof s.key === 'string' ? { done: [], pending: [], races: [], ...s } : null
 }
 let state = read()
 let running = null
 
 function write(next) {
   state = next
-  try {
-    if (next) localStorage.setItem(KEY, JSON.stringify(next))
-    else localStorage.removeItem(KEY)
-  } catch { /* sem armazenamento: vale só nesta sessão */ }
+  setKV('garmin', next) // sincroniza com a conta (sem a chave)
   listeners.forEach((l) => l())
   try { window.dispatchEvent(new Event(GARMIN_EVENT)) } catch { /* fora do navegador */ }
 }
@@ -54,11 +49,30 @@ export async function connectGarmin(rawKey) {
   const key = String(rawKey ?? '').trim()
   if (key.length < 8) throw new Error('Cole a chave inteira.')
   await api({ action: 'check', key })
-  write({ key, connectedAt: new Date().toISOString(), lastSync: null, done: [], pending: [], races: [] })
+  // Junta com o que já veio da conta (sono, atividades vistas em outro aparelho).
+  write({ done: [], pending: [], races: [], lastSync: null, ...(getLocalKV('garmin') ?? {}), key, connectedAt: new Date().toISOString() })
 }
 
+/** Tira a chave deste aparelho. O histórico (sono, atividades) continua na conta e nos outros aparelhos. */
 export function disconnectGarmin() {
-  write(null)
+  const all = getLocalKV('garmin')
+  if (all) {
+    const { key, ...rest } = all
+    setKV('garmin', rest)
+  }
+  state = null
+  listeners.forEach((l) => l())
+  try { window.dispatchEvent(new Event(GARMIN_EVENT)) } catch { /* fora do navegador */ }
+}
+
+// Dados que chegaram da conta (outro aparelho): relê mantendo a chave deste aparelho.
+if (typeof window !== 'undefined') {
+  window.addEventListener(KV_EVENT, (e) => {
+    if (e.detail?.kind !== 'garmin' || !e.detail.remote) return
+    state = read()
+    listeners.forEach((l) => l())
+    try { window.dispatchEvent(new Event(GARMIN_EVENT)) } catch { /* nada */ }
+  })
 }
 
 /** Resumo da atividade: o arquivo original (voltas, parciais, traçado) ou, sem ele, os dados da lista. */
@@ -171,6 +185,12 @@ export async function refreshWellness({ force = false } = {}) {
   const keep = Object.keys(merged).sort().slice(-60)
   write({ ...state, wellness: Object.fromEntries(keep.map((k) => [k, merged[k]])), wellnessAt: new Date().toISOString(), wellnessShape: days?.length ? null : shape })
   return state.wellness
+}
+
+/** Inícios de menstruação registrados no Garmin Connect (só leitura). { starts, periodLen, cycleLen, shape? } */
+export async function garminCycle() {
+  if (!state) throw new Error('Conecte o Garmin em Treinos para importar daqui.')
+  return api({ action: 'cycle', key: state.key, end: todayISO() })
 }
 
 /** Tira da fila uma atividade que esperava escolha (já resolvida na tela). */

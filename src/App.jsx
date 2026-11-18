@@ -37,6 +37,7 @@ const Stories = lazy(() => import('./pages/Stories.jsx'))
 const Passport = lazy(() => import('./pages/Passport.jsx'))
 const RunsMap = lazy(() => import('./pages/RunsMap.jsx'))
 const NearRaces = lazy(() => import('./pages/NearRaces.jsx'))
+const Cycle = lazy(() => import('./pages/Cycle.jsx'))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 /** Busca sozinha as atividades novas do Garmin ao abrir e ao voltar para o app (só se conectado). */
@@ -142,6 +143,7 @@ export default function App() {
                 <Route path="/passaporte" element={<Passport />} />
                 <Route path="/mapa" element={<RunsMap />} />
                 <Route path="/provas-perto" element={<NearRaces />} />
+                <Route path="/ciclo" element={<Cycle />} />
                 <Route path="/treinos" element={<Workouts />} />
                 <Route path="/treinos/novo" element={<WorkoutForm />} />
                 <Route path="/treinos/importar" element={<WorkoutImport />} />

@@ -6,11 +6,15 @@ import { weekRecap } from '../lib/trainingWeek.js'
 import { finalStretch, showStretch, stretchToday } from '../lib/finalStretch.js'
 import { dayLabel } from '../lib/reschedule.js'
 import { daysBetween } from '../lib/dates.js'
+import { useCycle, saveCycle } from '../services/cycle.js'
+import { dayOfCycle, endPeriod, ongoing, phaseLabel, predictNext, startPeriod } from '../lib/cycle.js'
+import { useUI } from './ui.jsx'
 
 export default function HomeLinks({ races, workouts, goals, today }) {
   return (
     <>
       <StretchCard races={races} workouts={workouts} today={today} />
+      <CycleCard today={today} />
       <WeekRecapCard workouts={workouts} today={today} />
       <PassportLink races={races} workouts={workouts} goals={goals} today={today} />
     </>
@@ -47,7 +51,8 @@ function PassportLink({ races, workouts, goals, today }) {
 function StretchCard({ races, workouts, today }) {
   const race = races.filter((r) => r.status === 'inscrita' && r.date && r.date >= today).sort((a, b) => (a.date < b.date ? -1 : 1))[0]
   if (!race || !showStretch(race, today)) return null
-  const items = finalStretch(race, { workouts, today })
+  const cycle = useCycle()
+  const items = finalStretch(race, { workouts, today, cycle })
   const it = stretchToday(items, today)
   if (!it) return null
   const d = daysBetween(today, race.date)
@@ -62,5 +67,35 @@ function StretchCard({ races, workouts, today }) {
       </span>
       <span aria-hidden="true">›</span>
     </Link>
+  )
+}
+
+/** Ciclo menstrual (se ativado): dia do ciclo, próxima prevista e o registro em 1 toque. */
+function CycleCard({ today }) {
+  const c = useCycle()
+  const { notify } = useUI()
+  if (!c.enabled) return null
+  const n = dayOfCycle(c, today)
+  const next = predictNext(c, today)
+  const now = ongoing(c, today)
+  const phase = phaseLabel(c, today, today)
+  const br = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
+  return (
+    <div className="card cy-home" data-testid="cycle-home" style={{ marginTop: 16 }}>
+      <Link to="/ciclo" className="cy-home-link">
+        <span style={{ fontSize: 24 }} aria-hidden="true">🌸</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <b>{n ? `Dia ${n} do ciclo` : 'Ciclo'}</b>{phase && <span className="muted small"> · {phase}</span>}<br />
+          <span className="small muted">{next ? `Próxima: ${next.confidence === 'boa' ? `~${br(next.start)}` : `${br(next.from)}–${br(next.to)}`}` : 'Registre a última menstruação'}</span>
+        </span>
+        <span aria-hidden="true">›</span>
+      </Link>
+      <div className="btn-inline" style={{ marginTop: 6 }}>
+        {now
+          ? <button type="button" className="link-btn" onClick={() => { saveCycle(endPeriod(c, today)); notify('Fim da menstruação registrado') }} data-testid="cycle-home-end">Terminou hoje</button>
+          : <button type="button" className="link-btn" onClick={() => { saveCycle(startPeriod(c, today)); notify('Início da menstruação registrado') }} data-testid="cycle-home-start">Menstruação começou hoje</button>}
+        <Link to="/ciclo" className="link-btn muted-btn">Como está hoje</Link>
+      </div>
+    </div>
   )
 }

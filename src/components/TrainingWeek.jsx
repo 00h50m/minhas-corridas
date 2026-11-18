@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { DOW_SHORT, weekLoad, weekStart, weekStreak, weekSummary, workoutState } from '../lib/trainingWeek.js'
 import { addDaysISO, formatDateBR } from '../lib/dates.js'
 import { IconChevronL, IconChevronR } from './Icons.jsx'
+import { useCycle } from '../services/cycle.js'
+import { isPeriodDay, isPredictedDay } from '../lib/cycle.js'
 
 const mins = (s) => {
   const m = Math.round(s / 60)
@@ -58,11 +60,15 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
 function Day({ d, i, today }) {
   const w = d.workouts[0]
   const st = w ? workoutState(w, today) : null
+  const c = useCycle()
+  // Ciclo (se ativado): ponto lilás nos dias de menstruação (registrada ou prevista); só aqui, nunca em stories
+  const cyc = c.enabled && c.periods.length ? (isPeriodDay(c, d.date, today) && d.date <= today ? 'cyc' : isPredictedDay(c, d.date, today) ? 'cyc-pred' : '') : ''
   const inner = (
     <>
       <span className="tw-dow">{DOW_SHORT[i]}</span>
       <span className="tw-num">{Number(d.date.slice(8, 10))}</span>
       <span className={`tw-mark ${st ?? 'none'}`}>{st ? MARK[st] : ''}</span>
+      {cyc && <span className={`tw-cyc ${cyc}`} aria-label={cyc === 'cyc' ? 'menstruação' : 'menstruação prevista'} data-testid="tw-cyc" />}
     </>
   )
   const cls = `tw-day${d.date === today ? ' today' : ''}`

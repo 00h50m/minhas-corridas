@@ -7,6 +7,7 @@ import { applyRemote, getGoal, getRace, getState as getStore, getWorkout, wipeLo
 import { disablePush } from './push.js'
 import { onProfileChange, syncProfile, wipeLocalProfile } from './profile.js'
 import { allFiles, applyRemoteFiles, filesMissingBlob, getFileRecord, setFileBlob, wipeLocalFiles } from './files.js'
+import { KV_KINDS, applyRemoteKV, getKV, listKV, wipeKV } from './kv.js'
 
 /*
  phase:
@@ -41,17 +42,21 @@ const local = {
     if (kind === 'race') return getRace(id)
     if (kind === 'goal') return getGoal(id)
     if (kind === 'workout') return getWorkout(id)
+    if (KV_KINDS[kind]) return getKV(kind)
     return getFileRecord(id)
   },
   async list(kind) {
     if (kind === 'race') return getStore().races
     if (kind === 'goal') return getStore().goals
     if (kind === 'workout') return getStore().workouts
+    if (KV_KINDS[kind]) return listKV(kind)
     return allFiles()
   },
   async applyRemote({ upserts, deletes }) {
     const isFile = (x) => x.kind === 'file'
-    applyRemote({ upserts: upserts.filter((x) => !isFile(x)), deletes: deletes.filter((x) => !isFile(x)) })
+    const isKV = (x) => !!KV_KINDS[x.kind]
+    applyRemoteKV({ upserts: upserts.filter(isKV), deletes: deletes.filter(isKV) })
+    applyRemote({ upserts: upserts.filter((x) => !isFile(x) && !isKV(x)), deletes: deletes.filter((x) => !isFile(x) && !isKV(x)) })
     await applyRemoteFiles({ upserts: upserts.filter(isFile), deletes: deletes.filter(isFile) })
   },
   async getBlob(id) {
@@ -87,7 +92,7 @@ export async function syncNow() {
     try {
       const meta = getMeta()
       const sum = await syncOnce({ remote: supabaseRemote(state.user.id), local, meta, userId: state.user.id, saveMeta })
-      set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending(), notice: sum.deferred ? 'Os treinos ainda não sobem para a nuvem: rode o trecho 11 do arquivo supabase/schema.sql no Supabase. Até lá, ficam guardados neste aparelho.' : null })
+      set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending(), notice: sum.deferred ? 'Parte dos dados (treinos, ciclo ou Garmin) ainda não sobe para a nuvem: rode os trechos 11 e 12 do arquivo supabase/schema.sql no Supabase. Até lá, ficam guardados neste aparelho.' : null })
       syncProfile(state.user.id).catch(() => {})
     } catch (e) {
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false
@@ -111,8 +116,8 @@ function hasLocalData() {
 async function wipeDevice(ownerId) {
   wipeLocal()
   wipeLocalProfile()
-  // A chave do Garmin é deste aparelho e desta pessoa: sai junto.
-  await import('./garmin.js').then((m) => m.disconnectGarmin()).catch(() => {})
+  // Ciclo e Garmin saem do aparelho junto (a chave do Garmin, que só existe aqui, também).
+  wipeKV()
   await wipeLocalFiles().catch(() => {})
   resetMeta(ownerId)
 }

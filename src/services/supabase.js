@@ -50,7 +50,7 @@ export function supabaseRemote(userId) {
       }
       // Tipos novos vão separados: se o banco ainda não os aceita (trecho do SQL não rodado),
       // o resto sincroniza normalmente e eles esperam no aparelho.
-      const NEW_KINDS = ['workout']
+      const NEW_KINDS = ['workout', 'cycle', 'garmin']
       let accepted
       try {
         accepted = await send(rows.filter((r) => !NEW_KINDS.includes(r.kind)))

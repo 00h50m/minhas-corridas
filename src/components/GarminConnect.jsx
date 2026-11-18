@@ -23,7 +23,7 @@ export function reportText(r) {
 /** Sono e body battery: quantos dias vieram, ou o diagnóstico se a Garmin respondeu num formato desconhecido. */
 export function wellnessText(g) {
   const n = Object.keys(g.wellness ?? {}).length
-  if (n) return `Sono e body battery: ${n} ${n === 1 ? 'dia' : 'dias'} (ficam só neste aparelho).`
+  if (n) return `Sono e body battery: ${n} ${n === 1 ? 'dia' : 'dias'} (sincronizados com a sua conta).`
   const sh = g.wellnessShape
   const fields = sh ? [...(sh.sleep ?? []), ...(sh.daily ?? []), ...(sh.bb ?? [])].slice(0, 25) : []
   return fields.length
@@ -77,7 +77,7 @@ export default function GarminConnect() {
     }
   }
   const onDisconnect = async () => {
-    if (!(await confirm({ title: 'Desconectar o Garmin?', message: 'A chave sai deste aparelho. Os treinos já importados continuam. Para cancelar de vez, apague a chave também no Garmin Connect.', confirmLabel: 'Desconectar' }))) return
+    if (!(await confirm({ title: 'Desconectar o Garmin?', message: 'A chave sai deste aparelho. Os treinos importados, o sono e o body battery continuam na sua conta. Para cancelar de vez, apague a chave também no Garmin Connect.', confirmLabel: 'Desconectar' }))) return
     disconnectGarmin()
     setLines([])
     notify('Garmin desconectado')
@@ -118,7 +118,7 @@ export default function GarminConnect() {
           <input className="input" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Chave pessoal da Garmin" autoComplete="off" spellCheck={false} aria-label="Chave pessoal da Garmin" data-testid="garmin-key" />
           <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: 8 }} disabled={busy || key.trim().length < 8} data-testid="garmin-connect-btn">{busy ? 'Conferindo…' : 'Conectar'}</button>
           {msg && <div className="alert alert-error small" role="alert" style={{ marginTop: 8 }}>{msg}</div>}
-          <p className="note">Só leitura: o app lê suas atividades, não muda nada no Garmin. A chave fica <b>só neste aparelho</b> (não vai para a sua conta do PaceOn nem para o backup) e passa pelo servidor do app apenas para chegar à Garmin. Para cancelar, desconecte aqui e apague a chave no Garmin Connect. Mandar treinos para o relógio continua pelos outros caminhos (a Garmin não libera isso para pessoas físicas).</p>
+          <p className="note">Só leitura: o app lê suas atividades, não muda nada no Garmin. A chave fica <b>só neste aparelho</b> (não vai para a sua conta do PaceOn nem para o backup; em outro aparelho, cole de novo) e passa pelo servidor do app apenas para chegar à Garmin. O sono, o body battery e as atividades importadas sincronizam com a sua conta. Para cancelar, desconecte aqui e apague a chave no Garmin Connect. Mandar treinos para o relógio continua pelos outros caminhos (a Garmin não libera isso para pessoas físicas).</p>
         </form>
       )}
     </div>

@@ -1,6 +1,8 @@
 // Reta final da prova (até 4 semanas antes): linha do tempo, marcar como feito e atalhos.
 import { Link, useNavigate } from 'react-router-dom'
 import { getState, saveRace, saveWorkout, useStore } from '../services/store.js'
+import { useCycle } from '../services/cycle.js'
+import { raceCycleNote } from '../lib/cycle.js'
 import { useUI } from './ui.jsx'
 import { finalStretch, paceWorkout } from '../lib/finalStretch.js'
 import { dayLabel, suggestDates } from '../lib/reschedule.js'
@@ -13,7 +15,9 @@ export default function FinalStretch({ race }) {
   const { notify } = useUI()
   const nav = useNavigate()
   const today = todayISO()
-  const items = finalStretch(race, { workouts, today })
+  const cycle = useCycle()
+  const items = finalStretch(race, { workouts, today, cycle })
+  const cnote = raceCycleNote(cycle, race, today)
   const done = items.filter((i) => i.done).length
   const toggle = (id) => {
     const set = new Set(race.stretchDone ?? [])
@@ -36,6 +40,7 @@ export default function FinalStretch({ race }) {
         <b>{days > 0 ? `Faltam ${days} ${days === 1 ? 'dia' : 'dias'}` : days === 0 ? 'É hoje!' : 'Depois da prova'}</b>
         <span className="muted small">{done} de {items.length} feitos</span>
       </div>
+      {cnote && <div className="small cy-note" data-testid="stretch-cycle">🌸 {cnote.text}</div>}
       <ol className="st-list">
         {items.map((it) => (
           <li key={it.id} className={`st-item st-${it.state}`} data-testid="stretch-item">

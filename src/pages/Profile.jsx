@@ -1,4 +1,5 @@
 // Meu perfil (opcional): nome, foto, dados para as provas e contato de emergência.
+import HrSettings from '../components/HrSettings.jsx'
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
@@ -53,9 +54,9 @@ export default function Profile() {
     setErrors(errs)
     if (Object.keys(errs).length) return
     try {
-      // Lugares e pessoas são editados em outra tela: preserva a versão mais recente deles.
+      // Editados em outras telas (ou direto nesta, fora do formulário): preserva a versão mais recente.
       const cur = getProfile().data
-      saveProfile({ ...draft, favorites: cur.favorites, people: cur.people })
+      saveProfile({ ...draft, favorites: cur.favorites, people: cur.people, hr: cur.hr, missedRule: cur.missedRule })
       notify('Perfil salvo')
       nav(-1)
     } catch (err) {
@@ -143,6 +144,9 @@ export default function Profile() {
           </span>
           <span aria-hidden="true">›</span>
         </Link>
+
+        <div className="section-title"><h2>Frequência cardíaca</h2></div>
+        <HrSettings />
 
         <div className="section-title"><h2>Emergência</h2></div>
         <div className="card">

@@ -14,7 +14,7 @@ export function sportFromFile(a) {
 
 /** Resultado do treino a partir do resumo da atividade (readActivityFile). */
 export function resultFrom(a, prev = null) {
-  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, garminId: a.garminId ?? prev?.garminId ?? null, effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
+  return { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, hrHist: a.hrHist ?? null, garminId: a.garminId ?? prev?.garminId ?? null, effort: prev?.effort ?? null, notes: prev?.notes ?? '' }
 }
 
 /** Data local da atividade (AAAA-MM-DD). */

@@ -204,6 +204,24 @@ export function cycleFromResponse(data) {
   return { starts: [...starts].sort(), periodLen, cycleLen }
 }
 
+
+/* ---------- Zonas de frequência cardíaca ---------- */
+
+/**
+ * Zonas do Garmin Connect: lista por esporte com zone1Floor..zone5Floor, maxHeartRateUsed e
+ * restingHeartRateUsed. Prefere corrida; senão o padrão. null se não reconhecer.
+ */
+export function zonesFromResponse(data) {
+  const list = Array.isArray(data) ? data : Array.isArray(data?.zones) ? data.zones : data && typeof data === 'object' ? [data] : []
+  const ok = list.filter((z) => z && typeof z === 'object' && [1, 2, 3, 4, 5].every((k) => Number.isFinite(z[`zone${k}Floor`])))
+  const pick = ok.find((z) => /run/i.test(String(z.sport ?? ''))) ?? ok.find((z) => /default|generic/i.test(String(z.sport ?? ''))) ?? ok[0]
+  if (!pick) return null
+  const floors = [1, 2, 3, 4, 5].map((k) => Math.round(pick[`zone${k}Floor`]))
+  if (!floors.every((x, i) => x >= 40 && x <= 230 && (i === 0 || x > floors[i - 1]))) return null
+  const n = (v) => (Number.isFinite(v) ? Math.round(v) : null)
+  return { floors, max: n(pick.maxHeartRateUsed), rest: n(pick.restingHeartRateUsed), sport: typeof pick.sport === 'string' ? pick.sport.slice(0, 30) : null, method: typeof pick.trainingMethod === 'string' ? pick.trainingMethod.slice(0, 40) : null }
+}
+
 export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } = {}) {
   if (req.method !== 'POST') return { status: 405, body: { error: 'Método não permitido.' } }
   if (!sameOrigin(req)) return { status: 403, body: { error: 'Origem não permitida.' } }
@@ -277,6 +295,13 @@ export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } 
       const first = raw.find((x) => x && typeof x === 'object')
       const shape = found.starts.length ? null : { keys: first ? (Array.isArray(first) ? Object.keys(first[0] ?? {}) : Object.keys(first)).slice(0, 20) : [] }
       return { status: 200, body: { ...found, ...(shape ? { shape } : {}) } }
+    }
+    if (b.action === 'hrzones') {
+      const res = await authed(b.key, '/biometric-service/heartRateZones/v2', 'application/json', fetchImpl, now)
+      const data = await res.json().catch(() => null)
+      const zones = zonesFromResponse(data)
+      const first = Array.isArray(data) ? data[0] : data
+      return { status: 200, body: zones ? { zones } : { zones: null, shape: { keys: first && typeof first === 'object' ? Object.keys(first).slice(0, 20) : [] } } }
     }
     if (b.action === 'check') {
       await getToken(b.key, fetchImpl, now, true)

@@ -1,4 +1,5 @@
 // Perfil opcional da pessoa: nome, foto, dados para as provas e contato de emergência.
+import { normalizeHr } from './hrZones.js'
 import { isValidISODate, parseISODate } from './dates.js'
 import { UFS } from './model.js'
 import { DEFAULT_PREP, normalizePrep } from './schedule.js'
@@ -31,6 +32,7 @@ export function emptyProfile() {
     prep: { ...DEFAULT_PREP }, // tempos de preparação padrão para a agenda do dia
     favorites: [], // lugares: [{ id, label, address, formatted, lat, lon, dwellMin }]
     people: [], // pessoas: [{ id, name, phone, placeId }] (quem você busca ou leva junto)
+    hr: { max: null, rest: null, floors: null, source: null }, // frequência cardíaca: zonas (lib/hrZones.js)
     missedRule: 'perguntar' // treino que passa sem marcar: perguntar | remanejar (sozinho) | pular (marcar “não fiz”)
   }
 }
@@ -66,6 +68,7 @@ export function normalizeProfile(raw) {
     .slice(0, 30)
   p.people = normalizePeople(p.people, new Set(p.favorites.map((f) => f.id)))
   p.missedRule = ['perguntar', 'remanejar', 'pular'].includes(p.missedRule) ? p.missedRule : 'perguntar'
+  p.hr = normalizeHr(p.hr)
   return Object.fromEntries(Object.keys(emptyProfile()).map((k) => [k, p[k]]))
 }
 

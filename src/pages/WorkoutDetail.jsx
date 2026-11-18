@@ -4,11 +4,13 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
 import { TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconTrash, IconUpload } from '../components/Icons.jsx'
-import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
+import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, flatten, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
 import CopyBox from '../components/CopyBox.jsx'
 import Readiness from '../components/Readiness.jsx'
+import HrZones, { useZones } from '../components/HrZones.jsx'
+import { zoneOf } from '../lib/hrZones.js'
 import Reschedule from '../components/Reschedule.jsx'
 import { dayLabel } from '../lib/reschedule.js'
 import { formatDateBR, toISODate } from '../lib/dates.js'
@@ -57,7 +59,7 @@ function Detail({ w }) {
     try {
       if (file.size > 30 * 1024 * 1024) throw new Error('Arquivo grande demais (máx. 30 MB).')
       const a = await readActivityFile(file)
-      const result = { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, effort: w.result?.effort ?? null, notes: w.result?.notes ?? '' }
+      const result = { distanceKm: a.distanceKm, elapsedSec: a.elapsedSec, avgHr: a.avgHr, fileName: a.fileName, laps: a.laps ?? [], track: a.track ?? null, hrHist: a.hrHist ?? null, effort: w.result?.effort ?? null, notes: w.result?.notes ?? '' }
       const fileDate = toISODate(new Date(a.startTime))
       saveWorkout({ ...w, status: 'feito', result, date: w.date ?? fileDate })
       const notes = ['Atividade importada.']
@@ -185,6 +187,9 @@ function StepLine({ s }) {
 
 function Executed({ w }) {
   const r = w.result
+  const zones = useZones()
+  // Treino com tiros ou alvo de pace por passo: a leitura das zonas não cobra “leve”.
+  const hasIntervals = flatten(w.items).some((s) => s.type === 'tiro') || w.items.some((it) => it.kind === 'repeat')
   const rows = compareLaps(w.items, r.laps)
   const extra = r.laps.length - rows.length
   const scored = rows.filter((x) => x.inTarget != null)
@@ -197,6 +202,7 @@ function Executed({ w }) {
         {isRun(w) && r.distanceKm > 0 && r.elapsedSec > 0 && <span className="chip">{fmtPace(r.elapsedSec / r.distanceKm)}/km</span>}
         {r.avgHr && <span className="chip">FC média {r.avgHr}</span>}
       </div>
+      {r.hrHist && <div style={{ marginTop: 10 }}><HrZones hist={r.hrHist} hasIntervals={hasIntervals || !isRun(w)} /></div>}
       {isRun(w) && r.laps.length > 0 && (
         <>
           {scored.length > 0 && <p className="small" style={{ margin: '10px 0 4px' }} data-testid="wk-hits"><b>{hits} de {scored.length}</b> passos com pace dentro da faixa.</p>}
@@ -207,7 +213,7 @@ function Executed({ w }) {
                 <tr key={i} className={x.inTarget === true ? 'ok' : x.inTarget === false ? 'off' : ''}>
                   <td>{STEP_BY_ID[x.step.type].label.replace(' (parado)', '')}{x.step.rep ? <span className="muted"> {x.step.rep}/{x.step.of}</span> : null}</td>
                   <td>{durationLabel(x.step.duration)}{x.step.target.kind !== 'none' ? <div className="muted">{targetLabel(x.step.target)}</div> : null}</td>
-                  <td>{x.lap ? <>{fmtSec(x.lap.sec)} · {Math.round(x.lap.distanceKm * 1000)} m{x.paceSec ? <div className="muted">{fmtPace(x.paceSec)}/km {x.inTarget === true ? '✓' : x.inTarget === false ? '✗' : ''}</div> : null}</> : <span className="muted">—</span>}</td>
+                  <td>{x.lap ? <>{fmtSec(x.lap.sec)} · {Math.round(x.lap.distanceKm * 1000)} m{x.paceSec ? <div className="muted">{fmtPace(x.paceSec)}/km {x.inTarget === true ? '✓' : x.inTarget === false ? '✗' : ''}</div> : null}{x.lap.avgHr ? <div className="muted" data-testid="lap-hr">♥ {x.lap.avgHr}{zones ? ` · Z${zoneOf(x.lap.avgHr, zones)}` : ''}</div> : null}</> : <span className="muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>

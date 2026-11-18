@@ -118,7 +118,7 @@ describe('ligar ao que já está no app e diagnóstico', () => {
     expect(ok.body.shape).toBeUndefined()
   })
   it('frase do relatório', () => {
-    expect(reportText({ start: '2026-11-02', end: '2026-11-16', total: 6, imported: 1, already: 5, enriched: 4, waiting: 0, prova: 0 })).toBe('A Garmin mandou 6 atividades de 02/11 a 16/11: 1 importada, 5 já estavam no app, 4 ganharam o percurso.')
+    expect(reportText({ start: '2026-11-02', end: '2026-11-16', total: 6, imported: 1, already: 5, enriched: 4, waiting: 0, prova: 0 })).toBe('A Garmin mandou 6 atividades de 02/11 a 16/11: 1 importada, 5 já estavam no app, 4 foram completadas (percurso e FC por zona).')
     expect(reportText({ start: '2026-11-02', end: '2026-11-16', total: 0, shape: { top: ['results'], item: [], dropped: 0 } })).toBe('A Garmin não mandou nenhuma atividade de 02/11 a 16/11. A resposta veio num formato que o app não reconheceu (campos: results) — mande um print para ajustar.')
   })
 })

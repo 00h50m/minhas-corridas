@@ -110,7 +110,7 @@ export function normalizeWorkout(raw) {
 
 function normalizeResult(r) {
   if (!r || typeof r !== 'object') return null
-  const laps = (Array.isArray(r.laps) ? r.laps : []).map((l) => ({ sec: num(Number(l?.sec), 0, 86400), distanceKm: num(Number(l?.distanceKm), 0, 500) })).filter((l) => l.sec != null).slice(0, 200)
+  const laps = (Array.isArray(r.laps) ? r.laps : []).map((l) => { const hr = num(Number(l?.avgHr), 30, 250); return { sec: num(Number(l?.sec), 0, 86400), distanceKm: num(Number(l?.distanceKm), 0, 500), ...(hr ? { avgHr: Math.round(hr) } : {}) } }).filter((l) => l.sec != null).slice(0, 200)
   return {
     distanceKm: num(Number(r.distanceKm), 0, 500),
     elapsedSec: num(Number(r.elapsedSec), 0, 86400 * 2),
@@ -118,6 +118,8 @@ function normalizeResult(r) {
     fileName: str(r.fileName, 120),
     laps,
     // traçado (polyline codificada, sem início e fim): só caracteres do formato
+    // Tempo em cada faixa de 5 bpm a partir de 60 bpm (32 faixas): zonas de FC
+    hrHist: Array.isArray(r.hrHist) && r.hrHist.length === 32 && r.hrHist.every((x) => Number.isFinite(x) && x >= 0 && x < 86400) ? r.hrHist.map(Math.round) : null,
     garminId: typeof r.garminId === 'string' && /^\d{1,20}$/.test(r.garminId) ? r.garminId : null,
     track: typeof r.track === 'string' && r.track.length <= 12000 && /^[\x3f-\x7e]+$/.test(r.track) ? r.track : null,
     effort: num(Number(r.effort), 1, 10),

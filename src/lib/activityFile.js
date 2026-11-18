@@ -46,7 +46,7 @@ function parseTCX(xml) {
   const lapDist = laps.reduce((s, l) => s + (num(tag(l, 'DistanceMeters')) || 0), 0)
   const lapTime = laps.reduce((s, l) => s + (num(tag(l, 'TotalTimeSeconds')) || 0), 0)
   const sport = xml.match(/<Activity[^>]+Sport="([^"]+)"/i)?.[1] ?? null
-  const lapList = laps.map((l) => ({ sec: num(tag(l, 'TotalTimeSeconds')), m: num(tag(l, 'DistanceMeters')) }))
+  const lapList = laps.map((l) => ({ sec: num(tag(l, 'TotalTimeSeconds')), m: num(tag(l, 'DistanceMeters')), hr: num(tag(blocks(l, 'AverageHeartRateBpm')[0] ?? '', 'Value')) }))
   return { pts, lapDist, lapTime, sport, lapList }
 }
 
@@ -176,6 +176,29 @@ export function trackFrom(pts) {
   return out.length >= 2 ? encodePolyline(out) : null
 }
 
+export const HR_FROM = 60
+export const HR_STEP = 5
+const HR_BINS = 32 // 60 a 219 bpm
+
+/**
+ * Segundos em cada faixa de 5 bpm (60–64, 65–69, … 215–219), pelo tempo entre os pontos (até 30 s
+ * por intervalo, para não contar pausas). null sem FC suficiente.
+ */
+export function hrHistogram(pts) {
+  const sec = new Array(HR_BINS).fill(0)
+  let total = 0
+  for (let i = 1; i < pts.length; i++) {
+    const hr = pts[i].hr
+    if (!(hr > 30 && hr < 250)) continue
+    const dt = Math.min(30, (pts[i].t - pts[i - 1].t) / 1000)
+    if (!(dt > 0)) continue
+    const b = Math.max(0, Math.min(HR_BINS - 1, Math.floor((hr - HR_FROM) / HR_STEP)))
+    sec[b] += dt
+    total += dt
+  }
+  return total >= 60 ? sec.map((x) => Math.round(x)) : null
+}
+
 /** Monta o resumo a partir dos pontos {t, d, hr, alt} e dos totais do relógio (quando houver). */
 function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = {}, lapList = [] }, source, fileName) {
   const pts = all.filter((p) => isFinite(p.t) && p.d != null && isFinite(p.d))
@@ -199,7 +222,9 @@ function summarize({ pts: all, lapDist = 0, lapTime = 0, sport = null, totals = 
     splits: splitsFrom(pts),
     track: trackFrom(all.filter((p) => isFinite(p.t)).sort((a, b) => a.t - b.t)),
     // Voltas do relógio (num treino estruturado, uma por passo): para o planejado × executado.
-    laps: lapList.filter((l) => l.sec > 0).slice(0, 200).map((l) => ({ sec: Math.round(l.sec), distanceKm: Math.round(l.m || 0) / 1000 }))
+    laps: lapList.filter((l) => l.sec > 0).slice(0, 200).map((l) => ({ sec: Math.round(l.sec), distanceKm: Math.round(l.m || 0) / 1000, ...(l.hr > 30 && l.hr < 250 ? { avgHr: Math.round(l.hr) } : {}) })),
+    // Tempo em cada faixa de 5 bpm (para as zonas de FC, recalculadas quando as zonas mudam)
+    hrHist: hrHistogram(pts)
   }
 }
 
@@ -235,7 +260,7 @@ export function parseFitActivity(bytes, fileName = '') {
       lapTime,
       sport: s.sport != null ? FIT_SPORTS[s.sport] ?? String(s.sport) : null,
       totals: { avgHr: s.avgHeartRate ?? null, maxHr: s.maxHeartRate ?? null, ascent: s.totalAscent ?? null },
-      lapList: laps.map((l) => ({ sec: l.totalTimerTime ?? l.totalElapsedTime, m: l.totalDistance }))
+      lapList: laps.map((l) => ({ sec: l.totalTimerTime ?? l.totalElapsedTime, m: l.totalDistance, hr: l.avgHeartRate }))
     },
     'fit',
     fileName

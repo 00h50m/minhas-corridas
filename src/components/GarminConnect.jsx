@@ -14,7 +14,7 @@ export function reportText(r) {
   const bits = []
   if (r.imported) bits.push(`${r.imported} ${r.imported === 1 ? 'importada' : 'importadas'}`)
   if (r.already) bits.push(`${r.already} já ${r.already === 1 ? 'estava' : 'estavam'} no app`)
-  if (r.enriched) bits.push(`${r.enriched} ${r.enriched === 1 ? 'ganhou' : 'ganharam'} o percurso`)
+  if (r.enriched) bits.push(`${r.enriched} ${r.enriched === 1 ? 'foi completada' : 'foram completadas'} (percurso e FC por zona)`)
   if (r.waiting > 0) bits.push(`${r.waiting} esperando você escolher o treino`)
   if (r.prova > 0) bits.push(`${r.prova} no dia de prova`)
   return `${parts[0]}${bits.length ? `: ${bits.join(', ')}` : ''}.${odd}`

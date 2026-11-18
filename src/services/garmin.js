@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
 import { getState, saveWorkout } from './store.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { activityDate, alreadyImported, freeWorkout, matchActivity, resultFrom } from '../lib/activityMatch.js'
-import { WITH_FILE, garminDate, planGarmin, sameActivity, summaryFromList, syncWindow } from '../lib/garminSync.js'
+import { WITH_FILE, garminDate, planGarmin, sameActivity, sportFromGarmin, summaryFromList, syncWindow } from '../lib/garminSync.js'
 import { addDaysISO, todayISO } from '../lib/dates.js'
 import { GARMIN_EVENT } from '../lib/wellnessStore.js'
 import { fmtSec } from '../lib/workout.js'
@@ -87,6 +87,18 @@ async function summaryOf(key, x) {
   return summaryFromList(x.g)
 }
 
+/** Acrescenta ao resultado o que faltar (percurso, FC por zona, FC de cada volta). Mesmo objeto se nada mudou. */
+function enrich(result, a) {
+  const patch = {}
+  if (!result.track && a.track) patch.track = a.track
+  if (!result.hrHist && a.hrHist) patch.hrHist = a.hrHist
+  if (a.laps?.length) {
+    if (!result.laps?.length) patch.laps = a.laps
+    else if (result.laps.length === a.laps.length && !result.laps.some((l) => l.avgHr) && a.laps.some((l) => l.avgHr)) patch.laps = result.laps.map((l, i) => ({ ...l, ...(a.laps[i].avgHr ? { avgHr: a.laps[i].avgHr } : {}) }))
+  }
+  return Object.keys(patch).length ? { ...result, ...patch } : result
+}
+
 /** Uma atividade da Garmin já resumida, pronta para o arquivo de uma prova (ResultForm). */
 export async function garminActivityFor(date) {
   if (!state) return null
@@ -126,9 +138,11 @@ export function syncGarmin({ force = false, full = false } = {}) {
       const twin = getState().workouts.find((w) => w.date === x.date && w.result && !w.result.garminId && sameActivity(w.result, x.g))
       if (twin) {
         let result = { ...twin.result, garminId: x.g.id }
-        if (!twin.result.track && WITH_FILE.has(x.sport) && x.g.distanceKm > 0) {
+        if ((!twin.result.track || !twin.result.hrHist) && WITH_FILE.has(x.sport) && x.g.distanceKm > 0) {
           const a = await summaryOf(s.key, x)
-          if (a.track) { result = { ...result, track: a.track, laps: result.laps?.length ? result.laps : a.laps ?? [] }; enriched++ }
+          const before = result
+          result = enrich(result, a)
+          if (result !== before) enriched++
         }
         saveWorkout({ ...twin, result })
         linked++
@@ -155,6 +169,19 @@ export function syncGarmin({ force = false, full = false } = {}) {
         imported++
       } else {
         pending.push({ a, candidateIds: candidates.map((w) => w.id) })
+      }
+    }
+    // Revisão completa: completa percurso e FC por zona de treinos já ligados ao Garmin que não têm
+    if (full) {
+      const byId = new Map(activities.map((g) => [g.id, g]))
+      const missing = getState().workouts.filter((w) => w.result?.garminId && byId.has(w.result.garminId) && (!w.result.hrHist || !w.result.track)).slice(0, 15)
+      for (const w of missing) {
+        const g = byId.get(w.result.garminId)
+        const sport = sportFromGarmin(g.type)
+        if (!WITH_FILE.has(sport) || !(g.distanceKm > 0)) continue
+        const a = await summaryOf(s.key, { g, sport })
+        const result = enrich(w.result, a)
+        if (result !== w.result) { saveWorkout({ ...w, result }); enriched++ }
       }
     }
     const report = { at: new Date().toISOString(), start: win.start, end: win.end, total: activities.length, already: activities.length - plan.length + linked, imported, linked, enriched, waiting: pending.length - s.pending.length, prova: races.length - s.races.length, types: [...new Set(activities.map((g) => g.type).filter(Boolean))].slice(0, 6), first: activities.map(garminDate).filter(Boolean).sort()[0] ?? null, shape }
@@ -191,6 +218,12 @@ export async function refreshWellness({ force = false } = {}) {
 export async function garminCycle() {
   if (!state) throw new Error('Conecte o Garmin em Treinos para importar daqui.')
   return api({ action: 'cycle', key: state.key, end: todayISO() })
+}
+
+/** Zonas de FC do Garmin Connect (as mesmas do relógio). { zones: { floors, max, rest } | null, shape? } */
+export async function garminHrZones() {
+  if (!state) throw new Error('Conecte o Garmin em Treinos para importar daqui.')
+  return api({ action: 'hrzones', key: state.key })
 }
 
 /** Tira da fila uma atividade que esperava escolha (já resolvida na tela). */

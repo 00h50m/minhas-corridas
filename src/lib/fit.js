@@ -25,7 +25,7 @@ const BASE = {
 /** Campos que interessam, por mensagem: número do campo → [nome, escala, deslocamento]. */
 const FIELDS = {
   [MESG.RECORD]: { 253: ['timestamp', 1, 0], 0: ['positionLat', 1, 0], 1: ['positionLong', 1, 0], 5: ['distance', 100, 0], 3: ['heartRate', 1, 0], 2: ['altitude', 5, 500], 78: ['enhancedAltitude', 5, 500] },
-  [MESG.LAP]: { 253: ['timestamp', 1, 0], 7: ['totalElapsedTime', 1000, 0], 8: ['totalTimerTime', 1000, 0], 9: ['totalDistance', 100, 0] },
+  [MESG.LAP]: { 253: ['timestamp', 1, 0], 7: ['totalElapsedTime', 1000, 0], 8: ['totalTimerTime', 1000, 0], 9: ['totalDistance', 100, 0], 15: ['avgHeartRate', 1, 0], 16: ['maxHeartRate', 1, 0] },
   [MESG.SESSION]: { 253: ['timestamp', 1, 0], 2: ['startTime', 1, 0], 5: ['sport', 1, 0], 7: ['totalElapsedTime', 1000, 0], 8: ['totalTimerTime', 1000, 0], 9: ['totalDistance', 100, 0], 16: ['avgHeartRate', 1, 0], 17: ['maxHeartRate', 1, 0], 22: ['totalAscent', 1, 0] }
 }
 

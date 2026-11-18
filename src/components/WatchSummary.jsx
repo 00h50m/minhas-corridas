@@ -1,4 +1,5 @@
 import { formatDuration, formatKm, formatPace } from '../lib/format.js'
+import HrZones from './HrZones.jsx'
 
 /** Resumo do arquivo do relógio: números principais e parciais por km. */
 export default function WatchSummary({ watch: w, officialKm }) {
@@ -24,6 +25,7 @@ export default function WatchSummary({ watch: w, officialKm }) {
         {w.avgHr && (<><dt>Frequência cardíaca</dt><dd>média {w.avgHr} · máx. {w.maxHr} bpm</dd></>)}
         {w.elevGainM != null && (<><dt>Subida acumulada</dt><dd>{w.elevGainM} m</dd></>)}
       </dl>
+      {w.hrHist && <div style={{ margin: '10px 0' }}><HrZones hist={w.hrHist} hasIntervals title="Zonas de FC na prova" /></div>}
       {w.splits.length > 0 && (
         <table className="splits">
           <caption className="sr-only">Parciais por quilômetro</caption>

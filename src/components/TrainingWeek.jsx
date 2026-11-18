@@ -6,6 +6,8 @@ import { addDaysISO, formatDateBR } from '../lib/dates.js'
 import { IconChevronL, IconChevronR } from './Icons.jsx'
 import { useCycle } from '../services/cycle.js'
 import { isPeriodDay, isPredictedDay } from '../lib/cycle.js'
+import HrZones from './HrZones.jsx'
+import { sumHist } from '../lib/hrZones.js'
 
 const mins = (s) => {
   const m = Math.round(s / 60)
@@ -49,6 +51,7 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
         </div>
       )}
       <Load workouts={workouts} start={start} today={today} />
+      <WeekZones s={s} />
       {(s.missed > 0 || s.skipped > 0) && <p className="note" style={{ margin: '6px 0 0' }}>{s.missed > 0 ? `${s.missed} ${s.missed === 1 ? 'treino passou' : 'treinos passaram'} sem marcar: remaneje ou marque logo abaixo.` : ''}{s.skipped > 0 ? ` ${s.skipped} não ${s.skipped === 1 ? 'feito' : 'feitos'}.` : ''}</p>}
       {!current && <button type="button" className="link-btn" onClick={() => setStart(weekStart(today))}>Voltar para esta semana</button>}
       {current && s.planned > 0 && <Link to="/stories?modelo=semana" className="link-btn" data-testid="week-story">📲 Compartilhar a semana</Link>}
@@ -78,6 +81,13 @@ function Day({ d, i, today }) {
       {inner}
     </Link>
   )
+}
+
+/** Intensidade da semana pela FC dos treinos feitos com o arquivo do relógio (2 ou mais). */
+function WeekZones({ s }) {
+  const done = s.days.flatMap((d) => d.workouts).filter((w) => w.status === 'feito' && w.result?.hrHist)
+  if (done.length < 2) return null
+  return <div className="tw-zones" data-testid="week-zones"><HrZones hist={sumHist(done.map((w) => w.result.hrHist))} hasIntervals title={`Intensidade da semana (${done.length} treinos com FC)`} compact /></div>
 }
 
 /** Carga: esta semana × a passada (e a média de 4), com aviso acima de 10%. */

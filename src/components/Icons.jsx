@@ -60,3 +60,4 @@ export const IconHeart = () => (<svg {...base}><path d="M12 20s-7.5-4.4-7.5-10A4
 export const IconMoon = () => (<svg {...base}><path d="M19.5 14.8A7.8 7.8 0 1 1 9.2 4.5a6.2 6.2 0 0 0 10.3 10.3Z" /></svg>)
 export const IconUsers = () => (<svg {...base}><circle cx="9" cy="8.5" r="3.5" /><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5" /><path d="M15.5 5.3a3.3 3.3 0 0 1 0 6.4M17.5 14.8c1.9.6 3.1 2.2 3.5 4.7" /></svg>)
 export const IconMove = () => (<svg {...base}><rect x="3.5" y="5" width="12" height="12.5" rx="2.5" /><path d="M3.5 9.5h12M7 3v4M12 3v4" /><path d="M14 19.5h6.5M18 17l2.5 2.5L18 22" /></svg>)
+export const IconMonth = () => (<svg {...base}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /><path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01" strokeWidth="2.6" /></svg>)

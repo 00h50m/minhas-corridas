@@ -154,7 +154,7 @@ export function storyTreino(workouts, today, opts = {}, workoutId = null) {
     name: w.name,
     when: `${dayMonth(w.date).weekday} ${formatDateBR(w.date)}`,
     plan: run ? workoutLine(w) : null,
-    icon: run ? null : sportOf(w).icon,
+    sport: run ? null : sportOf(w).label.split(' /')[0],
     stats,
     hits: scored.length && opts.times ? `${scored.filter((x) => x.inTarget).length} de ${scored.length} tiros no pace` : null
   }
@@ -169,7 +169,7 @@ export function storyConquista(races, workouts, goals, today, opts = {}, badgeId
   const race = b.raceId ? races.find((r) => r.id === b.raceId) : null
   return {
     ok: true,
-    icon: b.icon,
+    mark: b.mark,
     kicker: b.isNew ? 'Conquista nova' : 'Conquista',
     name: b.title,
     desc: b.desc,
@@ -236,7 +236,7 @@ export function storyMes(races, workouts, goals, today, opts = {}, monthParam = 
   const p = passport({ races, workouts, goals, today, times: !!opts.times })
   // Só a melhor de cada tipo (ex.: Sub 40, sem repetir o Sub 45 do mesmo mês)
   const fam = new Set()
-  const badges = p.badges.filter((b) => b.date.slice(0, 7) === ym && !fam.has(b.family) && fam.add(b.family)).map((b) => `${b.icon} ${b.title}`)
+  const badges = p.badges.filter((b) => b.date.slice(0, 7) === ym && !fam.has(b.family) && fam.add(b.family)).map((b) => b.title)
   return {
     ok: true,
     title: `${MONTH_NAMES[m - 1]} ${y}`,

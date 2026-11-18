@@ -1,4 +1,5 @@
 // Passaporte de corredora: conquistas com data, próximas com quanto falta, números, recordes e cidades.
+import Medal from '../components/Medal.jsx'
 import { IconMap, IconSearch, IconStory } from '../components/Icons.jsx'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -41,7 +42,7 @@ export default function Passport() {
             <div className="list-group-title">Novas</div>
             {fresh.map((b) => (
               <div key={b.id} className="card pp-new" data-testid="pp-fresh">
-                <span className="pp-medal big" aria-hidden="true">{b.icon}</span>
+                <Medal mark={b.mark} size="big" />
                 <div style={{ flex: 1 }}>
                   <b>{b.title}</b>
                   <div className="muted small">{b.desc} · {formatDateBR(b.date)}</div>
@@ -57,7 +58,7 @@ export default function Passport() {
         <div className="pp-grid" data-testid="pp-badges">
           {p.badges.map((b) => (
             <Link key={b.id} to={`/stories?modelo=conquista&conquista=${b.id}`} className={`pp-badge${b.isNew ? ' new' : ''}`} title={b.desc} data-testid="pp-badge">
-              <span className="pp-medal" aria-hidden="true">{b.icon}</span>
+              <Medal mark={b.mark} />
               <span className="pp-t">{b.title}</span>
               <span className="pp-d">{formatDateBR(b.date)}</span>
             </Link>
@@ -70,7 +71,7 @@ export default function Passport() {
             <div className="card" data-testid="pp-next">
               {next.map((b) => (
                 <div key={b.id} className="pp-next">
-                  <span className="pp-medal dim" aria-hidden="true">{b.icon}</span>
+                  <Medal mark={b.mark} locked />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <b>{b.title}</b>
                     <div className="muted small">{b.progress.text}</div>

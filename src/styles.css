@@ -1046,9 +1046,16 @@ details.link-import { margin-top: 0; }
 .pp-hero .pp-count b { font-family: var(--display); font-size: 40px; color: var(--brand); margin-right: 4px; }
 .pp-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .pp-links .btn { flex: 1 1 140px; font-size: 14.5px; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
-.pp-medal { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe7c2, #ffb36b 60%, #ff7a3d); font-size: 22px; flex: none; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12); }
-.pp-medal.big { width: 56px; height: 56px; font-size: 28px; }
-.pp-medal.dim { background: var(--surface-2); filter: grayscale(0.6); opacity: 0.8; box-shadow: none; }
+.medal { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; flex: none;
+  background: var(--brand-soft); border: 2.5px solid var(--brand); box-shadow: inset 0 0 0 3px var(--surface); color: var(--brand-ink); line-height: 1; }
+.medal b { font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: 0.2px; }
+.medal b.long { font-size: 15px; }
+.medal small { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0; margin-top: 2px; max-width: 88%; text-align: center; white-space: nowrap; overflow: hidden; color: var(--ink-2); }
+.medal.big { width: 62px; height: 62px; }
+.medal.big b { font-size: 23px; }
+.medal.big b.long { font-size: 18px; }
+.medal.locked { background: var(--surface-2); border-color: var(--line); color: var(--ink-3); }
+.medal.locked small { color: var(--ink-3); }
 .pp-new { display: flex; gap: 12px; align-items: flex-start; border: 2px solid var(--brand); }
 .pp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .pp-badge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 12px 6px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); color: inherit; text-decoration: none; }
@@ -1058,6 +1065,9 @@ details.link-import { margin-top: 0; }
 .pp-next { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; }
 .pp-next + .pp-next { border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06)); }
 .pp-next .progress { margin-top: 6px; }
+.pp-next .medal { width: 50px; height: 50px; }
+.pp-next .medal b { font-size: 16px; }
+.pp-next .medal small { font-size: 7px; }
 .pp-rec { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 0; color: inherit; text-decoration: none; }
 .pp-rec + .pp-rec { border-top: 1px solid var(--line, rgba(0, 0, 0, 0.06)); }
 .pp-rec b { font-family: var(--display); font-size: 20px; text-align: right; }
@@ -1243,3 +1253,18 @@ details.link-import { margin-top: 0; }
 .garmin-row { flex-wrap: wrap; }
 .garmin-row > span { min-width: 150px; }
 .garmin-row > .btn { margin-left: auto; }
+
+/* Stories: modelos em blocos por assunto (visual dos atalhos do Início) */
+.st-picker { display: grid; gap: 10px; margin-top: 4px; }
+.st-group-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-3); margin: 0 2px 6px; }
+.st-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.st-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 6px 4px; background: var(--surface); border: 0; border-radius: var(--radius-sm); box-shadow: var(--shadow); color: var(--ink); font: inherit; font-size: 12px; font-weight: 800; line-height: 1.15; text-align: center; cursor: pointer; }
+.st-tile svg { width: 22px; height: 22px; color: var(--brand); }
+.st-tile.on { background: var(--brand); color: #fff; }
+.st-tile.on svg { color: #fff; }
+.card-preview.fmt-story canvas { width: 62%; max-width: 260px; }
+.st-options .check { margin: 0; }
+@media (min-width: 1024px) {
+  .card-preview.fmt-story canvas { width: 100%; max-width: none; }
+  .page[data-testid=stories] .st-picker { margin-top: 0; }
+}

@@ -200,7 +200,7 @@ describe('story de conquista', () => {
     const s = storyFor('treino', { ...base, workouts: [w], opts: { times: true }, workoutId: 'ac' })
     expect(s.title).toBe('Academia feita ✓')
     expect(s.plan).toBeNull()
-    expect(s.icon).toBe('🏋️')
+    expect(s.sport).toBe('Academia')
     expect(s.stats).toEqual([{ value: '50', label: 'min' }])
   })
 })

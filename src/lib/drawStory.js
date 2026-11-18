@@ -176,7 +176,8 @@ function semana(ctx, s) {
     card(ctx, PAD, 1300, STORY.w - PAD * 2, 170)
     ctx.fillStyle = '#fff'
     ctx.font = `800 54px ${TEXT}`
-    ctx.fillText(`🔥 ${s.streak} ${s.streak === 1 ? 'semana cumprida' : 'semanas seguidas'}`, PAD + 40, 1405)
+    dot(ctx, PAD + 52, 1388, 12)
+    ctx.fillText(`${s.streak} ${s.streak === 1 ? 'semana cumprida' : 'semanas seguidas'}`, PAD + 84, 1405)
   }
 }
 
@@ -274,49 +275,63 @@ function treino(ctx, s) {
     ctx.font = `700 38px ${TEXT}`
     wrap(ctx, s.plan, STORY.w - PAD * 2 - 80, 4).forEach((l, i) => ctx.fillText(l, PAD + 40, y + 120 + i * 48))
     y += 380
-  } else if (s.icon) {
-    ctx.font = `200px ${TEXT}`
-    ctx.fillText(s.icon, PAD, y + 200)
-    y += 260
+  } else if (s.sport) {
+    ctx.fillStyle = BRAND
+    const size = fit(ctx, s.sport.toUpperCase(), (n) => `800 ${n}px ${DISPLAY}`, 120, STORY.w - PAD * 2, 60)
+    ctx.font = `800 ${size}px ${DISPLAY}`
+    ctx.fillText(s.sport.toUpperCase(), PAD, y + 110)
+    y += 170
   }
   const w = (STORY.w - PAD * 2) / s.stats.length
   s.stats.forEach((st, i) => stat(ctx, PAD + i * w, y + 120, w, st.value, st.label, i === 0 ? BRAND : '#fff'))
   if (s.hits) {
     ctx.fillStyle = '#fff'
     ctx.font = `800 48px ${TEXT}`
-    ctx.fillText(`🎯 ${s.hits}`, PAD, y + 330)
+    ctx.fillStyle = BRAND
+    ctx.fillText(s.hits, PAD, y + 330)
   }
 }
 
-/** Medalha com fita; dentro, um emoji (210px) ou um texto curto (ex.: "5 km"). */
-function medal(ctx, cx, cy, icon, label = null) {
+/** Medalha no estilo do app: fita e anel laranja, fundo escuro e o que foi conquistado escrito dentro. */
+function medal(ctx, cx, cy, mark) {
   ctx.save()
   ctx.textAlign = 'center'
+  // fita
   ctx.fillStyle = BRAND
   ctx.beginPath()
-  ctx.moveTo(cx - 150, cy - 290); ctx.lineTo(cx - 40, cy - 290); ctx.lineTo(cx + 30, cy - 120); ctx.lineTo(cx - 80, cy - 120); ctx.closePath(); ctx.fill()
-  ctx.fillStyle = '#c2410c'
+  ctx.moveTo(cx - 150, cy - 290); ctx.lineTo(cx - 50, cy - 290); ctx.lineTo(cx + 20, cy - 150); ctx.lineTo(cx - 80, cy - 150); ctx.closePath(); ctx.fill()
+  ctx.fillStyle = 'rgba(255,95,36,0.55)'
   ctx.beginPath()
-  ctx.moveTo(cx + 150, cy - 290); ctx.lineTo(cx + 40, cy - 290); ctx.lineTo(cx - 30, cy - 120); ctx.lineTo(cx + 80, cy - 120); ctx.closePath(); ctx.fill()
-  const g = ctx.createRadialGradient(cx - 60, cy - 70, 20, cx, cy, 230)
-  g.addColorStop(0, '#fff3dc')
-  g.addColorStop(0.55, '#ffb36b')
-  g.addColorStop(1, '#e8590c')
-  ctx.fillStyle = g
-  ctx.beginPath(); ctx.arc(cx, cy, 220, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.65)'
-  ctx.lineWidth = 10
-  ctx.beginPath(); ctx.arc(cx, cy, 186, 0, Math.PI * 2); ctx.stroke()
+  ctx.moveTo(cx + 150, cy - 290); ctx.lineTo(cx + 50, cy - 290); ctx.lineTo(cx - 20, cy - 150); ctx.lineTo(cx + 80, cy - 150); ctx.closePath(); ctx.fill()
+  // disco
+  ctx.fillStyle = '#231f3d'
+  ctx.beginPath(); ctx.arc(cx, cy, 215, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = BRAND
+  ctx.lineWidth = 22
+  ctx.beginPath(); ctx.arc(cx, cy, 204, 0, Math.PI * 2); ctx.stroke()
+  ctx.strokeStyle = 'rgba(255,244,236,0.18)'
+  ctx.lineWidth = 4
+  ctx.beginPath(); ctx.arc(cx, cy, 170, 0, Math.PI * 2); ctx.stroke()
+  // texto
   ctx.textBaseline = 'middle'
-  if (label) {
-    ctx.fillStyle = '#7c2d12'
-    const size = fit(ctx, label, (n) => `800 ${n}px ${DISPLAY}`, 150, 300, 60)
-    ctx.font = `800 ${size}px ${DISPLAY}`
-    ctx.fillText(label, cx, cy + 10)
-  } else {
-    ctx.font = `210px ${TEXT}`
-    ctx.fillText(icon, cx, cy + 12)
+  const big = String(mark?.big ?? '')
+  ctx.fillStyle = '#fff'
+  const size = fit(ctx, big, (n) => `800 ${n}px ${DISPLAY}`, 170, 280, 70)
+  ctx.font = `800 ${size}px ${DISPLAY}`
+  ctx.fillText(big, cx, cy - (mark?.small ? 18 : 0))
+  if (mark?.small) {
+    ctx.fillStyle = BRAND
+    ctx.font = `800 40px ${TEXT}`
+    ctx.fillText(String(mark.small).toUpperCase(), cx, cy + size * 0.45)
   }
+  ctx.restore()
+}
+
+/** Bolinha laranja antes de uma linha de texto (no lugar de emoji). */
+function dot(ctx, x, y, r = 10) {
+  ctx.save()
+  ctx.fillStyle = BRAND
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
   ctx.restore()
 }
 
@@ -326,7 +341,7 @@ function resultado(ctx, s) {
   ctx.fillStyle = DIM
   ctx.font = `800 52px ${TEXT}`
   ctx.fillText('PROVA CONCLUÍDA', cx, 340)
-  medal(ctx, cx, 730, '🏅', s.distance)
+  medal(ctx, cx, 730, { big: s.distance ?? 'PROVA', small: 'concluída' })
   ctx.textAlign = 'center'
   ctx.fillStyle = '#fff'
   ctx.font = `800 64px ${TEXT}`
@@ -417,7 +432,7 @@ function mes(ctx, s) {
     ctx.fillStyle = d.kind === 'prova' ? '#3b2a00' : d.kind ? '#fff' : DIM
     ctx.font = `800 40px ${DISPLAY}`
     ctx.fillText(String(d.day), x + cw / 2, y + ch / 2 + 6)
-    if (d.kind === 'prova') { ctx.font = `30px ${TEXT}`; ctx.fillText('🏅', x + cw / 2, y + ch - 12) }
+    if (d.kind === 'prova') { ctx.strokeStyle = '#3b2a00'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + cw / 2, y + ch - 18, 7, 0, Math.PI * 2); ctx.stroke() }
   })
   const rows = Math.ceil((s.days.length + s.offset) / cols)
   let y = y0 + rows * (ch + gap) + 40
@@ -439,7 +454,7 @@ function mes(ctx, s) {
   if (s.badges.length) {
     ctx.fillStyle = '#fff'
     ctx.font = `800 36px ${TEXT}`
-    s.badges.forEach((b, i) => ctx.fillText(wrap(ctx, b, STORY.w - PAD * 2, 1)[0], PAD, y + 160 + i * 52))
+    s.badges.forEach((b, i) => { dot(ctx, PAD + 10, y + 148 + i * 52, 9); ctx.fillText(wrap(ctx, b, STORY.w - PAD * 2 - 34, 1)[0], PAD + 34, y + 160 + i * 52) })
   }
 }
 
@@ -449,7 +464,7 @@ function conquista(ctx, s) {
   ctx.fillStyle = DIM
   ctx.font = `800 52px ${TEXT}`
   ctx.fillText((s.kicker ?? 'Conquista').toUpperCase(), cx, 430)
-  medal(ctx, cx, 760, s.icon)
+  medal(ctx, cx, 760, s.mark)
   // texto
   ctx.fillStyle = '#fff'
   const size = fit(ctx, s.name.toUpperCase(), (n) => `800 ${n}px ${DISPLAY}`, 130, STORY.w - PAD * 2, 70)
@@ -471,7 +486,7 @@ function conquista(ctx, s) {
   card(ctx, PAD + 120, 1600, STORY.w - PAD * 2 - 240, 110)
   ctx.fillStyle = '#fff'
   ctx.font = `800 40px ${TEXT}`
-  ctx.fillText(`🏅 ${s.total} ${s.total === 1 ? 'conquista' : 'conquistas'} no passaporte`, cx, 1670)
+  ctx.fillText(`${s.total} ${s.total === 1 ? 'conquista' : 'conquistas'} no passaporte`, cx, 1670)
   ctx.textAlign = 'left'
 }
 

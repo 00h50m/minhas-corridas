@@ -26,6 +26,20 @@ function counterFamily({ id, icon, events, tiers, title, desc, unit, accumulate 
   return out
 }
 
+const SMALL = { provas: 'provas', 'km-provas': 'km', cidades: 'cidades', treinos: 'treinos', cruzado: 'cruzados', semanas: 'semanas', metas: 'metas', objetivos: 'objetivos', territorio: 'quadras' }
+const FIRST = { 'primeira-prova': ['1ª', 'prova'], 'primeiros-5k': ['5K', '1ª vez'], 'primeiros-10k': ['10K', '1ª vez'], 'primeira-meia': ['21K', '1ª vez'], 'primeira-maratona': ['42K', '1ª vez'] }
+const DIST = { sub5k: '5K', sub10k: '10K', sub21k: '21K' }
+
+/** Texto da medalha: "5K · 1ª vez", "SUB 40 · 5K", "10 · provas", "6h30 · largada". */
+export function markOf(a) {
+  if (FIRST[a.family]) return { big: FIRST[a.family][0], small: FIRST[a.family][1] }
+  if (DIST[a.family]) return { big: subLabel(Number(a.id.split('-').pop())), small: `sub · ${DIST[a.family]}` }
+  if (a.family === 'madrugadora') return { big: '6h30', small: 'largada' }
+  const t = Number(a.id.split('-').pop())
+  if (a.family === 'metas' || a.family === 'objetivos') return { big: String(t), small: t === 1 ? a.family.slice(0, -1) : a.family }
+  return { big: t >= 1000 ? `${t / 1000}k` : String(t), small: SMALL[a.family] ?? '' }
+}
+
 /** 2400 → "40"; 5400 → "1h30"; 7200 → "2h". */
 const subLabel = (t) => (t < 3600 ? String(t / 60) : `${Math.floor(t / 3600)}h${t % 3600 ? String((t % 3600) / 60).padStart(2, '0') : ''}`)
 
@@ -158,6 +172,8 @@ export function passport({ races = [], workouts = [], goals = [], today, times =
   }
 
   // Mais recentes primeiro; no mesmo dia, a mais difícil (que vem depois na lista) primeiro.
+  // O que vai escrito dentro da medalha (sem emoji): { big, small }
+  for (const x of all) x.mark = markOf(x)
   const badges = all.map((a, i) => ({ a, i })).filter(({ a }) => a.date).sort((x, y) => (x.a.date < y.a.date ? 1 : x.a.date > y.a.date ? -1 : y.i - x.i)).map(({ a }) => ({ ...a, isNew: daysBetween(a.date, today) <= 14 && a.date <= today }))
   // Próxima de cada família (a primeira não alcançada); sub-X só a próxima abaixo do melhor.
   const next = []

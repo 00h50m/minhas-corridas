@@ -4,13 +4,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { TopBar, useUI } from '../components/ui.jsx'
-import { IconDownload, IconShare } from '../components/Icons.jsx'
+import { IconCalendar, IconCheck, IconDownload, IconFlag, IconHistory, IconMedal, IconMonth, IconShare, IconStopwatch, IconTrophy, IconWorkout } from '../components/Icons.jsx'
 import { STORY_TEMPLATES, storyFor } from '../lib/storyData.js'
 import { drawStory } from '../lib/drawStory.js'
 import { canvasToBlob, loadCardFonts } from '../lib/drawCard.js'
 import { todayISO } from '../lib/dates.js'
 
 const PREF = 'minhas-corridas:stories'
+// Modelos agrupados por assunto (mesmo visual dos atalhos do Início)
+const GROUPS = [
+  { title: 'Provas', items: [['proximas', 'Próximas', IconCalendar], ['contagem', 'Contagem', IconStopwatch], ['resultado', 'Concluída', IconFlag], ['temporada', 'Temporada', IconTrophy]] },
+  { title: 'Treinos', items: [['semana', 'Semana', IconWorkout], ['treino', 'Treino feito', IconCheck], ['mes', 'Mês', IconMonth], ['evolucao', 'Evolução 5 km', IconHistory]] },
+  { title: 'Conquistas', items: [['conquista', 'Conquista', IconMedal]] }
+]
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(PREF) || '{}') } catch { return {} } }
 
 export default function Stories() {
@@ -73,8 +79,17 @@ export default function Stories() {
     <>
       <TopBar title="Stories" sub="Sua rotina de corredora" back="/" />
       <div className="page" data-testid="stories">
-        <div className="quick-status story-tpls" role="group" aria-label="Modelo">
-          {STORY_TEMPLATES.map((t) => <button key={t.id} type="button" aria-pressed={tpl === t.id} onClick={() => setTpl(t.id)} data-testid={`story-${t.id}`}>{t.label}</button>)}
+        <div className="st-picker" role="group" aria-label="Modelo do story">
+          {GROUPS.map((g) => (
+            <div key={g.title} className="st-group">
+              <div className="st-group-title">{g.title}</div>
+              <div className="st-tiles">
+                {g.items.map(([id, label, Icon]) => (
+                  <button key={id} type="button" className={`st-tile${tpl === id ? ' on' : ''}`} aria-pressed={tpl === id} onClick={() => setTpl(id)} data-testid={`story-${id}`}><Icon /><span>{label}</span></button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
         {s.ok ? (
           <div className="card-preview fmt-story" style={{ marginTop: 12 }}>
@@ -83,7 +98,7 @@ export default function Stories() {
         ) : (
           <div className="card muted small" style={{ marginTop: 12 }} data-testid="story-empty">{s.reason}</div>
         )}
-        <div className="card" style={{ marginTop: 12 }}>
+        <div className="card st-options" style={{ marginTop: 12 }}>
           <label className="check"><input type="checkbox" checked={times} onChange={(e) => setTimes(e.target.checked)} data-testid="story-times" /> Mostrar tempos e pace</label>
           <label className="check"><input type="checkbox" checked={cities} onChange={(e) => setCities(e.target.checked)} data-testid="story-cities" /> Mostrar cidades das provas</label>
           <div className="list-group-title" style={{ marginTop: 8 }}>Fundo</div>

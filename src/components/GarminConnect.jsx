@@ -89,7 +89,7 @@ export default function GarminConnect() {
       <div className="card small garmin-card" data-testid="garmin-on">
         <div className="garmin-row">
           <IconWatch />
-          <span style={{ flex: 1, minWidth: 0 }}><b>Garmin conectado</b><br /><span className="muted">Última busca: {when(g.lastSync)}</span></span>
+          <span style={{ flex: 1, minWidth: 140 }}><b>Garmin conectado</b><br /><span className="muted">Última busca: {when(g.lastSync)}</span></span>
           <button type="button" className="btn btn-sm" disabled={busy} onClick={() => onSync(false)} data-testid="garmin-sync">{busy ? 'Buscando…' : 'Buscar agora'}</button>
         </div>
         {g.report && <p className="small" style={{ margin: '8px 0 0' }} data-testid="garmin-report">{reportText(g.report)}</p>}

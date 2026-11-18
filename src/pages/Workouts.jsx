@@ -124,13 +124,15 @@ function MissedCard({ workouts, today }) {
         return (
           <div key={w.id} className="mc-row" data-testid="missed-row">
             <div><b>{w.name}</b> <span className="muted">· {dayLabel(w.date)}</span></div>
-            <div className="btn-inline" style={{ marginTop: 4 }}>
-              {best && <button type="button" className="link-btn" onClick={() => { saveWorkout(moveWorkout(w, best.date, today)); notify(`“${w.name}” remanejado para ${dayLabel(best.date)}`) }} data-testid="missed-move">↷ Para {dayLabel(best.date)}</button>}
+            {best && (
+              <button type="button" className="btn btn-sm mc-move" onClick={() => { saveWorkout(moveWorkout(w, best.date, today)); notify(`“${w.name}” remanejado para ${dayLabel(best.date)}`) }} data-testid="missed-move">↷ Para {dayLabel(best.date)}</button>
+            )}
+            {best?.notes.length > 0 && <div className="note" style={{ margin: '4px 0 0' }}>{best.notes.join(' · ')}</div>}
+            <div className="btn-inline mc-other">
               <button type="button" className="link-btn" onClick={() => setMoving(w)} data-testid="missed-pick">Outro dia</button>
               <button type="button" className="link-btn muted-btn" onClick={() => saveWorkout({ ...w, status: 'pulado' })} data-testid="missed-skip">Não fiz</button>
               <button type="button" className="link-btn muted-btn" onClick={() => saveWorkout({ ...w, status: 'feito' })} data-testid="missed-done">Fiz</button>
             </div>
-            {best?.notes.length > 0 && <div className="note" style={{ margin: '2px 0 0' }}>{best.notes.join(' · ')}</div>}
           </div>
         )
       })}

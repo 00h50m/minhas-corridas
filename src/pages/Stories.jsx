@@ -73,7 +73,7 @@ export default function Stories() {
     <>
       <TopBar title="Stories" sub="Sua rotina de corredora" back="/" />
       <div className="page" data-testid="stories">
-        <div className="quick-status" role="group" aria-label="Modelo">
+        <div className="quick-status story-tpls" role="group" aria-label="Modelo">
           {STORY_TEMPLATES.map((t) => <button key={t.id} type="button" aria-pressed={tpl === t.id} onClick={() => setTpl(t.id)} data-testid={`story-${t.id}`}>{t.label}</button>)}
         </div>
         {s.ok ? (

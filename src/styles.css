@@ -1100,7 +1100,7 @@ details.link-import { margin-top: 0; }
   .page { max-width: 1120px; margin: 0 auto; padding: 16px 32px 40px; }
 
   /* Formulários e textos longos: coluna confortável de ler */
-  .page.form, .page[data-testid=workout-form], .page.legal, .page[data-testid=near-races], .page[data-testid=passport] { max-width: 860px; margin-left: max(0px, calc((100% - 1120px) / 2)); }
+  .page.form, .page[data-testid=workout-form], .page.legal, .page[data-testid=near-races], .page[data-testid=passport], .page[data-testid=cycle] { max-width: 860px; margin-left: max(0px, calc((100% - 1120px) / 2)); }
 
   /* Início em duas colunas */
   .page.home { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 28px; align-items: start; }
@@ -1129,11 +1129,11 @@ details.link-import { margin-top: 0; }
 
 /* Como você chega ao treino (Garmin e ciclo) */
 .readiness { padding: 12px 14px; }
-.readiness .rd-head { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.readiness .rd-head { display: flex; align-items: center; gap: 6px 8px; font-size: 14.5px; flex-wrap: wrap; }
 .readiness .rd-head svg { width: 20px; height: 20px; color: var(--brand); flex: none; }
 .readiness .rd-head .pill { margin-left: auto; }
-.readiness .rd-line { margin-top: 6px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.readiness .rd-line svg { width: 15px; height: 15px; color: var(--st-interesse); flex: none; }
+.readiness .rd-line { margin-top: 6px; color: var(--ink-2); }
+.readiness .rd-line svg { width: 15px; height: 15px; color: var(--st-interesse); vertical-align: -2px; margin-right: 2px; }
 .readiness .rd-text { margin-top: 6px; color: var(--ink-3); }
 /* Selo de estado (cores do tema, claro e escuro) */
 .pill { display: inline-flex; align-items: center; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
@@ -1219,3 +1219,27 @@ details.link-import { margin-top: 0; }
 .garmin-row > svg { width: 26px; height: 26px; color: var(--brand); flex: none; }
 .cy-now .pill { font-size: 12px; }
 .btn svg { flex: none; }
+
+/* ---------- Responsivo (revisão) ---------- */
+.section-title { flex-wrap: wrap; gap: 2px 12px; }
+.btn { text-align: center; line-height: 1.2; }
+.btn-row > * { min-width: 0; }
+.mc-row .btn-inline { gap: 4px 14px; }
+/* Stories: modelos em linhas (nada escondido), prévia com tamanho de celular */
+.quick-status.story-tpls { flex-wrap: wrap; overflow: visible; }
+.card-preview.fmt-story canvas { max-width: 300px; }
+@media (max-width: 360px) {
+  .page { padding-left: 12px; padding-right: 12px; }
+  .btn { font-size: 15px; padding: 0 12px; }
+  .pp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats .stat .v { font-size: 22px; }
+  .seg button { padding-left: 12px; padding-right: 12px; }
+}
+@media (min-width: 1024px) {
+  .card-preview.fmt-story canvas { max-width: none; }
+}
+.mc-move { margin-top: 8px; color: var(--brand-ink); }
+.mc-other { gap: 4px 18px; }
+.garmin-row { flex-wrap: wrap; }
+.garmin-row > span { min-width: 150px; }
+.garmin-row > .btn { margin-left: auto; }

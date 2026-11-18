@@ -65,7 +65,7 @@ ok('Semana passada 2 de 2 (1 h 05); próxima 0 de 1; “Voltar para esta semana�
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=week-compact]')
 const home = await p.$eval('[data-testid=week-compact]', (e) => e.innerText.replace(/\s+/g, ' '))
-if (!home.includes('1 de 2 treinos') || !home.includes('🔥 1 semana cumprida')) throw new Error('Início: ' + home)
+if (!home.includes('1 de 2 treinos') || !home.includes('1 semana cumprida')) throw new Error('Início: ' + home)
 const overflow = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
 if (overflow > 0) throw new Error('Rolagem lateral: ' + overflow)
 ok('Início: semana compacta (1 de 2 treinos · 🔥 1 semana cumprida); 390 px sem rolagem lateral')

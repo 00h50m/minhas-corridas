@@ -3,7 +3,7 @@ import HrSettings from '../components/HrSettings.jsx'
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
-import { IconCamera, IconInfo } from '../components/Icons.jsx'
+import { IconCamera, IconDrop, IconInfo, IconUsers } from '../components/Icons.jsx'
 import { Avatar } from '../components/Avatar.jsx'
 import { getProfile, removeAvatar, saveProfile, setAvatarFromFile, useProfile } from '../services/profile.js'
 import { useSync } from '../services/sync.js'
@@ -131,14 +131,14 @@ export default function Profile() {
         </div>
 
         <Link to="/pessoas-e-lugares" className="card account-card" style={{ marginTop: 12 }} data-testid="people-link">
-          <span style={{ fontSize: 26 }} aria-hidden="true">👥</span>
+          <IconUsers />
           <span style={{ flex: 1, minWidth: 0 }}>
             <b>Pessoas e lugares</b><br /><span className="small muted">{prof.data.people.length} {prof.data.people.length === 1 ? 'pessoa' : 'pessoas'} · {prof.data.favorites.length} {prof.data.favorites.length === 1 ? 'lugar' : 'lugares'} — quem você busca e os endereços de sempre.</span>
           </span>
           <span aria-hidden="true">›</span>
         </Link>
         <Link to="/ciclo" className="card account-card" style={{ marginTop: 12 }} data-testid="cycle-link">
-          <span style={{ fontSize: 26 }} aria-hidden="true">🌸</span>
+          <IconDrop />
           <span style={{ flex: 1, minWidth: 0 }}>
             <b>Ciclo menstrual</b><br /><span className="small muted">Opcional: registro em 2 toques, previsão pelo seu histórico e as provas no seu ciclo.</span>
           </span>

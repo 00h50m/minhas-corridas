@@ -139,7 +139,7 @@ ok(`Busca: “${rep}”; o “Longão” importado à mão antes não duplicou e
 // 2b. Sono e body battery: “como você chega hoje” e na manhã de cada treino
 await p.waitForSelector('[data-testid=readiness]')
 const rd = await p.$eval('[data-testid=readiness]', (e) => e.innerText.replace(/\s+/g, ' '))
-if (!rd.includes('Como você chega hoje') || !rd.includes('sono 5h30 (nota 55)') || !rd.includes('body battery 30 ao acordar') || !rd.includes('Sinais de cansaço')) throw new Error('Prontidão: ' + rd)
+if (!rd.includes('Como você chega hoje') || !rd.includes('Sono 5h30 (nota 55)') || !rd.includes('Body battery 30 ao acordar') || !rd.includes('Sinais de cansaço')) throw new Error('Prontidão: ' + rd)
 const wl = await p.$eval('[data-testid=garmin-wellness]', (e) => e.innerText)
 if (!wl.includes('15 dias')) throw new Error('Linha do sono: ' + wl)
 await p.goto(BASE + '/treinos/rod', { waitUntil: 'networkidle0' })

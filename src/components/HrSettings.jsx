@@ -1,4 +1,5 @@
 // Perfil → Frequência cardíaca: FC máxima e de repouso, zonas (do Garmin, digitadas ou pela FC máxima).
+import { IconWatch } from './Icons.jsx'
 import { useState } from 'react'
 import { saveProfile, useProfile } from '../services/profile.js'
 import { useGarmin } from '../services/garmin.js'
@@ -75,7 +76,7 @@ export default function HrSettings() {
       ) : <p className="muted" style={{ marginBottom: 0 }}>Informe a FC máxima (ou a data de nascimento no perfil, ou importe do Garmin) para calcular as zonas.</p>}
       {zones && <p className="note" style={{ margin: '4px 0 0' }} data-testid="hr-source">Em uso: {zones.label}.</p>}
       <div className="btn-inline" style={{ marginTop: 8 }}>
-        {g && <button type="button" className="link-btn" disabled={busy} onClick={fromGarmin} data-testid="hr-garmin">{busy ? 'Buscando…' : '⌚ Importar zonas do Garmin'}</button>}
+        {g && <button type="button" className="link-btn" disabled={busy} onClick={fromGarmin} data-testid="hr-garmin"><IconWatch /> {busy ? 'Buscando…' : 'Importar zonas do Garmin'}</button>}
         <button type="button" className="link-btn" onClick={() => { setEdit((v) => !v); setFloors(zones?.floors ?? ['', '', '', '', '']) }} data-testid="hr-edit">{edit ? 'Cancelar' : 'Digitar as zonas'}</button>
         {hr.floors && <button type="button" className="link-btn muted-btn" onClick={() => { save({ floors: null, source: null }); notify('Zonas pela FC máxima') }}>Usar a FC máxima</button>}
       </div>

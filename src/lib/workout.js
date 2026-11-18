@@ -207,7 +207,7 @@ export function plannedSec(w) {
 export function workoutLine(w) {
   if (isRun(w)) return summary(w.items)
   const s = sportOf(w)
-  return `${s.icon} ${s.label}${w.plannedMin ? ` · ${w.plannedMin} min` : ''}`
+  return `${s.label}${w.plannedMin ? ` · ${w.plannedMin} min` : ''}`
 }
 
 /* ---------- Planejado x executado ---------- */

@@ -1,4 +1,5 @@
 // Conectar o Garmin (API pessoal, só leitura) e buscar as atividades novas sozinho.
+import { IconWatch } from './Icons.jsx'
 import { useState } from 'react'
 import { useUI } from './ui.jsx'
 import { connectGarmin, disconnectGarmin, syncGarmin, useGarmin } from '../services/garmin.js'
@@ -87,10 +88,10 @@ export default function GarminConnect() {
     return (
       <div className="card small garmin-card" data-testid="garmin-on">
         <div className="garmin-row">
-          <span><b>⌚ Garmin conectado</b><br /><span className="muted">Última busca: {when(g.lastSync)}</span></span>
-          <button type="button" className="btn" disabled={busy} onClick={() => onSync(false)} data-testid="garmin-sync">{busy ? 'Buscando…' : 'Buscar agora'}</button>
+          <IconWatch />
+          <span style={{ flex: 1, minWidth: 0 }}><b>Garmin conectado</b><br /><span className="muted">Última busca: {when(g.lastSync)}</span></span>
+          <button type="button" className="btn btn-sm" disabled={busy} onClick={() => onSync(false)} data-testid="garmin-sync">{busy ? 'Buscando…' : 'Buscar agora'}</button>
         </div>
-        <p className="note" style={{ margin: '6px 0 0' }}>O app busca sozinho ao abrir (no máximo a cada 30 min) e marca o treino do dia como feito, com voltas, parciais e o percurso.</p>
         {g.report && <p className="small" style={{ margin: '8px 0 0' }} data-testid="garmin-report">{reportText(g.report)}</p>}
         {g.wellnessAt && <p className="small muted" style={{ margin: '6px 0 0' }} data-testid="garmin-wellness">{wellnessText(g)}</p>}
         {msg && <div className="alert alert-error small" role="alert" style={{ marginTop: 8 }}>{msg}</div>}
@@ -99,13 +100,15 @@ export default function GarminConnect() {
           <button type="button" className="link-btn" disabled={busy} onClick={() => onSync(true)} data-testid="garmin-full">Rever os últimos 30 dias</button>
           <button type="button" className="link-btn muted-btn" onClick={onDisconnect} data-testid="garmin-off">Desconectar</button>
         </div>
+        <p className="note" style={{ margin: '4px 0 0' }}>Busca sozinha ao abrir o app (no máximo a cada 30 min).</p>
       </div>
     )
   }
   return (
     <div className="card small garmin-card" data-testid="garmin-connect">
       <button type="button" className="garmin-row link-like" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="garmin-open">
-        <span><b>⌚ Importar do Garmin sozinho</b><br /><span className="muted">Sem baixar arquivo: os treinos feitos entram sozinhos.</span></span>
+        <IconWatch />
+        <span style={{ flex: 1, minWidth: 0 }}><b>Importar do Garmin sozinho</b><br /><span className="muted">Sem baixar arquivo: os treinos feitos entram sozinhos.</span></span>
         <span aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
       {open && (

@@ -52,7 +52,7 @@ export default function RunsMap() {
         <Map tracks={tracks} />
         {tr.last && tr.last.newCells > 0 && (
           <div className="card small" style={{ marginTop: 10 }} data-testid="map-new">
-            🗺️ <b>{tr.last.name}</b> ({formatDateBR(tr.last.date).slice(0, 5)}) abriu <b>{tr.last.newCells} {tr.last.newCells === 1 ? 'quarteirão novo' : 'quarteirões novos'}</b>{tr.last.date === today ? ' hoje' : ''}.
+            <b>{tr.last.name}</b> ({formatDateBR(tr.last.date).slice(0, 5)}) abriu <b>{tr.last.newCells} {tr.last.newCells === 1 ? 'quarteirão novo' : 'quarteirões novos'}</b>{tr.last.date === today ? ' hoje' : ''}.
           </div>
         )}
         {tr.top.length > 1 && (

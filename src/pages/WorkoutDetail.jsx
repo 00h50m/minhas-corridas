@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
 import { TopBar, useUI } from '../components/ui.jsx'
-import { IconDownload, IconEdit, IconTrash, IconUpload } from '../components/Icons.jsx'
+import { IconDownload, IconEdit, IconMove, IconStory, IconTrash, IconUpload } from '../components/Icons.jsx'
 import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, flatten, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
@@ -77,7 +77,7 @@ function Detail({ w }) {
       <div className="page" data-testid="workout-detail">
         {!run && (
           <div className="card" data-testid="wk-cross">
-            <div className="t" style={{ fontWeight: 700 }}>{sportOf(w).icon} {sportOf(w).label}</div>
+            <div className="t" style={{ fontWeight: 700 }}>{sportOf(w).label}</div>
             <div className="chips" style={{ marginTop: 8 }}>{w.plannedMin && <span className="chip">{w.plannedMin} min planejados</span>}</div>
             {race && <p className="small" style={{ margin: '10px 0 0' }}>Preparação para <Link to={`/corridas/${race.id}`}>{race.name}</Link></p>}
             {w.notes && <p className="small muted" style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>{w.notes}</p>}
@@ -151,7 +151,7 @@ function Detail({ w }) {
             <ul>{w.moves.map((m, i) => <li key={i}>de {dayLabel(m.from)} para {dayLabel(m.to)}{m.auto ? ' (sozinho, pela regra)' : ''}</li>)}</ul>
           </div>
         )}
-        {w.status !== 'feito' && <button type="button" className="btn btn-block" style={{ marginTop: 12 }} onClick={() => setMoving(true)} data-testid="wk-move">📅 Remanejar para outro dia</button>}
+        {w.status !== 'feito' && <button type="button" className="btn btn-block" style={{ marginTop: 12 }} onClick={() => setMoving(true)} data-testid="wk-move"><IconMove /> Remanejar para outro dia</button>}
         {moving && <Reschedule w={w} onClose={() => setMoving(false)} />}
 
         <div className="section-title"><h2>Como foi</h2></div>
@@ -164,7 +164,7 @@ function Detail({ w }) {
         {msg && <div className={`alert small ${msg.ok ? '' : 'alert-error'}`} role={msg.ok ? 'status' : 'alert'} style={{ marginTop: 10 }}>{msg.text}</div>}
         {w.result && <Executed w={w} />}
         {w.date && w.status === 'feito' && <Readiness date={w.date} past style={{ marginTop: 10 }} />}
-        {w.status === 'feito' && <Link to={`/stories?modelo=treino&treino=${w.id}`} className="btn btn-block" style={{ marginTop: 10 }} data-testid="wk-story">📲 Compartilhar este treino</Link>}
+        {w.status === 'feito' && <Link to={`/stories?modelo=treino&treino=${w.id}`} className="btn btn-block" style={{ marginTop: 10 }} data-testid="wk-story"><IconStory /> Compartilhar este treino</Link>}
 
         <div className="btn-row" style={{ marginTop: 22 }}>
           <Link to={`/treinos/novo?copiar=${w.id}`} className="btn">Duplicar</Link>

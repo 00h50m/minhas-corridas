@@ -88,7 +88,7 @@ export function finalStretch(race, { workouts = [], today, cycle = null } = {}) 
     ...(pct != null && pct > 85 ? { warn: `A semana da prova está com ${pct}% do volume normal.` } : {}),
     auto: pct != null && pct <= 85 && D <= addDaysISO(today, 7)
   })
-  add({ id: 'contagem7', date: addDaysISO(D, -7), title: 'Story: faltam 7 dias', desc: 'A contagem para a prova no Instagram.', link: `/stories?modelo=contagem&prova=${race.id}`, linkLabel: '📲 Abrir story' })
+  add({ id: 'contagem7', date: addDaysISO(D, -7), title: 'Story: faltam 7 dias', desc: 'A contagem para a prova no Instagram.', link: `/stories?modelo=contagem&prova=${race.id}`, linkLabel: 'Abrir story' })
   // 5. Logística
   const logOk = !!(race.logistics?.origin && (race.logistics?.destination || race.venueAddress))
   add({ id: 'logistica', date: addDaysISO(D, -5), title: 'Logística: trajeto e horário de saída', desc: 'Como chegar, onde parar e a que horas sair de casa.', link: `/corridas/${race.id}/logistica`, linkLabel: 'Abrir logística', auto: logOk })
@@ -101,7 +101,7 @@ export function finalStretch(race, { workouts = [], today, cycle = null } = {}) 
   // 8. Separar tudo
   const sepOk = check(/documento/i) && check(/roupa|t[eê]nis/i) && check(/rel[oó]gio/i)
   add({ id: 'separar', date: addDaysISO(D, -1), title: 'Separar tudo', desc: 'Número de peito e alfinetes, chip, roupa, tênis, relógio carregado, documento, gel e o que for usar no pós-prova.', link: `/corridas/${race.id}`, linkLabel: 'Checklist da prova', auto: sepOk })
-  add({ id: 'amanha', date: addDaysISO(D, -1), title: 'Story: amanhã é dia!', desc: 'A contagem de véspera.', link: `/stories?modelo=contagem&prova=${race.id}`, linkLabel: '📲 Abrir story' })
+  add({ id: 'amanha', date: addDaysISO(D, -1), title: 'Story: amanhã é dia!', desc: 'A contagem de véspera.', link: `/stories?modelo=contagem&prova=${race.id}`, linkLabel: 'Abrir story' })
   // 9. Dia da prova
   if (race.startTime) {
     const [h, m] = race.startTime.split(':').map(Number)
@@ -111,7 +111,7 @@ export function finalStretch(race, { workouts = [], today, cycle = null } = {}) 
   }
   add({ id: 'dia', date: D, title: 'Dia da prova', desc: 'O modo Dia da prova mostra o passo a passo, os horários e o clima.', link: `/corridas/${race.id}/dia`, linkLabel: 'Abrir modo prova' })
   // 10. Depois
-  add({ id: 'resultado', date: addDaysISO(D, 1), title: 'Registrar o resultado e postar a medalha', desc: 'Tempo, colocação e o arquivo do relógio (ou “Buscar no Garmin”); depois o story da prova concluída.', link: race.result ? `/stories?modelo=resultado&prova=${race.id}` : `/corridas/${race.id}/resultado`, linkLabel: race.result ? '📲 Story da prova' : 'Registrar resultado', auto: !!race.result })
+  add({ id: 'resultado', date: addDaysISO(D, 1), title: 'Registrar o resultado e postar a medalha', desc: 'Tempo, colocação e o arquivo do relógio (ou “Buscar no Garmin”); depois o story da prova concluída.', link: race.result ? `/stories?modelo=resultado&prova=${race.id}` : `/corridas/${race.id}/resultado`, linkLabel: race.result ? 'Story da prova' : 'Registrar resultado', auto: !!race.result })
 
   // Ciclo menstrual (se ativado): itens extras quando a prova cai perto da menstruação prevista
   for (const it of cycleStretchItems(race, raceCycleNote(cycle, race, today))) add(it)

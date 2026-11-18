@@ -1,4 +1,5 @@
 // Passaporte de corredora: conquistas com data, próximas com quanto falta, números, recordes e cidades.
+import { IconMap, IconSearch, IconStory } from '../components/Icons.jsx'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
@@ -30,8 +31,8 @@ export default function Passport() {
             <div className="stat"><div className="v">{n.runs}</div><div className="l">{n.runs === 1 ? 'treino' : 'treinos'}</div></div>
           </div>
           <div className="pp-links">
-            <Link to="/mapa" className="btn" data-testid="pp-map">🗺️ Mapa{n.cells ? ` · ${n.cells} quarteirões` : ' das corridas'}</Link>
-            <Link to="/provas-perto" className="btn" data-testid="pp-near">🔎 Provas perto</Link>
+            <Link to="/mapa" className="btn" data-testid="pp-map"><IconMap /> Mapa{n.cells ? ` · ${n.cells} quarteirões` : ' das corridas'}</Link>
+            <Link to="/provas-perto" className="btn" data-testid="pp-near"><IconSearch /> Provas perto</Link>
           </div>
         </div>
 
@@ -44,7 +45,7 @@ export default function Passport() {
                 <div style={{ flex: 1 }}>
                   <b>{b.title}</b>
                   <div className="muted small">{b.desc} · {formatDateBR(b.date)}</div>
-                  <Link to={`/stories?modelo=conquista&conquista=${b.id}`} className="link-btn" data-testid="pp-share">📲 Postar no story</Link>
+                  <Link to={`/stories?modelo=conquista&conquista=${b.id}`} className="link-btn" data-testid="pp-share"><IconStory /> Postar no story</Link>
                 </div>
               </div>
             ))}
@@ -104,10 +105,10 @@ export default function Passport() {
         {n.cities.length > 0 && (
           <>
             <div className="list-group-title">Cidades onde correu ({n.cities.length})</div>
-            <div className="chips" data-testid="pp-cities">{n.cities.map((c) => <span key={c} className="chip">📍 {c}</span>)}</div>
+            <div className="chips" data-testid="pp-cities">{n.cities.map((c) => <span key={c} className="chip">{c}</span>)}</div>
           </>
         )}
-        {n.cross > 0 && <p className="small muted" style={{ marginTop: 14 }}>💪 {n.cross} {n.cross === 1 ? 'atividade' : 'atividades'} além da corrida.</p>}
+        {n.cross > 0 && <p className="small muted" style={{ marginTop: 14 }}>{n.cross} {n.cross === 1 ? 'atividade' : 'atividades'} além da corrida.</p>}
         <p className="note">As conquistas saem do que já está no app (provas, treinos, objetivos e arquivos do relógio). Tempos de treino só contam com o arquivo do relógio cobrindo a distância.</p>
       </div>
     </>

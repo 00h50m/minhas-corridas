@@ -28,7 +28,7 @@ describe('outras atividades', () => {
     expect(a.items).toEqual([])
     expect(validateWorkout(a)).toEqual({})
     expect(plannedSec(a)).toBe(3000)
-    expect(workoutLine(a)).toBe('🏋️ Academia / força · 50 min')
+    expect(workoutLine(a)).toBe('Academia / força · 50 min')
     expect(validateWorkout(normalizeWorkout({ name: 'X', sport: 'bike' })).plannedMin).toBeTruthy()
     expect(normalizeWorkout({ name: 'X', sport: 'patinete' }).sport).toBe('corrida')
     expect(validateWorkout(normalizeWorkout({ name: 'Rodagem' })).items).toBeTruthy()

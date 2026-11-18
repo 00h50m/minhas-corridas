@@ -82,7 +82,7 @@ if (c.days['2026-11-18']?.energy !== 2 || !c.days['2026-11-18'].symptoms.include
 await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=readiness-cycle]')
 const rc = await p.$eval('[data-testid=readiness]', (e) => e.innerText.replace(/\s+/g, ' '))
-if (!rc.includes('dia 14 do ciclo · cólica · energia 2/5') || !rc.includes('ir mais leve é uma opção')) throw new Error('Prontidão: ' + rc)
+if (!rc.includes('Dia 14 do ciclo · cólica · energia 2/5') || !rc.includes('ir mais leve é uma opção')) throw new Error('Prontidão: ' + rc)
 ok(`Registro do dia em 2 toques → Treinos: “${rc.trim()}”`)
 
 // 5. Pontos na semana (semana da menstruação prevista)
@@ -96,6 +96,7 @@ ok(`Semana de 30/11: ${dots} dias com o ponto lilás de menstruação prevista`)
 // 6. Reta final da prova com os itens do ciclo
 await p.goto(BASE + '/corridas/na', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=stretch-cycle]')
+await p.$eval('[data-testid=stretch-all]', (b) => b.click())
 await need('Testar no longão o absorvente, coletor ou calcinha que vai usar')
 await need('Ver onde ficam os banheiros')
 await need('Separar o kit do ciclo')

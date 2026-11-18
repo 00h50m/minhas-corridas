@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { STATUS_BY_ID } from '../lib/model.js'
 import { dayOfMonth, formatDateBR, monthShort, weekdayShort } from '../lib/dates.js'
 import { formatKm } from '../lib/format.js'
-import { IconBack, IconHistory, IconHome, IconPlus, IconFlag, IconTarget, IconTrophy, IconSettings, IconWorkout, RunnerArt } from './Icons.jsx'
+import { IconBack, IconFlag, IconHistory, IconHome, IconMap, IconMedal, IconPlus, IconSearch, IconSettings, IconStory, IconTarget, IconTrophy, IconWorkout, RunnerArt } from './Icons.jsx'
 import { GOAL_STATUS_BY_ID } from '../lib/model.js'
 
 export function TopBar({ title, sub, back, right }) {
@@ -56,10 +56,10 @@ export function SideNav() {
       <NavLink to="/objetivos" className={cls}><IconTarget /><span>Objetivos</span></NavLink>
       <NavLink to="/historico" className={cls}><IconHistory /><span>Histórico</span></NavLink>
       <div className="side-sep" />
-      <NavLink to="/passaporte" className={cls}><IconTrophy /><span>Passaporte</span></NavLink>
-      <NavLink to="/mapa" className={cls}><span className="side-emoji" aria-hidden="true">🗺️</span><span>Mapa</span></NavLink>
-      <NavLink to="/stories" className={cls}><span className="side-emoji" aria-hidden="true">📲</span><span>Stories</span></NavLink>
-      <NavLink to="/provas-perto" className={cls}><span className="side-emoji" aria-hidden="true">🔎</span><span>Provas perto</span></NavLink>
+      <NavLink to="/passaporte" className={cls}><IconMedal /><span>Passaporte</span></NavLink>
+      <NavLink to="/mapa" className={cls}><IconMap /><span>Mapa</span></NavLink>
+      <NavLink to="/stories" className={cls}><IconStory /><span>Stories</span></NavLink>
+      <NavLink to="/provas-perto" className={cls}><IconSearch /><span>Provas perto</span></NavLink>
       <div className="side-grow" />
       <NavLink to="/ajustes" className={cls}><IconSettings /><span>Ajustes</span></NavLink>
     </nav>

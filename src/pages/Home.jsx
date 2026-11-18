@@ -8,7 +8,7 @@ import { reviewInviteYear, reviewYears } from '../lib/yearReview.js'
 import { installAvailable, useInstall } from '../services/install.js'
 import { useStore } from '../services/store.js'
 import { EmptyState, RaceItem, TopBar } from '../components/ui.jsx'
-import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconTarget, IconTrophy, IconWorkout } from '../components/Icons.jsx'
+import { IconBell, IconPlus, IconScale, IconSettings, IconShare, IconStopwatch, IconStory, IconTarget, IconTrophy, IconWorkout } from '../components/Icons.jsx'
 import SyncBadge from '../components/SyncBadge.jsx'
 import { GoalCard } from './Goals.jsx'
 import { memo as historyMemo } from './History.jsx'
@@ -211,7 +211,7 @@ export default function Home() {
         <div className="home-col home-side">
         <Suspense fallback={null}><HomeLinks races={races} workouts={workouts} goals={goals} today={today} /></Suspense>
         <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 10 }}>
-          <span style={{ fontSize: 26 }} aria-hidden="true">📲</span>
+          <IconStory />
           <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, semana, mês, prova concluída, conquistas…</span></span>
           <span aria-hidden="true">›</span>
         </Link>

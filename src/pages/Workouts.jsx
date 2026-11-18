@@ -82,7 +82,7 @@ export function WorkoutItem({ w, today }) {
     <Link to={`/treinos/${w.id}`} className={`race-item wk-item wk-${w.status}`} data-testid="workout-item">
       <DateTile date={w.date} />
       <div className="race-body">
-        <div className="t">{isRun(w) ? '' : `${sportOf(w).icon} `}{w.name}</div>
+        <div className="t">{w.name}</div>
         <div className="s wk-sum">{workoutLine(w)}</div>
         <div className="chips" style={{ marginTop: 6 }}>
           <span className="chip">≈ {fmtSec(sec)}</span>

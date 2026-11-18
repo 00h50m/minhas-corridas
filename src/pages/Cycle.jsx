@@ -1,5 +1,6 @@
 // Ciclo menstrual: ativar (consentimento), registro rápido, previsão, a próxima prova, sinais de atenção,
 // histórico (inclusive do Flo, à mão) e importação do Garmin. Sincroniza com a conta.
+import { IconDrop, IconInfo, IconWatch } from '../components/Icons.jsx'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { TopBar, useUI } from '../components/ui.jsx'
@@ -84,7 +85,7 @@ function Enabled({ c }) {
   return (
     <>
       <div className="card cy-now" data-testid="cycle-now">
-        {n ? <div className="cy-day"><b>Dia {n}</b> do ciclo{phase ? <span className="muted"> · {phase}</span> : null}</div> : <div className="cy-day"><b>Registre a última menstruação</b> para começar.</div>}
+        {n ? <div className="cy-day"><b>Dia {n} do ciclo</b>{phase ? <span className="pill pill-cyc">{phase}</span> : null}</div> : <div className="cy-day"><b>Registre a última menstruação</b> para começar.</div>}
         {next && (
           <p className="small" style={{ margin: '6px 0 0' }} data-testid="cycle-next">
             Próxima menstruação: <b>{next.confidence === 'boa' ? `~${br(next.start)}` : `entre ${br(next.from)} e ${br(next.to)}`}</b>
@@ -93,10 +94,10 @@ function Enabled({ c }) {
             {next.late && <span className="muted"> · passou da data prevista sem registro</span>}
           </p>
         )}
-        <div className="btn-row" style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 12 }}>
           {now
-            ? <button type="button" className="btn" onClick={() => { saveCycle(endPeriod(c, today)); notify('Fim da menstruação registrado') }} data-testid="cycle-end">Terminou hoje</button>
-            : <button type="button" className="btn btn-primary" onClick={() => { saveCycle(startPeriod(c, today)); notify('Início da menstruação registrado') }} data-testid="cycle-start">Menstruação começou hoje</button>}
+            ? <button type="button" className="btn btn-block" onClick={() => { saveCycle(endPeriod(c, today)); notify('Fim da menstruação registrado') }} data-testid="cycle-end">Terminou hoje</button>
+            : <button type="button" className="btn btn-primary btn-block" onClick={() => { saveCycle(startPeriod(c, today)); notify('Início da menstruação registrado') }} data-testid="cycle-start"><IconDrop />Menstruação começou hoje</button>}
         </div>
       </div>
 
@@ -137,7 +138,7 @@ function Enabled({ c }) {
 
       {signals.map((sg) => (
         <div key={sg.id} className="card small cy-signal" data-testid="cycle-signal">
-          <div>💬 {sg.text}</div>
+          <div className="sig"><IconInfo /><span>{sg.text}</span></div>
           <button type="button" className="link-btn muted-btn" onClick={() => saveCycle({ ...c, dismissed: [...c.dismissed, sg.id] })}>Entendi, não mostrar de novo</button>
         </div>
       ))}
@@ -160,7 +161,7 @@ function Enabled({ c }) {
           <button type="button" className="btn" disabled={!past.start} onClick={() => { const after = startPeriod(c, past.start); saveCycle(past.end ? endPeriod(after, past.end) : after); setPast({ start: '', end: '' }); notify('Menstruação adicionada') }} data-testid="cycle-past-add">Adicionar</button>
         </div>
         <p className="note">No Flo: Calendário → toque nas datas das últimas menstruações e copie aqui (início e, se quiser, fim). O Flo não oferece acesso para outros apps importarem sozinhos. Três ou mais deixam a previsão bem melhor.</p>
-        {g && <button type="button" className="btn btn-block" disabled={busy} onClick={importGarmin} data-testid="cycle-garmin">{busy ? 'Buscando no Garmin…' : '⌚ Importar do Garmin'}</button>}
+        {g && <button type="button" className="btn btn-block" disabled={busy} onClick={importGarmin} data-testid="cycle-garmin"><IconWatch /> {busy ? 'Buscando no Garmin…' : 'Importar do Garmin'}</button>}
         {!g && <p className="note">Com o Garmin conectado (em Treinos), dá para importar as datas que você registra lá.</p>}
         {gMsg && <div className="alert small" role="status" style={{ marginTop: 8 }} data-testid="cycle-garmin-msg">{gMsg}</div>}
       </div>

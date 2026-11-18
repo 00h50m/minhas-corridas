@@ -2,7 +2,7 @@ import { Suspense, lazy, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteRace, getRace, saveRace, useStore } from '../services/store.js'
 import { StatusBadge, TopBar, useUI } from '../components/ui.jsx'
-import { IconRepeat, IconCalendar, IconEdit, IconExternal, IconStopwatch, IconTrash, IconAlert, IconInfo } from '../components/Icons.jsx'
+import { IconAlert, IconCalendar, IconEdit, IconExternal, IconInfo, IconRepeat, IconStopwatch, IconStory, IconTrash } from '../components/Icons.jsx'
 import { STATUSES } from '../lib/model.js'
 import { countdownLabel, daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
@@ -168,7 +168,7 @@ export default function RaceDetail() {
                   <button className="btn" disabled title="Registre outra prova para comparar"><IconCompare /> Comparar</button>
                 )}
               </div>
-              {r.status === 'concluida' && <Link to={`/stories?modelo=resultado&prova=${r.id}`} className="btn btn-block" style={{ marginTop: 8 }} data-testid="race-result-story">📲 Story da prova (medalha)</Link>}
+              {r.status === 'concluida' && <Link to={`/stories?modelo=resultado&prova=${r.id}`} className="btn btn-block" style={{ marginTop: 8 }} data-testid="race-result-story"><IconStory /> Story da prova (medalha)</Link>}
               <div className="list-group-title" style={{ marginTop: 16 }}>Fotos</div>
               <Attachments raceId={r.id} mode="photos" />
               {res.officialUrl && <a className="btn btn-ghost btn-block" href={res.officialUrl} target="_blank" rel="noreferrer"><IconExternal /> Resultado oficial</a>}
@@ -246,7 +246,7 @@ export default function RaceDetail() {
         )}
 
         {r.status === 'inscrita' && r.date && r.date >= today && (
-          <Link to={`/stories?modelo=contagem&prova=${r.id}`} className="btn btn-block" style={{ marginTop: 12 }} data-testid="race-story">📲 Story da contagem</Link>
+          <Link to={`/stories?modelo=contagem&prova=${r.id}`} className="btn btn-block" style={{ marginTop: 12 }} data-testid="race-story"><IconStory /> Story da contagem</Link>
         )}
 
         {r.date && r.date <= today && r.dayLog?.date === r.date && (

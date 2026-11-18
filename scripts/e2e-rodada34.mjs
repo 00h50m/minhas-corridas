@@ -36,6 +36,10 @@ await p.evaluate((r, w) => { localStorage.clear(); localStorage.setItem('minhas-
 await p.goto(BASE + '/corridas/na', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=final-stretch]')
 await need('Faltam 24 dias')
+// Resumo mostra pendentes e os 3 próximos; a linha do tempo completa abre num toque
+const shortList = await p.$$eval('[data-testid=stretch-item]', (b) => b.length)
+if (shortList !== 3) throw new Error('Resumo da reta final: ' + shortList + ' itens')
+await p.$eval('[data-testid=stretch-all]', (b) => b.click())
 const titles = await p.$$eval('[data-testid=stretch-item] b', (b) => b.map((x) => x.innerText))
 for (const t of ['Treino no ritmo da prova', 'Testar a roupa e o tênis da prova num treino', 'Último treino forte', 'Semana da prova mais leve', 'Retirar o kit', 'Separar tudo', 'Café da manhã por volta das 04:30', 'Registrar o resultado e postar a medalha']) if (!titles.includes(t)) throw new Error('Falta: ' + t + ' em ' + titles)
 await need('Uns 4 km a 7:30 /km')
@@ -54,6 +58,7 @@ if (pw.date !== '2026-11-24' || pw.raceId !== 'na') throw new Error('Treino: ' +
 await p.goto(BASE + '/corridas/na', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=final-stretch]')
 await need('planejado: “Ritmo de prova 4 km” (ter 24/11)')
+await p.$eval('[data-testid=stretch-all]', (b) => b.click())
 ok('“+ Criar este treino”: “Ritmo de prova 4 km” (4 km a 7:25–7:35) em ter 24/11, ligado à prova')
 
 // 3. Marcar à mão
@@ -69,7 +74,7 @@ ok('Marcar “Testar a roupa e o tênis” guarda na prova (sincroniza)')
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=stretch-home]')
 const home = await p.$eval('[data-testid=stretch-home]', (e) => e.innerText.replace(/\s+/g, ' '))
-if (!home.includes('Reta final · Corrida de Natal') || !home.includes('faltam 24 dias') || !home.includes('ter 24/11: Treino no ritmo da prova')) throw new Error('Início: ' + home)
+if (!home.includes('Reta final · Corrida de Natal') || !home.includes('Faltam 24 dias') || !home.includes('ter 24/11: Treino no ritmo da prova')) throw new Error('Início: ' + home)
 const o = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
 if (o > 0) throw new Error('Rolagem lateral: ' + o)
 ok(`Início: “${home.trim()}”`)

@@ -1127,13 +1127,26 @@ details.link-import { margin-top: 0; }
   .update-bar, .upd { margin-left: calc(var(--side-w) / 2); }
 }
 
-/* Como você chega ao treino (Garmin) */
-.readiness { background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); padding: 10px 14px; border-left: 4px solid var(--line); }
-.readiness .rd-head { font-size: 14px; margin-bottom: 2px; }
-.readiness .rd-text { margin-top: 4px; color: var(--ink-2, var(--ink)); }
-.readiness.rd-bom { border-left-color: #22a06b; }
-.readiness.rd-atencao { border-left-color: #e2b203; }
-.readiness.rd-cansaco { border-left-color: var(--brand); }
+/* Como você chega ao treino (Garmin e ciclo) */
+.readiness { padding: 12px 14px; }
+.readiness .rd-head { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.readiness .rd-head svg { width: 20px; height: 20px; color: var(--brand); flex: none; }
+.readiness .rd-head .pill { margin-left: auto; }
+.readiness .rd-line { margin-top: 6px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.readiness .rd-line svg { width: 15px; height: 15px; color: var(--st-interesse); flex: none; }
+.readiness .rd-text { margin-top: 6px; color: var(--ink-3); }
+/* Selo de estado (cores do tema, claro e escuro) */
+.pill { display: inline-flex; align-items: center; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.pill-ok { color: var(--ok); background: var(--ok-soft); }
+.pill-warn { color: var(--warn); background: var(--warn-soft); }
+.pill-danger { color: var(--brand-ink); background: var(--brand-soft); }
+.pill-neutral { color: var(--ink-3); background: var(--surface-2); }
+.pill-cyc { color: var(--st-interesse); background: var(--st-interesse-bg); }
+/* Ícone pequeno dentro de link/botão de texto */
+.link-btn svg, .btn svg.ic-sm { width: 17px; height: 17px; vertical-align: -3px; margin-right: 2px; }
+.tw-streak svg { width: 15px; height: 15px; vertical-align: -2px; color: var(--brand); }
+.cy-home-link svg { width: 26px; height: 26px; color: var(--st-interesse); flex: none; }
+.decide-link svg, .account-card svg { flex: none; }
 
 /* Remanejar treino */
 .rs-opts { display: grid; gap: 8px; }
@@ -1155,22 +1168,25 @@ details.link-import { margin-top: 0; }
 .st-item { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 10px 0; }
 .st-item + .st-item { border-top: 1px solid var(--line); }
 .st-mark { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); font-weight: 900; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; padding: 0; }
-.st-feito .st-mark { background: #22a06b; border-color: #22a06b; color: #fff; }
+.st-feito .st-mark { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
 .st-hoje .st-mark { border-color: var(--brand); color: var(--brand); }
-.st-passou .st-mark { border-color: #e2b203; color: #b38600; }
+.st-passou .st-mark { border-color: var(--warn); color: var(--warn); }
 .st-feito .st-body b { text-decoration: line-through; opacity: 0.7; }
 .st-hoje { background: color-mix(in srgb, var(--brand) 6%, transparent); border-radius: 12px; padding-left: 6px; padding-right: 6px; }
 .st-when { font-weight: 800; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.4px; font-size: 11.5px; }
-.st-warn { margin-top: 4px; color: #a15c00; font-weight: 700; }
+.st-warn { margin-top: 4px; color: var(--warn); font-weight: 700; display: flex; gap: 6px; align-items: flex-start; }
+.st-warn svg, .cy-note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.cy-note { display: flex; gap: 8px; align-items: flex-start; }
+.cy-note svg { color: var(--st-interesse); }
 
 /* Ciclo menstrual */
-:root { --cyc: #b06bd6; }
+:root { --cyc: var(--st-interesse); }
 .tw-day { position: relative; }
 .tw-cyc { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--cyc); }
 .tw-cyc.cyc-pred { background: transparent; border: 1.5px solid var(--cyc); }
 .cy-list { margin: 6px 0 8px; padding-left: 18px; }
 .cy-list li + li { margin-top: 4px; }
-.cy-now { border-left: 4px solid var(--cyc); }
+.cy-now .cy-day { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .cy-day { font-size: 18px; }
 .cy-label { display: block; font-weight: 800; color: var(--ink-3); margin: 10px 0 6px; }
 .cy-label:first-child { margin-top: 0; }
@@ -1179,8 +1195,10 @@ details.link-import { margin-top: 0; }
 .cy-past { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
 .cy-past .input { min-width: 0; width: 100%; }
 .cy-past .btn { grid-column: 1 / -1; }
-.cy-signal { margin-top: 10px; border-left: 4px solid #e2b203; }
-.cy-note { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--cyc) 12%, transparent); }
+.cy-signal { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.cy-signal .sig { display: flex; gap: 8px; }
+.cy-signal .sig svg { width: 18px; height: 18px; color: var(--warn); flex: none; margin-top: 1px; }
+.cy-note { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--st-interesse-bg); }
 .cy-home { padding-top: 12px; padding-bottom: 10px; }
 .cy-home-link { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
 
@@ -1193,8 +1211,11 @@ details.link-import { margin-top: 0; }
 .hrz-legend li > span:last-child { text-align: right; }
 .hrz-dot { width: 10px; height: 10px; border-radius: 50%; }
 .hrz-read { margin-top: 4px; font-weight: 700; }
-.hrz-warn { color: #a15c00; }
-.hrz-ok { color: #1a7f4e; }
+.hrz-warn { color: var(--warn); }
+.hrz-ok { color: var(--ok); }
 .tw-zones { margin-top: 10px; }
 .hrz-floors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .hrz-floors label { font-size: 12px; font-weight: 800; color: var(--ink-3); display: grid; gap: 2px; }
+.garmin-row > svg { width: 26px; height: 26px; color: var(--brand); flex: none; }
+.cy-now .pill { font-size: 12px; }
+.btn svg { flex: none; }

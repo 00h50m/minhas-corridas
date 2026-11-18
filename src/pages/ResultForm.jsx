@@ -10,7 +10,7 @@ import { dropRaceHint, garminActivityFor, useGarmin } from '../services/garmin.j
 import { getProfile } from '../services/profile.js'
 import { ageCategory } from '../lib/profile.js'
 import { Field, TopBar, useUI } from '../components/ui.jsx'
-import { IconCamera, IconInfo, IconX } from '../components/Icons.jsx'
+import { IconCamera, IconInfo, IconWatch, IconX } from '../components/Icons.jsx'
 import { emptyResult, validateResult } from '../lib/model.js'
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { durationToInput, formatDuration, formatKm, formatPace, kmToInput, paceSeconds, parseDuration, parseKm } from '../lib/format.js'
@@ -272,7 +272,7 @@ export default function ResultForm() {
             {watchMsg && <div className={`alert small ${watchMsg.ok ? 'alert-ok' : 'alert-error'}`} role={watchMsg.ok ? 'status' : 'alert'} style={{ margin: '10px 0' }}><div>{watchMsg.text}</div></div>}
             <div className="btn-row" style={{ marginTop: 10, gridTemplateColumns: watch ? '1fr 1fr' : '1fr' }}>
               <button type="button" className="btn" onClick={() => watchRef.current?.click()}>{watch ? 'Trocar arquivo' : 'Escolher arquivo'}</button>
-              {garmin && race.date && !watch && <button type="button" className="btn btn-primary" disabled={garminBusy} onClick={onGarmin} data-testid="watch-garmin">{garminBusy ? 'Buscando no Garmin…' : '⌚ Buscar no Garmin'}</button>}
+              {garmin && race.date && !watch && <button type="button" className="btn btn-primary" disabled={garminBusy} onClick={onGarmin} data-testid="watch-garmin"><IconWatch /> {garminBusy ? 'Buscando no Garmin…' : 'Buscar no Garmin'}</button>}
               {watch && <button type="button" className="btn btn-danger" onClick={() => { setWatch(null); setWatchMsg(null) }}>Remover</button>}
             </div>
             <input ref={watchRef} type="file" accept=".gpx,.tcx,.fit,.zip,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml" hidden onChange={onWatchFile} data-testid="watch-input" />

@@ -5,8 +5,9 @@ import { readiness } from '../lib/readiness.js'
 import { useCycle } from '../services/cycle.js'
 import { SYMPTOMS, dayOfCycle, isPeriodDay } from '../lib/cycle.js'
 import { todayISO } from '../lib/dates.js'
+import { IconDrop, IconMoon } from './Icons.jsx'
 
-const ICON = { bom: '🟢', ok: '⚪', atencao: '🟡', cansaco: '🟠' }
+const PILL = { bom: ['ok', 'Boa recuperação'], ok: ['neutral', 'No seu normal'], atencao: ['warn', 'Atenção'], cansaco: ['danger', 'Sinais de cansaço'] }
 const SYM = Object.fromEntries(SYMPTOMS.map((s) => [s.id, s.label.toLowerCase()]))
 
 /** Linha do ciclo para a data: "dia 2 do ciclo (menstruação) · cólica · energia 2/5". */
@@ -16,7 +17,7 @@ function cycleInfo(c, date) {
   const log = c.days[date]
   if (!n && !log) return null
   const parts = [
-    n && `dia ${n} do ciclo${isPeriodDay(c, date, todayISO()) ? ' (menstruação)' : ''}`,
+    n && `Dia ${n} do ciclo${isPeriodDay(c, date, todayISO()) ? ' (menstruação)' : ''}`,
     ...(log?.symptoms ?? []).map((s) => SYM[s]),
     log?.energy && `energia ${log.energy}/5`
   ].filter(Boolean)
@@ -30,15 +31,21 @@ export default function Readiness({ date, past = false, style }) {
   const c = useCycle()
   const r = w?.days ? readiness(w.days, date) : null
   const cy = cycleInfo(c, date)
-  if ((!r || !r.parts.length) && !cy) return null
-  const level = r?.parts.length ? (cy?.low && r.level === 'bom' ? 'atencao' : r.level) : cy.low ? 'atencao' : 'ok'
+  const hasW = r?.parts.length > 0
+  if (!hasW && !cy) return null
+  const level = hasW ? (cy?.low && r.level === 'bom' ? 'atencao' : r.level) : cy.low ? 'atencao' : 'ok'
+  const [tone, label] = PILL[level]
+  const text = !past && hasW ? r.text : !past && cy?.low ? 'Você registrou um dia mais difícil: se sentir, ir mais leve é uma opção.' : null
   return (
-    <div className={`readiness rd-${level}`} style={style} data-testid="readiness">
-      <div className="rd-head"><span aria-hidden="true">{ICON[level]}</span> <b>{past ? 'Na manhã deste treino' : 'Como você chega hoje'}</b></div>
-      {r?.parts.length > 0 && <div className="small">{r.parts.join(' · ')}</div>}
-      {cy && <div className="small" data-testid="readiness-cycle">🌸 {cy.line}</div>}
-      {!past && r?.parts.length > 0 && <div className="small rd-text">{r.text}</div>}
-      {!past && cy?.low && (!r || r.level === 'bom' || r.level === 'ok') && <div className="small rd-text">Você registrou um dia mais difícil: se sentir, ir mais leve é uma opção.</div>}
+    <div className={`card readiness rd-${level}`} style={style} data-testid="readiness">
+      <div className="rd-head">
+        <IconMoon />
+        <b>{past ? 'Na manhã deste treino' : 'Como você chega hoje'}</b>
+        {!past && <span className={`pill pill-${tone}`}>{label}</span>}
+      </div>
+      {hasW && <div className="small rd-line">{r.parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' · ')}</div>}
+      {cy && <div className="small rd-line" data-testid="readiness-cycle"><IconDrop /> {cy.line}</div>}
+      {text && <div className="small rd-text">{text}{hasW && cy?.low && r.level !== 'cansaco' && r.level !== 'atencao' ? ' Você registrou um dia mais difícil.' : ''}</div>}
       {past && r?.signals.length > 0 && <div className="small rd-text">{r.signals.join(' · ')}</div>}
     </div>
   )

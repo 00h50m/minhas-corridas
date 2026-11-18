@@ -1,5 +1,7 @@
 // Reta final da prova (até 4 semanas antes): linha do tempo, marcar como feito e atalhos.
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { IconAlert, IconDrop } from './Icons.jsx'
 import { getState, saveRace, saveWorkout, useStore } from '../services/store.js'
 import { useCycle } from '../services/cycle.js'
 import { raceCycleNote } from '../lib/cycle.js'
@@ -19,6 +21,10 @@ export default function FinalStretch({ race }) {
   const items = finalStretch(race, { workouts, today, cycle })
   const cnote = raceCycleNote(cycle, race, today)
   const done = items.filter((i) => i.done).length
+  const [all, setAll] = useState(false)
+  // Resumo: o que passou sem marcar, o de hoje e os 3 próximos; o resto em “ver a linha do tempo”.
+  const future = items.filter((i) => !i.done && i.date > today).slice(0, 3)
+  const shown = all ? items : items.filter((i) => (!i.done && i.date <= today) || future.includes(i))
   const toggle = (id) => {
     const set = new Set(race.stretchDone ?? [])
     set.has(id) ? set.delete(id) : set.add(id)
@@ -40,9 +46,9 @@ export default function FinalStretch({ race }) {
         <b>{days > 0 ? `Faltam ${days} ${days === 1 ? 'dia' : 'dias'}` : days === 0 ? 'É hoje!' : 'Depois da prova'}</b>
         <span className="muted small">{done} de {items.length} feitos</span>
       </div>
-      {cnote && <div className="small cy-note" data-testid="stretch-cycle">🌸 {cnote.text}</div>}
+      {cnote && <div className="small cy-note" data-testid="stretch-cycle"><IconDrop /> {cnote.text}</div>}
       <ol className="st-list">
-        {items.map((it) => (
+        {shown.map((it) => (
           <li key={it.id} className={`st-item st-${it.state}`} data-testid="stretch-item">
             <button type="button" className="st-mark" onClick={() => !it.auto && toggle(it.id)} disabled={it.auto} aria-pressed={it.done} aria-label={it.done ? `Desmarcar “${it.title}”` : `Marcar “${it.title}” como feito`} title={it.auto ? 'Marcado pelo app' : undefined}>{STATE[it.state]}</button>
             <div className="st-body">
@@ -50,7 +56,7 @@ export default function FinalStretch({ race }) {
               <b>{it.title}</b>
               <div className="small muted">{it.desc}</div>
               {it.note && <div className="small">{it.note}</div>}
-              {it.warn && <div className="small st-warn" data-testid="stretch-warn">⚠️ {it.warn}</div>}
+              {it.warn && <div className="small st-warn" data-testid="stretch-warn"><IconAlert /> {it.warn}</div>}
               {(it.link || it.action) && (
                 <div className="btn-inline" style={{ marginTop: 4 }}>
                   {it.link && <Link to={it.link} className="link-btn">{it.linkLabel}</Link>}
@@ -61,6 +67,7 @@ export default function FinalStretch({ race }) {
           </li>
         ))}
       </ol>
+      {shown.length < items.length || all ? <button type="button" className="link-btn" onClick={() => setAll((v) => !v)} data-testid="stretch-all">{all ? 'Mostrar só os próximos' : `Ver a linha do tempo completa (${items.length})`}</button> : null}
       <p className="note" style={{ marginBottom: 0 }}>Roteiro de partida: toque no círculo para marcar. Alguns itens o app marca sozinho (treino no ritmo feito, kit no checklist, logística, resultado). Não muda seus treinos.</p>
     </div>
   )

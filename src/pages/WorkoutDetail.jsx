@@ -8,6 +8,7 @@ import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, fmt
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
 import CopyBox from '../components/CopyBox.jsx'
+import Readiness from '../components/Readiness.jsx'
 import { formatDateBR, toISODate } from '../lib/dates.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { downloadBlob } from '../services/backup.js'
@@ -148,6 +149,7 @@ function Detail({ w }) {
         <p className="note">No Garmin Connect: atividade → ⚙ → Exportar original (.zip) ou Exportar para TCX.</p>
         {msg && <div className={`alert small ${msg.ok ? '' : 'alert-error'}`} role={msg.ok ? 'status' : 'alert'} style={{ marginTop: 10 }}>{msg.text}</div>}
         {w.result && <Executed w={w} />}
+        {w.date && w.status === 'feito' && <Readiness date={w.date} past style={{ marginTop: 10 }} />}
         {w.status === 'feito' && <Link to={`/stories?modelo=treino&treino=${w.id}`} className="btn btn-block" style={{ marginTop: 10 }} data-testid="wk-story">📲 Compartilhar este treino</Link>}
 
         <div className="btn-row" style={{ marginTop: 22 }}>

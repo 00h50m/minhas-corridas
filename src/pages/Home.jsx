@@ -17,6 +17,7 @@ import BudgetCard from '../components/Budget.jsx'
 import { currentBudget } from '../lib/budget.js'
 import { candidates } from '../lib/decision.js'
 import { fmtSec, plannedSec, workoutLine } from '../lib/workout.js'
+import Readiness from '../components/Readiness.jsx'
 // Resumo da semana de treinos: carrega só quando há treinos (não pesa a abertura do app).
 const TrainingWeek = lazy(() => import('../components/TrainingWeek.jsx'))
 // Semana que fechou e passaporte: calculam conquistas e mapa, então carregam logo depois da abertura.
@@ -332,6 +333,7 @@ function NextWorkout({ w, today }) {
         <div className="muted small">{workoutLine(w)}</div>
         <div className="muted small" style={{ marginTop: 4 }}>≈ {fmtSec(plannedSec(w))}</div>
       </Link>
+      {days === 0 && <Readiness date={w.date} style={{ marginTop: 8 }} />}
     </>
   )
 }

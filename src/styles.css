@@ -1126,3 +1126,11 @@ details.link-import { margin-top: 0; }
   .sim-bar { margin-left: calc(var(--side-w) / 2); bottom: 0; }
   .update-bar, .upd { margin-left: calc(var(--side-w) / 2); }
 }
+
+/* Como você chega ao treino (Garmin) */
+.readiness { background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); padding: 10px 14px; border-left: 4px solid var(--line); }
+.readiness .rd-head { font-size: 14px; margin-bottom: 2px; }
+.readiness .rd-text { margin-top: 4px; color: var(--ink-2, var(--ink)); }
+.readiness.rd-bom { border-left-color: #22a06b; }
+.readiness.rd-atencao { border-left-color: #e2b203; }
+.readiness.rd-cansaco { border-left-color: var(--brand); }

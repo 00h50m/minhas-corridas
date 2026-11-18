@@ -112,6 +112,70 @@ export function slimActivity(a) {
   }
 }
 
+
+/* ---------- Bem-estar: sono, body battery e FC de repouso (por dia) ---------- */
+
+const pick = (o, paths) => {
+  for (const p of paths) {
+    let v = o
+    for (const k of p.split('.')) v = v == null ? undefined : v[k]
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+  }
+  return null
+}
+const dateOf = (o) => {
+  for (const k of ['calendarDate', 'date', 'summaryDate', 'sleepDate', 'day']) {
+    const v = o?.[k]
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10)
+  }
+  return null
+}
+/** Acha a lista de registros diários numa resposta (lista na raiz ou dentro de uma chave). */
+function dailyList(data) {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object') {
+    for (const v of Object.values(data)) if (Array.isArray(v) && v.some((x) => x && typeof x === 'object' && dateOf(x.dailySleepDTO ?? x))) return v
+    if (dateOf(data.dailySleepDTO ?? data)) return [data]
+  }
+  return []
+}
+
+/** Um dia de sono/bem-estar, aceitando os nomes de campo mais comuns do Garmin Connect. */
+export function wellnessDay(raw) {
+  const o = raw?.dailySleepDTO ?? raw
+  const date = dateOf(o)
+  if (!date) return null
+  const d = {
+    date,
+    sleepSec: pick(o, ['sleepTimeSeconds', 'sleepingSeconds', 'totalSleepSeconds', 'sleepDurationInSeconds', 'durationInSeconds']),
+    sleepScore: pick(o, ['sleepScores.overall.value', 'overallSleepScore.value', 'sleepScore.value', 'sleepScore', 'overallSleepScore']),
+    bbWake: pick(o, ['bodyBatteryAtWakeTime', 'bodyBatteryWakeValue', 'wakeBodyBattery']),
+    bbHigh: pick(o, ['bodyBatteryHighestValue', 'highestBodyBattery', 'bodyBatteryHigh']),
+    bbLow: pick(o, ['bodyBatteryLowestValue', 'lowestBodyBattery']),
+    rhr: pick(o, ['restingHeartRate', 'restingHeartRateValue', 'restingHR'])
+  }
+  // Série do dia ([[hora, valor], ...] ou [{ value }]): o pico da carga.
+  const series = Array.isArray(o.bodyBatteryValuesArray) ? o.bodyBatteryValuesArray : Array.isArray(o.bodyBatteryValues) ? o.bodyBatteryValues : null
+  if (series && d.bbHigh == null) {
+    const vals = series.map((x) => (Array.isArray(x) ? x[1] : x?.value ?? x?.bodyBatteryLevel)).filter((v) => typeof v === 'number' && v >= 0 && v <= 100)
+    if (vals.length) { d.bbHigh = Math.max(...vals); d.bbLow = d.bbLow ?? Math.min(...vals) }
+  }
+  return Object.entries(d).filter(([k, v]) => k !== 'date' && typeof v === 'number').length ? d : null
+}
+
+/** Junta os dias de várias respostas (o mesmo dia pode vir em mais de uma): o primeiro valor de cada campo vale. */
+export function mergeWellness(...lists) {
+  const by = new Map()
+  for (const list of lists) for (const raw of list) {
+    const d = wellnessDay(raw)
+    if (!d) continue
+    const cur = by.get(d.date) ?? { date: d.date }
+    for (const [k, v] of Object.entries(d)) if (cur[k] == null && v != null) cur[k] = v
+    by.set(d.date, cur)
+  }
+  return [...by.values()].sort((a, b) => (a.date < b.date ? -1 : 1))
+}
+
 export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } = {}) {
   if (req.method !== 'POST') return { status: 405, body: { error: 'Método não permitido.' } }
   if (!sameOrigin(req)) return { status: 403, body: { error: 'Origem não permitida.' } }
@@ -143,6 +207,29 @@ export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } 
       if (!buf.length) throw fail(502, 'A Garmin mandou o arquivo vazio.')
       if (buf.length > MAX_FILE) throw fail(413, 'Arquivo da atividade grande demais.')
       return { status: 200, binary: buf, type: 'application/zip' }
+    }
+    if (b.action === 'wellness') {
+      if (!isoDate(b.start) || !isoDate(b.end) || b.start > b.end) return { status: 400, body: { error: 'Período inválido.' } }
+      const q = new URLSearchParams({ startDate: b.start, endDate: b.end })
+      // Cada fonte é opcional: se uma falhar (sem dados, sem permissão), segue com as outras.
+      const get = async (path) => {
+        try {
+          const res = await authed(b.key, path, 'application/json', fetchImpl, now)
+          return await res.json().catch(() => null)
+        } catch (e) {
+          if (e.status === 401 || e.status === 429) throw e
+          return null
+        }
+      }
+      const [sleep, daily, bb] = await Promise.all([
+        get(`/sleep-service/sleep/dailySleepSummariesByDate?${q}`),
+        get(`/usersummary-service/v2/dailysummaries?${q}`),
+        get(`/wellness-service/wellness/bodyBattery/reports/daily?${q}`)
+      ])
+      const days = mergeWellness(dailyList(sleep), dailyList(daily), dailyList(bb))
+      const keysOf = (d) => { const l = dailyList(d); const first = l[0]?.dailySleepDTO ?? l[0]; return first && typeof first === 'object' ? Object.keys(first).slice(0, 20) : d && typeof d === 'object' ? Object.keys(d).slice(0, 12) : [] }
+      const shape = days.length ? null : { sleep: keysOf(sleep), daily: keysOf(daily), bb: keysOf(bb) }
+      return { status: 200, body: { days, ...(shape ? { shape } : {}) } }
     }
     if (b.action === 'check') {
       await getToken(b.key, fetchImpl, now, true)

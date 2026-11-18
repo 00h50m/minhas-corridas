@@ -6,7 +6,8 @@ import { getState, saveWorkout } from './store.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { activityDate, alreadyImported, freeWorkout, matchActivity, resultFrom } from '../lib/activityMatch.js'
 import { WITH_FILE, garminDate, planGarmin, sameActivity, summaryFromList, syncWindow } from '../lib/garminSync.js'
-import { todayISO } from '../lib/dates.js'
+import { addDaysISO, todayISO } from '../lib/dates.js'
+import { GARMIN_EVENT } from '../lib/wellnessStore.js'
 import { fmtSec } from '../lib/workout.js'
 
 const KEY = 'minhas-corridas:garmin'
@@ -31,6 +32,7 @@ function write(next) {
     else localStorage.removeItem(KEY)
   } catch { /* sem armazenamento: vale só nesta sessão */ }
   listeners.forEach((l) => l())
+  try { window.dispatchEvent(new Event(GARMIN_EVENT)) } catch { /* fora do navegador */ }
 }
 
 export const getGarmin = () => state
@@ -143,9 +145,32 @@ export function syncGarmin({ force = false, full = false } = {}) {
     }
     const report = { at: new Date().toISOString(), start: win.start, end: win.end, total: activities.length, already: activities.length - plan.length + linked, imported, linked, enriched, waiting: pending.length - s.pending.length, prova: races.length - s.races.length, types: [...new Set(activities.map((g) => g.type).filter(Boolean))].slice(0, 6), first: activities.map(garminDate).filter(Boolean).sort()[0] ?? null, shape }
     write({ ...state, lastSync: report.at, done: done.slice(-400), pending: pending.slice(-20), races: races.slice(-20), report })
+    await refreshWellness({ force: force || full }).catch(() => { /* sono é opcional: não atrapalha as atividades */ })
     return { lines, imported, pending: pending.length, races: races.length, report }
   })().finally(() => { running = null })
   return running
+}
+
+/**
+ * Sono, body battery e FC de repouso dos últimos dias (30 na primeira vez; depois os últimos 3).
+ * Ficam só neste aparelho, como a chave. No máximo a cada 3 h, salvo force.
+ */
+export async function refreshWellness({ force = false } = {}) {
+  if (!state) return null
+  if (!force && state.wellnessAt && Date.now() - Date.parse(state.wellnessAt) < 3 * 3600 * 1000) return state.wellness ?? null
+  const today = todayISO()
+  const have = state.wellness && Object.keys(state.wellness).length
+  const start = addDaysISO(today, have && !force ? -3 : -30)
+  const { days, shape = null } = await api({ action: 'wellness', key: state.key, start, end: today })
+  const merged = { ...(state.wellness ?? {}) }
+  for (const d of days ?? []) {
+    if (!d?.date) continue
+    const { date, ...rest } = d
+    merged[date] = rest
+  }
+  const keep = Object.keys(merged).sort().slice(-60)
+  write({ ...state, wellness: Object.fromEntries(keep.map((k) => [k, merged[k]])), wellnessAt: new Date().toISOString(), wellnessShape: days?.length ? null : shape })
+  return state.wellness
 }
 
 /** Tira da fila uma atividade que esperava escolha (já resolvida na tela). */

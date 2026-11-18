@@ -76,6 +76,12 @@ p.on('request', (r) => {
   if (b.key !== KEY) return r.respond({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'A Garmin recusou a chave. Confira se copiou inteira e se ela não expirou ou foi apagada.' }) })
   if (b.action === 'check') return r.respond({ status: 200, contentType: 'application/json', body: '{"ok":true}' })
   if (b.action === 'list') return r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ activities: LIST.filter((g) => g.start.slice(0, 10) >= b.start && g.start.slice(0, 10) <= b.end) }) })
+  if (b.action === 'wellness') {
+    const days = []
+    for (let i = 14; i >= 1; i--) days.push({ date: shift(today, -i), sleepSec: 27000, sleepScore: 82, bbWake: 75, rhr: 52 })
+    days.push({ date: today, sleepSec: 19800, sleepScore: 55, bbWake: 30, rhr: 58 })
+    return r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ days: days.filter((d) => d.date >= b.start && d.date <= b.end) }) })
+  }
   if (b.action === 'file') return FILES[b.id] ? r.respond({ status: 200, contentType: 'application/zip', body: FILES[b.id] }) : r.respond({ status: 404, contentType: 'application/json', body: '{"error":"Atividade não encontrada na Garmin."}' })
   return r.respond({ status: 400, body: '{}' })
 })
@@ -129,6 +135,20 @@ if (await p.$('[data-testid=activity-pick]')) throw new Error('Fila não andou')
 let g = await garminLS()
 if (g.pending.length || !g.done.includes('104') || g.races[0]?.raceId !== 'hc') throw new Error('Estado Garmin: ' + JSON.stringify({ ...g, key: '…' }))
 ok(`Busca: “${rep}”; o “Longão” importado à mão antes não duplicou e ganhou o percurso; corrida de hoje → “Rodagem hoje” (com voltas e percurso); musculação → atividade avulsa de academia; corrida de ontem → escolhida “Tiros”; corrida do dia da prova não virou treino`)
+
+// 2b. Sono e body battery: “como você chega hoje” e na manhã de cada treino
+await p.waitForSelector('[data-testid=readiness]')
+const rd = await p.$eval('[data-testid=readiness]', (e) => e.innerText.replace(/\s+/g, ' '))
+if (!rd.includes('Como você chega hoje') || !rd.includes('sono 5h30 (nota 55)') || !rd.includes('body battery 30 ao acordar') || !rd.includes('Sinais de cansaço')) throw new Error('Prontidão: ' + rd)
+const wl = await p.$eval('[data-testid=garmin-wellness]', (e) => e.innerText)
+if (!wl.includes('15 dias')) throw new Error('Linha do sono: ' + wl)
+await p.goto(BASE + '/treinos/rod', { waitUntil: 'networkidle0' })
+await p.waitForSelector('[data-testid=readiness]')
+const rd2 = await p.$eval('[data-testid=readiness]', (e) => e.innerText.replace(/\s+/g, ' '))
+if (!rd2.includes('Na manhã deste treino') || !rd2.includes('dormiu menos de 6 h')) throw new Error('Treino: ' + rd2)
+if ((await p.evaluate(() => localStorage.getItem('minhas-corridas:v1'))).includes('sleepSec')) throw new Error('Sono foi para os dados sincronizados')
+ok(`Sono: “${rd.trim()}”; no treino feito, “Na manhã deste treino”; dados de saúde só no aparelho`)
+await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 
 // 3. Chave só no aparelho
 const raw = await p.evaluate(() => localStorage.getItem('minhas-corridas:v1'))

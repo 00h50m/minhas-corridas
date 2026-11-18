@@ -20,6 +20,17 @@ export function reportText(r) {
   return `${parts[0]}${bits.length ? `: ${bits.join(', ')}` : ''}.${odd}`
 }
 
+/** Sono e body battery: quantos dias vieram, ou o diagnóstico se a Garmin respondeu num formato desconhecido. */
+export function wellnessText(g) {
+  const n = Object.keys(g.wellness ?? {}).length
+  if (n) return `Sono e body battery: ${n} ${n === 1 ? 'dia' : 'dias'} (ficam só neste aparelho).`
+  const sh = g.wellnessShape
+  const fields = sh ? [...(sh.sleep ?? []), ...(sh.daily ?? []), ...(sh.bb ?? [])].slice(0, 25) : []
+  return fields.length
+    ? `Sono e body battery: a Garmin respondeu num formato que o app não reconheceu (campos: ${fields.join(', ')}) — mande um print para ajustar.`
+    : 'Sono e body battery: a Garmin não mandou dados (o relógio mede o sono? sincronizou com o Garmin Connect?).'
+}
+
 const when = (iso) => {
   if (!iso) return 'ainda não buscou'
   const d = new Date(iso)
@@ -81,6 +92,7 @@ export default function GarminConnect() {
         </div>
         <p className="note" style={{ margin: '6px 0 0' }}>O app busca sozinho ao abrir (no máximo a cada 30 min) e marca o treino do dia como feito, com voltas, parciais e o percurso.</p>
         {g.report && <p className="small" style={{ margin: '8px 0 0' }} data-testid="garmin-report">{reportText(g.report)}</p>}
+        {g.wellnessAt && <p className="small muted" style={{ margin: '6px 0 0' }} data-testid="garmin-wellness">{wellnessText(g)}</p>}
         {msg && <div className="alert alert-error small" role="alert" style={{ marginTop: 8 }}>{msg}</div>}
         {lines.length > 0 && <ul className="ai-log small" data-testid="garmin-log">{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>}
         <div className="btn-inline" style={{ marginTop: 6 }}>

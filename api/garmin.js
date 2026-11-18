@@ -184,26 +184,34 @@ const ISO = /^\d{4}-\d{2}-\d{2}/
  * Procura, em qualquer formato de resposta, os inícios de menstruação e as durações.
  * Aceita chaves como cycleStartDate, periodStartDate, startDate (dentro de objetos de ciclo).
  */
-export function cycleFromResponse(data) {
+export function cycleFromResponse(data, until = null) {
   const starts = new Set()
   let periodLen = null
   let cycleLen = null
+  // Objeto que descreve um ciclo (resumo do Garmin Connect: startDate + dayInCycle/periodLength/…)
+  const isCycleObj = (o) => ['dayInCycle', 'periodLength', 'cycleType', 'currentPhase', 'predictedCycleLength'].some((k) => k in o)
   const walk = (v, path) => {
     if (Array.isArray(v)) return v.forEach((x) => walk(x, path))
     if (!v || typeof v !== 'object') return
+    const cycleObj = isCycleObj(v)
     for (const [k, x] of Object.entries(v)) {
       const p = `${path}.${k}`.toLowerCase()
-      if (typeof x === 'string' && ISO.test(x) && /start/i.test(k) && /(cycle|period|menstru|bleed)/.test(p)) starts.add(x.slice(0, 10))
-      else if (typeof x === 'number' && x > 0 && x < 100) {
+      // Previsões e janela fértil não são menstruações que aconteceram
+      if (/predict|fertile|education/i.test(k)) continue
+      if (typeof x === 'string' && ISO.test(x) && /start/i.test(k) && (cycleObj || /(cycle|period|menstru|bleed)/.test(p))) {
+        const d = x.slice(0, 10)
+        if (!until || d <= until) starts.add(d)
+      } else if (typeof x === 'number' && x > 0 && x < 100) {
         if (/(period|bleed|menstru).*(length|days|duration)/i.test(k) && x <= 14) periodLen = periodLen ?? Math.round(x)
         else if (/cycle.*(length|days|duration)/i.test(k) && x >= 15 && x <= 60) cycleLen = cycleLen ?? Math.round(x)
       } else walk(x, p)
     }
+    // Duração prevista do ciclo (só como referência de duração; a data prevista é ignorada)
+    if (cycleObj && cycleLen == null && Number.isFinite(v.predictedCycleLength) && v.predictedCycleLength >= 15 && v.predictedCycleLength <= 60) cycleLen = Math.round(v.predictedCycleLength)
   }
   walk(data, '')
   return { starts: [...starts].sort(), periodLen, cycleLen }
 }
-
 
 /* ---------- Zonas de frequência cardíaca ---------- */
 
@@ -280,7 +288,8 @@ export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } 
     if (b.action === 'cycle') {
       if (!isoDate(b.end)) return { status: 400, body: { error: 'Data inválida.' } }
       // Resumo do ciclo em algumas datas para trás (cada uma traz o ciclo daquele momento).
-      const dates = [0, 30, 60, 90, 120, 150].map((d) => new Date(Date.parse(`${b.end}T12:00:00Z`) - d * 864e5).toISOString().slice(0, 10))
+      // Um resumo a cada 28 dias, cobrindo ~12 meses (cada um traz o ciclo daquele momento).
+      const dates = Array.from({ length: 13 }, (_, i) => i * 28).map((d) => new Date(Date.parse(`${b.end}T12:00:00Z`) - d * 864e5).toISOString().slice(0, 10))
       const raw = []
       for (const d of dates) {
         try {
@@ -291,7 +300,7 @@ export async function handleGarmin(req, { fetchImpl = fetch, now = Date.now() } 
           raw.push(null)
         }
       }
-      const found = cycleFromResponse(raw.filter(Boolean))
+      const found = cycleFromResponse(raw.filter(Boolean), b.end)
       const first = raw.find((x) => x && typeof x === 'object')
       const shape = found.starts.length ? null : { keys: first ? (Array.isArray(first) ? Object.keys(first[0] ?? {}) : Object.keys(first)).slice(0, 20) : [] }
       return { status: 200, body: { ...found, ...(shape ? { shape } : {}) } }

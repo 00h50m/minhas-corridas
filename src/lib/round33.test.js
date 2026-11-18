@@ -108,4 +108,10 @@ describe('ciclo do Garmin (formatos)', () => {
     expect(cycleFromResponse({ menstrualCycleSummary: { cycles: [{ startDate: '2026-09-10T00:00:00' }] } }).starts).toEqual(['2026-09-10'])
     expect(cycleFromResponse({ calendarDate: '2026-11-18', startTimestamp: '2026-11-18' }).starts).toEqual([])
   })
+  it('formato real do Garmin Connect (resumo do ciclo, um por data consultada)', () => {
+    const at = (start, day) => ({ startDate: start, dayInCycle: day, periodLength: 5, currentPhase: 2, lengthOfCurrentPhase: 9, daysUntilNextPhase: 3, fertileWindowStart: '2026-11-15', lengthOfFertileWindow: 6, predictedCycleLength: 28, educationContentMod: {}, cycleType: 'REGULAR', predictedCycle: { startDate: '2026-12-03', dayInCycle: 1, periodLength: 5 } })
+    const r = cycleFromResponse([at('2026-11-05', 14), at('2026-10-08', 13), at('2026-09-10', 12)], '2026-11-18')
+    expect(r).toEqual({ starts: ['2026-09-10', '2026-10-08', '2026-11-05'], periodLen: 5, cycleLen: 28 })
+    expect(cycleFromResponse([{ startDate: '2026-12-20', dayInCycle: 1 }], '2026-11-18').starts).toEqual([]) // futuro: não
+  })
 })

@@ -30,7 +30,8 @@ export function emptyProfile() {
     vehicle: { kmPerL: null, fuel: 'gasolina', pricePerL: null },
     prep: { ...DEFAULT_PREP }, // tempos de preparação padrão para a agenda do dia
     favorites: [], // lugares: [{ id, label, address, formatted, lat, lon, dwellMin }]
-    people: [] // pessoas: [{ id, name, phone, placeId }] (quem você busca ou leva junto)
+    people: [], // pessoas: [{ id, name, phone, placeId }] (quem você busca ou leva junto)
+    missedRule: 'perguntar' // treino que passa sem marcar: perguntar | remanejar (sozinho) | pular (marcar “não fiz”)
   }
 }
 
@@ -64,6 +65,7 @@ export function normalizeProfile(raw) {
     .filter(Boolean)
     .slice(0, 30)
   p.people = normalizePeople(p.people, new Set(p.favorites.map((f) => f.id)))
+  p.missedRule = ['perguntar', 'remanejar', 'pular'].includes(p.missedRule) ? p.missedRule : 'perguntar'
   return Object.fromEntries(Object.keys(emptyProfile()).map((k) => [k, p[k]]))
 }
 

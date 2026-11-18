@@ -1,6 +1,11 @@
 // Lista de treinos: próximos, sem data e já feitos.
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useStore } from '../services/store.js'
+import { getState, saveWorkout, useStore } from '../services/store.js'
+import { saveProfile, useProfile } from '../services/profile.js'
+import { useUI } from '../components/ui.jsx'
+import Reschedule from '../components/Reschedule.jsx'
+import { dayLabel, missedWorkouts, moveWorkout, movedLabel, suggestDates } from '../lib/reschedule.js'
 import { DateTile, EmptyState, TopBar } from '../components/ui.jsx'
 import { IconPlus } from '../components/Icons.jsx'
 import { WORKOUT_STATUSES, fmtSec, isRun, plannedSec, sportOf, workoutLine } from '../lib/workout.js'
@@ -42,6 +47,7 @@ export default function Workouts() {
       <div className="page">
         <TrainingWeek workouts={workouts} today={today} />
         <Readiness date={today} style={{ marginTop: 10 }} />
+        <MissedCard workouts={workouts} today={today} />
         <div style={{ marginTop: 10 }}><GarminConnect /></div>
         <div style={{ marginTop: 10 }}><ActivityImport /></div>
         <PlanGoalHint workouts={upcoming} goals={goals} />
@@ -83,9 +89,54 @@ export function WorkoutItem({ w, today }) {
           {w.date === today && w.status === 'planejado' && <span className="chip chip-hot">Hoje</span>}
           {w.status !== 'planejado' && <span className="chip">{STATUS_LABEL[w.status]}{w.status === 'feito' && w.result?.distanceKm ? ` · ${String(w.result.distanceKm.toFixed(2)).replace('.', ',')} km` : ''}</span>}
           {missed && <span className="chip chip-dim">Passou</span>}
+          {w.moves?.length > 0 && <span className="chip chip-moved" data-testid="wk-moved-chip">↷ {movedLabel(w)}</span>}
         </div>
       </div>
     </Link>
+  )
+}
+
+/** Treinos que passaram sem marcar: remanejar (sugestão da regra), escolher dia, não fiz ou fiz; e a regra. */
+function MissedCard({ workouts, today }) {
+  const prof = useProfile()
+  const { notify } = useUI()
+  const [moving, setMoving] = useState(null)
+  const rule = prof?.data?.missedRule ?? 'perguntar'
+  const missed = missedWorkouts(workouts, today)
+  const setRule = (r) => { saveProfile({ ...prof.data, missedRule: r }); notify(r === 'remanejar' ? 'Treinos que passarem vão para o próximo dia livre' : r === 'pular' ? 'Treinos que passarem serão marcados como “não fiz”' : 'O app vai perguntar') }
+  const ruleSelect = (
+    <label className="small mc-rule">
+      Treino que passar sem marcar:{' '}
+      <select className="input" value={rule} onChange={(e) => setRule(e.target.value)} data-testid="missed-rule">
+        <option value="perguntar">perguntar</option>
+        <option value="remanejar">remanejar sozinho</option>
+        <option value="pular">marcar como “não fiz”</option>
+      </select>
+    </label>
+  )
+  if (!missed.length) return <div className="mc-rule-only">{ruleSelect}</div>
+  const { races, goals } = getState()
+  return (
+    <div className="card small missed-card" style={{ marginTop: 10 }} data-testid="missed-card">
+      <b>{missed.length === 1 ? 'Treino que passou sem marcar' : `${missed.length} treinos passaram sem marcar`}</b>
+      {missed.map((w) => {
+        const best = suggestDates(w, { workouts, races, goals, today })[0]
+        return (
+          <div key={w.id} className="mc-row" data-testid="missed-row">
+            <div><b>{w.name}</b> <span className="muted">· {dayLabel(w.date)}</span></div>
+            <div className="btn-inline" style={{ marginTop: 4 }}>
+              {best && <button type="button" className="link-btn" onClick={() => { saveWorkout(moveWorkout(w, best.date, today)); notify(`“${w.name}” remanejado para ${dayLabel(best.date)}`) }} data-testid="missed-move">↷ Para {dayLabel(best.date)}</button>}
+              <button type="button" className="link-btn" onClick={() => setMoving(w)} data-testid="missed-pick">Outro dia</button>
+              <button type="button" className="link-btn muted-btn" onClick={() => saveWorkout({ ...w, status: 'pulado' })} data-testid="missed-skip">Não fiz</button>
+              <button type="button" className="link-btn muted-btn" onClick={() => saveWorkout({ ...w, status: 'feito' })} data-testid="missed-done">Fiz</button>
+            </div>
+            {best?.notes.length > 0 && <div className="note" style={{ margin: '2px 0 0' }}>{best.notes.join(' · ')}</div>}
+          </div>
+        )
+      })}
+      {ruleSelect}
+      {moving && <Reschedule w={moving} onClose={() => setMoving(null)} />}
+    </div>
   )
 }
 

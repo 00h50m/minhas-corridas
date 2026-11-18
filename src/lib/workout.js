@@ -88,7 +88,7 @@ function normalizeItem(raw) {
 }
 
 export function emptyWorkout() {
-  return { id: null, name: '', sport: 'corrida', plannedMin: null, date: null, status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
+  return { id: null, name: '', sport: 'corrida', plannedMin: null, date: null, moves: [], status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
 }
 
 export function normalizeWorkout(raw) {
@@ -97,6 +97,8 @@ export function normalizeWorkout(raw) {
   w.sport = SPORT_BY_ID[w.sport] ? w.sport : 'corrida'
   w.plannedMin = w.sport === 'corrida' ? null : num(Math.round(Number(w.plannedMin)), 1, 600)
   w.date = isValidISODate(w.date) ? w.date : null
+  // Remanejamentos: [{ from, to, at, auto }] (o mais recente por último)
+  w.moves = (Array.isArray(w.moves) ? w.moves : []).filter((m) => m && isValidISODate(m.from) && isValidISODate(m.to)).map((m) => ({ from: m.from, to: m.to, at: isValidISODate(m.at) ? m.at : m.to, auto: m.auto === true })).slice(-10)
   w.status = WORKOUT_STATUSES.some((s) => s.id === w.status) ? w.status : 'planejado'
   w.raceId = str(w.raceId, 60) || null
   w.goalId = str(w.goalId, 60) || null // objetivo a que este treino pertence (plano)

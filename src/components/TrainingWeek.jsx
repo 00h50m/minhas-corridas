@@ -47,7 +47,7 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
         </div>
       )}
       <Load workouts={workouts} start={start} today={today} />
-      {(s.missed > 0 || s.skipped > 0) && <p className="note" style={{ margin: '6px 0 0' }}>{s.missed > 0 ? `${s.missed} ${s.missed === 1 ? 'treino passou' : 'treinos passaram'} sem marcar: abra e marque como feito (ou importe a atividade) ou “Não fiz”.` : ''}{s.skipped > 0 ? ` ${s.skipped} não ${s.skipped === 1 ? 'feito' : 'feitos'}.` : ''}</p>}
+      {(s.missed > 0 || s.skipped > 0) && <p className="note" style={{ margin: '6px 0 0' }}>{s.missed > 0 ? `${s.missed} ${s.missed === 1 ? 'treino passou' : 'treinos passaram'} sem marcar: remaneje ou marque logo abaixo.` : ''}{s.skipped > 0 ? ` ${s.skipped} não ${s.skipped === 1 ? 'feito' : 'feitos'}.` : ''}</p>}
       {!current && <button type="button" className="link-btn" onClick={() => setStart(weekStart(today))}>Voltar para esta semana</button>}
       {current && s.planned > 0 && <Link to="/stories?modelo=semana" className="link-btn" data-testid="week-story">📲 Compartilhar a semana</Link>}
       {streak > 0 && <div className="tw-streak small" data-testid="week-streak">🔥 {streak} {streak === 1 ? 'semana cumprida' : 'semanas seguidas cumpridas'}</div>}

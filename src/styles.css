@@ -1134,3 +1134,17 @@ details.link-import { margin-top: 0; }
 .readiness.rd-bom { border-left-color: #22a06b; }
 .readiness.rd-atencao { border-left-color: #e2b203; }
 .readiness.rd-cansaco { border-left-color: var(--brand); }
+
+/* Remanejar treino */
+.rs-opts { display: grid; gap: 8px; }
+.rs-opt { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; height: auto; padding: 10px 14px; }
+.rs-opt .rs-why { font-size: 12.5px; font-weight: 600; opacity: 0.8; }
+.rs-custom { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: center; margin-top: 12px; }
+.rs-custom label { grid-column: 1 / -1; font-weight: 700; }
+.rs-history ul { margin: 4px 0 0; padding-left: 18px; }
+.chip-moved { background: color-mix(in srgb, var(--st-interesse, #7c5cff) 15%, transparent); }
+.missed-card .mc-row { padding: 8px 0; }
+.missed-card .mc-row + .mc-row { border-top: 1px solid var(--line); }
+.mc-rule { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; color: var(--ink-3); font-weight: 700; }
+.mc-rule .input { width: auto; padding: 6px 10px; font-size: 14px; min-height: 0; }
+.mc-rule-only { margin: 8px 2px 0; }

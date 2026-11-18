@@ -2,7 +2,9 @@ import { Suspense, lazy, useEffect } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { nextConfirmed } from './lib/stats.js'
 import { BottomNav, SideNav, UIProvider, useUI } from './components/ui.jsx'
-import { useStore } from './services/store.js'
+import { getState, saveWorkout, useStore } from './services/store.js'
+import { getProfile } from './services/profile.js'
+import { todayISO } from './lib/dates.js'
 import Home from './pages/Home.jsx'
 import Races from './pages/Races.jsx'
 import History from './pages/History.jsx'
@@ -62,6 +64,32 @@ function GarminAuto({ ready }) {
   return null
 }
 
+/** Regra para treinos que passaram sem marcar (Treinos → “Treino que passar sem marcar”). Roda ao abrir e ao voltar. */
+function MissedRuleAuto({ ready }) {
+  const { notify } = useUI()
+  useEffect(() => {
+    if (!ready) return undefined
+    const run = () => {
+      if (document.visibilityState === 'hidden') return
+      const rule = getProfile()?.data?.missedRule ?? 'perguntar'
+      if (rule === 'perguntar') return
+      const today = todayISO()
+      if (!getState().workouts.some((w) => w.status === 'planejado' && w.date && w.date < today)) return
+      import('./lib/reschedule.js').then(({ applyMissedRule, dayLabel, moveWorkout }) => {
+        const { workouts, races, goals } = getState()
+        const todo = applyMissedRule(rule, { workouts, races, goals, today })
+        for (const x of todo) saveWorkout(x.skip ? { ...x.w, status: 'pulado' } : moveWorkout(x.w, x.to, today, true))
+        if (todo.length === 1) notify(todo[0].skip ? `“${todo[0].w.name}” marcado como não feito` : `↷ “${todo[0].w.name}” remanejado para ${dayLabel(todo[0].to)}`)
+        else if (todo.length > 1) notify(rule === 'pular' ? `${todo.length} treinos marcados como não feitos` : `↷ ${todo.length} treinos remanejados`)
+      }).catch(() => {})
+    }
+    run()
+    document.addEventListener('visibilitychange', run)
+    return () => document.removeEventListener('visibilitychange', run)
+  }, [ready])
+  return null
+}
+
 function ScrollTop() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -77,6 +105,7 @@ export default function App() {
       <div className="app">
         <ScrollTop />
         <GarminAuto ready={store.status === 'ready'} />
+        <MissedRuleAuto ready={store.status === 'ready'} />
         {store.status === 'loading' && (
           <div className="loading"><div><div className="spinner" />Carregando suas corridas…</div></div>
         )}

@@ -16,7 +16,7 @@ export default function WorkoutForm() {
   if (id && !editing) return <Navigate to="/treinos" replace />
   const copyOf = params.get('copiar') ? getWorkout(params.get('copiar')) : null
   const tipo = SPORT_BY_ID[params.get('tipo')] ? params.get('tipo') : 'corrida'
-  return <Editor key={id || 'novo'} initial={editing ?? (copyOf ? { ...copyOf, id: null, name: `${copyOf.name} (cópia)`.slice(0, 60), status: 'planejado', result: null, date: null } : { ...emptyWorkout(), sport: tipo, plannedMin: tipo === 'corrida' ? null : 45, date: isValidISODate(params.get('data')) ? params.get('data') : null })} isNew={!editing} />
+  return <Editor key={id || 'novo'} initial={editing ?? (copyOf ? { ...copyOf, id: null, name: `${copyOf.name} (cópia)`.slice(0, 60), status: 'planejado', result: null, date: null, moves: [] } : { ...emptyWorkout(), sport: tipo, plannedMin: tipo === 'corrida' ? null : 45, date: isValidISODate(params.get('data')) ? params.get('data') : null })} isNew={!editing} />
 }
 
 function Editor({ initial, isNew }) {

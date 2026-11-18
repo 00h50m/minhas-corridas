@@ -9,6 +9,8 @@ import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
 import CopyBox from '../components/CopyBox.jsx'
 import Readiness from '../components/Readiness.jsx'
+import Reschedule from '../components/Reschedule.jsx'
+import { dayLabel } from '../lib/reschedule.js'
 import { formatDateBR, toISODate } from '../lib/dates.js'
 import { readActivityFile } from '../lib/activityFile.js'
 import { downloadBlob } from '../services/backup.js'
@@ -28,6 +30,7 @@ function Detail({ w }) {
   const [msg, setMsg] = useState(null)
   const [howTo, setHowTo] = useState(false)
   const [gc, setGc] = useState(false)
+  const [moving, setMoving] = useState(false)
   const est = estimate(w.items)
   const race = w.raceId ? getRace(w.raceId) : null
   const run = isRun(w)
@@ -139,6 +142,15 @@ function Detail({ w }) {
             hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado. Ele cria o treino, agenda e envia para o relógio; confira o resultado no Garmin Connect." />
         </div>
         </>}
+
+        {w.moves?.length > 0 && (
+          <div className="card small rs-history" style={{ marginTop: 12 }} data-testid="wk-moves">
+            <b>↷ Remanejado</b>
+            <ul>{w.moves.map((m, i) => <li key={i}>de {dayLabel(m.from)} para {dayLabel(m.to)}{m.auto ? ' (sozinho, pela regra)' : ''}</li>)}</ul>
+          </div>
+        )}
+        {w.status !== 'feito' && <button type="button" className="btn btn-block" style={{ marginTop: 12 }} onClick={() => setMoving(true)} data-testid="wk-move">📅 Remanejar para outro dia</button>}
+        {moving && <Reschedule w={w} onClose={() => setMoving(false)} />}
 
         <div className="section-title"><h2>Como foi</h2></div>
         <div className="seg" role="group" aria-label="Status do treino">

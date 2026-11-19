@@ -61,16 +61,10 @@ function ProfileInvite() {
     setHidden(true)
   }
   return (
-    <div className="card profile-invite" data-testid="profile-invite">
-      <Avatar size={48} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <b>Como você quer ser chamada(o)?</b>
-        <div className="muted small">Nome, foto, camiseta e contato de emergência deixam o app com a sua cara. Tudo opcional.</div>
-        <div className="pi-actions">
-          <Link to="/perfil" className="link-btn">Completar perfil</Link>
-          <button type="button" className="link-btn muted-btn" onClick={dismiss}>Agora não</button>
-        </div>
-      </div>
+    <div className="profile-invite pi-slim" data-testid="profile-invite">
+      <Avatar size={32} />
+      <Link to="/perfil" className="pi-link"><b>Complete seu perfil</b> <span className="muted">nome, foto, camiseta</span></Link>
+      <button type="button" className="icon-btn pi-x" onClick={dismiss} aria-label="Agora não">×</button>
     </div>
   )
 }
@@ -169,13 +163,12 @@ export default function Home() {
           <Link to="/lembretes"><IconBell /><span>Avisos</span></Link>
         </nav>
 
-        {nextWorkout && <NextWorkout w={nextWorkout} today={today} />}
-        {workouts.some((w) => w.date && w.date >= addDaysISO(today, -7) && w.date <= addDaysISO(today, 7)) && (
-          <Suspense fallback={null}>
-            {!nextWorkout && <div className="section-title"><h2>Treinos</h2><Link to="/treinos">Ver</Link></div>}
-            <div style={{ marginTop: nextWorkout ? 10 : 0 }}><TrainingWeek workouts={workouts} today={today} compact /></div>
-          </Suspense>
-        )}
+        {(() => {
+          const showWeek = workouts.some((w) => w.date && w.date >= addDaysISO(today, -7) && w.date <= addDaysISO(today, 7))
+          const week = showWeek ? <Suspense fallback={null}><TrainingWeek workouts={workouts} today={today} compact embedded={!!nextWorkout} /></Suspense> : null
+          if (nextWorkout) return <NextWorkout w={nextWorkout} today={today} week={week} />
+          return showWeek ? <><div className="section-title"><h2>Treinos</h2><Link to="/treinos">Ver</Link></div>{week}</> : null
+        })()}
 
         {alerts.length > 0 && (
           <>
@@ -211,11 +204,13 @@ export default function Home() {
         <div className="home-col home-side">
         <Suspense fallback={null}><HomeLinks races={races} workouts={workouts} goals={goals} today={today} /></Suspense>
 
+        {(summary.doneCount > 0 || summary.spent > 0 || budget) && (
+          <>
         <div className="section-title"><h2>Seu {year}</h2><Link to="/historico" onClick={() => { historyMemo.tab = 'evolucao' }}>Evolução</Link></div>
         <div className="stats">
           <div className="stat"><div className="v">{summary.doneCount}</div><div className="l">{summary.doneCount === 1 ? 'prova concluída' : 'provas concluídas'}</div></div>
           <div className="stat"><div className="v">{formatKm(summary.km, { unit: false })}</div><div className="l">km em provas</div></div>
-          <Link to="/historico" onClick={() => { historyMemo.tab = 'gastos' }} className="stat stat-link"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 26 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições ›</div></Link>
+          {summary.spent > 0 && <Link to="/historico" onClick={() => { historyMemo.tab = 'gastos' }} className="stat stat-link"><div className="v" style={{ fontSize: summary.spent >= 10000 ? 20 : 26 }}>{formatMoney(summary.spent).replace(',00', '')}</div><div className="l">em inscrições ›</div></Link>}
         </div>
         {budget ? <BudgetCard goals={goals} races={races} today={today} compact /> : (
           <Link to={`/objetivos/novo?tipo=orcamento&ano=${year}`} className="home-hint">+ Definir orçamento de {year}</Link>
@@ -224,6 +219,8 @@ export default function Home() {
           <summary>Como contamos</summary>
           <p>Quilômetros somam só as provas concluídas registradas aqui — não o seu volume de treino. Gastos usam o valor pago ou, na falta dele, inscrição + taxas, das provas inscritas e concluídas (desistências só com valor pago).{summary.missingCost > 0 && ` ${summary.missingCost} ${summary.missingCost === 1 ? 'prova está' : 'provas estão'} sem valor informado.`}</p>
         </details>
+          </>
+        )}
 
         <div className="section-title">
           <h2>Objetivos</h2>
@@ -319,16 +316,19 @@ function LastRace({ race: r, races }) {
   )
 }
 
-function NextWorkout({ w, today }) {
+function NextWorkout({ w, today, week = null }) {
   const days = daysBetween(today, w.date)
   return (
     <>
       <div className="section-title"><h2>{days === 0 ? 'Treino de hoje' : 'Próximo treino'}</h2><Link to="/treinos">Treinos</Link></div>
-      <Link to={`/treinos/${w.id}`} className="card wk-home" data-testid="home-workout">
-        <div className="t">{w.name}{days > 0 && <span className="muted"> · {days === 1 ? 'amanhã' : formatDateBR(w.date).slice(0, 5)}</span>}</div>
-        <div className="muted small">{workoutLine(w)}</div>
-        <div className="muted small" style={{ marginTop: 4 }}>≈ {fmtSec(plannedSec(w))}</div>
-      </Link>
+      <div className="card home-train">
+        <Link to={`/treinos/${w.id}`} className="wk-home" data-testid="home-workout">
+          <div className="t">{w.name}{days > 0 && <span className="muted"> · {days === 1 ? 'amanhã' : formatDateBR(w.date).slice(0, 5)}</span>}</div>
+          <div className="muted small">{workoutLine(w)}</div>
+          <div className="muted small nw-time" style={{ marginTop: 4 }}><IconStopwatch /> {fmtSec(plannedSec(w))}</div>
+        </Link>
+        {week}
+      </div>
       {days === 0 && <Suspense fallback={null}><Readiness date={w.date} style={{ marginTop: 8 }} /></Suspense>}
     </>
   )

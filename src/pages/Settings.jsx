@@ -206,9 +206,6 @@ export default function Settings() {
         <div className="section-title"><h2>Instalar o app</h2></div>
         <InstallSection />
 
-        <div className="section-title"><h2>Zona de cuidado</h2></div>
-        <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>
-
         <div className="section-title"><h2>Atualização do app</h2></div>
         <div className="card">
           <p style={{ marginTop: 0 }}>Você está na <b>versão {APP_VERSION}</b>.</p>
@@ -216,6 +213,9 @@ export default function Settings() {
           {updateMsg && <div className={`alert small ${updateMsg.ok ? 'alert-ok' : 'alert-error'}`} role="status" style={{ marginTop: 10 }}><div>{updateMsg.text}</div></div>}
           <button className="link-btn" style={{ marginTop: 6 }} disabled={!!busy} onClick={onHardReload}>Travou numa versão antiga? Recarregar o app do zero</button>
         </div>
+
+        <div className="section-title"><h2>Zona de cuidado</h2></div>
+        <button className="btn btn-danger btn-block" onClick={onClear} disabled={empty}><IconTrash /> Apagar todos os dados</button>
 
         <p className="note" style={{ textAlign: 'center', marginTop: 24 }}>PaceOn · versão {APP_VERSION} · <Link to="/privacidade">Política de privacidade</Link></p>
       </div>

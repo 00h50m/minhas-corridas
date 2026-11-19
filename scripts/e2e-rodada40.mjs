@@ -65,7 +65,10 @@ await p.screenshot({ path: `${SHOTS}/r40-ficha.png`, fullPage: true })
 await tap('button[type=submit]')
 await p.waitForSelector('[data-testid=wk-plan]')
 await has('[data-testid=wk-plan]', ['Agachamento', '3×12 · 40 kg', 'Afundo', '3×10 · 20 kg', 'Supino', '3×10 · 25,5 kg'])
-if (await p.$('[data-testid=wk-send]')) throw new Error('Academia com “Enviar ao relógio”')
+await tap('[data-testid=wk-send]')
+await p.waitForSelector('[data-testid=wk-send-sheet] [data-testid=wk-export]')
+if (await p.$('[data-testid=wk-send-sheet] [data-testid=wk-gc]')) throw new Error('Academia com Garmin Connect de corrida')
+await p.keyboard.press('Escape')
 ok('Ficha montada: Agachamento 3×12 · 40 kg, Afundo 3×10 · 20 kg, Supino 3×10 · 25,5 kg')
 
 // 2. Relógio: séries feitas → planejado × feito
@@ -125,6 +128,7 @@ ok('Ciclo: “Nos dias de menstruação, suas rodagens foram em média … mais 
 // 7. Carga da semana e lista simplificada
 await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=week-load]')
+await p.$eval('.tw-more', (d) => { d.open = true })
 await has('[data-testid=week-load]', ['Carga da semana', 'pts', '% da média', 'corrida', 'força', 'média de 3 semanas'])
 await p.waitForSelector('[data-testid=week-load-warn]')
 const vis = await p.evaluate(() => ({ rule: !document.querySelector('[data-testid=missed-rule]')?.closest('details:not([open])'), more: !!document.querySelector('[data-testid=wk-more]'), watch: !!document.querySelector('[data-testid=wk-watch]'), past: document.querySelectorAll('[data-testid=workout-item]').length }))

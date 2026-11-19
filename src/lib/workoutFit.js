@@ -73,6 +73,29 @@ export function fitSteps(items) {
   return out
 }
 
+// Exercício “genérico” de cada categoria (exercise_name do perfil FIT da Garmin), para o relógio
+// mostrar o nome certo. Sem um genérico confiável, vai só a categoria.
+const EX_NAME = { 0: 1, 1: 18, 2: 12, 3: 1, 4: 5, 6: 83, 7: 37, 8: 0, 9: 2, 10: 11, 12: 1, 13: 0, 14: 34, 15: 0, 16: 1, 17: 32, 18: 2, 19: 43, 20: 33, 21: 38, 22: 77, 23: 36, 24: 24, 26: 1, 27: 37, 28: 61, 29: 0, 30: 7, 31: 88, 32: 0, 33: 0, 39: 0, 40: 0, 47: 0 }
+const REPS = 29 // duração por repetições
+
+/**
+ * Passos de força a partir da ficha: para cada exercício, [série (reps ou até o botão), descanso (até o
+ * botão)] repetido N vezes — o formato dos treinos de força da Garmin.
+ */
+export function strengthSteps(exercises = []) {
+  const out = []
+  for (const x of exercises) {
+    const start = out.length
+    out.push({
+      name: '', durationType: x.reps ? REPS : DURATION.lap, durationValue: x.reps ?? null, targetType: TARGET.none, targetValue: null, low: null, high: null, intensity: INTENSITY.active,
+      cat: x.cat ?? null, exName: x.cat != null ? EX_NAME[x.cat] ?? null : null, weight: x.kg ? Math.round(x.kg * 100) : null
+    })
+    out.push({ name: 'Descanso', durationType: DURATION.lap, durationValue: null, targetType: TARGET.none, targetValue: null, low: null, high: null, intensity: INTENSITY.rest, cat: null, exName: null, weight: null })
+    if (x.sets > 1) out.push({ name: '', durationType: DURATION.repeat, durationValue: start, targetType: TARGET.none, targetValue: x.sets, low: null, high: null, intensity: null, cat: null, exName: null, weight: null })
+  }
+  return out
+}
+
 /** Gera o .FIT do treino. Retorna Uint8Array. */
 export function workoutToFit(w, now = new Date()) {
   const chunks = []
@@ -107,14 +130,21 @@ export function workoutToFit(w, now = new Date()) {
     chunks.push(buf)
   }
 
-  const steps = fitSteps(w.items)
+  const strength = w.sport === 'academia' && w.exercises?.length > 0
+  const steps = strength ? strengthSteps(w.exercises) : fitSteps(w.items)
   const created = Math.max(0, Math.floor(now.getTime() / 1000) - FIT_EPOCH)
   // file_id: tipo 5 = treino; fabricante 255 = desenvolvimento
   data(define(0, [[0, ENUM], [1, U16], [2, U16], [3, U32Z], [4, U32]]), [5, 255, 0, (created % 0xfffffff0) + 1, created])
-  // workout: esporte 1 = corrida
-  data(define(26, [[4, ENUM], [11, ENUM], [6, U16], [8, STRING, 32]]), [1, 0, steps.length, w.name || 'Treino PaceOn'])
-  const lt = define(27, [[254, U16], [0, STRING, 20], [1, ENUM], [2, U32], [3, ENUM], [4, U32], [5, U32], [6, U32], [7, ENUM]])
-  steps.forEach((s, i) => data(lt, [i, s.name, s.durationType, s.durationValue, s.targetType, s.targetValue, s.low, s.high, s.intensity]))
+  // workout: esporte 1 = corrida; 10 = treino, subesporte 20 = musculação
+  data(define(26, [[4, ENUM], [11, ENUM], [6, U16], [8, STRING, 32]]), [strength ? 10 : 1, strength ? 20 : 0, steps.length, w.name || 'Treino PaceOn'])
+  if (strength) {
+    // + categoria (10), exercício (11), carga em kg × 100 (12) e unidade kg (13)
+    const lt = define(27, [[254, U16], [0, STRING, 20], [1, ENUM], [2, U32], [3, ENUM], [4, U32], [7, ENUM], [10, U16], [11, U16], [12, U16], [13, U16]])
+    steps.forEach((s, i) => data(lt, [i, s.name, s.durationType, s.durationValue, s.targetType, s.targetValue, s.intensity, s.cat, s.exName, s.weight, s.weight != null ? 1 : null]))
+  } else {
+    const lt = define(27, [[254, U16], [0, STRING, 20], [1, ENUM], [2, U32], [3, ENUM], [4, U32], [5, U32], [6, U32], [7, ENUM]])
+    steps.forEach((s, i) => data(lt, [i, s.name, s.durationType, s.durationValue, s.targetType, s.targetValue, s.low, s.high, s.intensity]))
+  }
 
   const body = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0))
   let o = 0

@@ -8,7 +8,7 @@ import { useUI } from '../components/ui.jsx'
 import Reschedule from '../components/Reschedule.jsx'
 import { dayLabel, missedWorkouts, moveWorkout, movedLabel, suggestDates } from '../lib/reschedule.js'
 import { DateTile, EmptyState, TopBar } from '../components/ui.jsx'
-import { IconPlus } from '../components/Icons.jsx'
+import { IconCheck, IconHeart, IconMove, IconPlus, IconStopwatch } from '../components/Icons.jsx'
 import { WORKOUT_STATUSES, fmtSec, isRun, plannedSec, sportOf, workoutLine } from '../lib/workout.js'
 import { todayISO } from '../lib/dates.js'
 import TrainingWeek from '../components/TrainingWeek.jsx'
@@ -114,13 +114,14 @@ export function WorkoutItem({ w, today }) {
         <div className="t">{w.name}</div>
         <div className="s wk-sum">{workoutLine(w)}</div>
         <div className="chips" style={{ marginTop: 6 }}>
-          <span className="chip">≈ {fmtSec(sec)}</span>
+          {w.status === 'planejado' && <span className="chip" title="tempo estimado"><IconStopwatch /> {fmtSec(sec)}</span>}
           {w.date === today && w.status === 'planejado' && <span className="chip chip-hot">Hoje</span>}
-          {w.status !== 'planejado' && <span className="chip">{STATUS_LABEL[w.status]}{w.status === 'feito' && w.result?.distanceKm > 0 ? ` · ${String(w.result.distanceKm.toFixed(2)).replace('.', ',')} km` : w.status === 'feito' && w.result?.elapsedSec ? ` · ${fmtSec(w.result.elapsedSec)}` : ''}</span>}
-          {w.status === 'feito' && w.result?.avgHr ? <span className="chip">♥ {w.result.avgHr}</span> : null}
+          {w.status === 'pulado' && <span className="chip chip-dim">{STATUS_LABEL[w.status]}</span>}
+          {w.status === 'feito' && <span className="chip chip-done"><IconCheck /> {w.result?.distanceKm > 0 ? `${String(w.result.distanceKm.toFixed(2)).replace('.', ',')} km` : w.result?.elapsedSec ? fmtSec(w.result.elapsedSec) : STATUS_LABEL.feito}</span>}
+          {w.status === 'feito' && w.result?.avgHr ? <span className="chip" title="FC média"><IconHeart /> {w.result.avgHr}</span> : null}
           {w.status === 'feito' && w.result?.calories ? <span className="chip">{w.result.calories} kcal</span> : null}
           {missed && <span className="chip chip-dim">Passou</span>}
-          {w.moves?.length > 0 && <span className="chip chip-moved" data-testid="wk-moved-chip">↷ {movedLabel(w)}</span>}
+          {w.moves?.length > 0 && <span className="chip chip-moved" data-testid="wk-moved-chip"><IconMove /> {movedLabel(w)}</span>}
         </div>
       </div>
     </Link>
@@ -162,7 +163,7 @@ function MissedCard({ workouts, today }) {
           <div key={w.id} className="mc-row" data-testid="missed-row">
             <div><b>{w.name}</b> <span className="muted">· {dayLabel(w.date)}</span></div>
             {best && (
-              <button type="button" className="btn btn-sm mc-move" onClick={() => { saveWorkout(moveWorkout(w, best.date, today)); notify(`“${w.name}” remanejado para ${dayLabel(best.date)}`) }} data-testid="missed-move">↷ Para {dayLabel(best.date)}</button>
+              <button type="button" className="btn btn-sm mc-move" onClick={() => { saveWorkout(moveWorkout(w, best.date, today)); notify(`“${w.name}” remanejado para ${dayLabel(best.date)}`) }} data-testid="missed-move"><IconMove /> Para {dayLabel(best.date)}</button>
             )}
             {best?.notes.length > 0 && <div className="note" style={{ margin: '4px 0 0' }}>{best.notes.join(' · ')}</div>}
             <div className="btn-inline mc-other">

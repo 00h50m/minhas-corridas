@@ -61,7 +61,7 @@ export default function History() {
                     <div className="t">{r.name}</div>
                     <div className="s">{formatKm(res.officialDistanceKm)} oficiais{res.watchDistanceKm ? ` · ${formatKm(res.watchDistanceKm)} no relógio` : ''}</div>
                     <div className="row">
-                      <span className="chip" style={{ fontWeight: 800 }}>⏱ {formatDuration(res.netTime)}</span>
+                      <span className="chip" style={{ fontWeight: 800 }}><IconStopwatch /> {formatDuration(res.netTime)}</span>
                       <span className="chip">{formatPace(pace)}</span>
                       {!res.isOfficial && <span className="flag flag-info">Registro pessoal</span>}
                       {diff != null && <span className={`flag ${diff <= 0 ? 'flag-ok' : 'flag-warn'}`}>{diff <= 0 ? '✓ Meta batida' : `Meta +${formatDuration(diff)}`}</span>}

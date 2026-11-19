@@ -70,7 +70,7 @@ export default function WorkoutImport() {
             {parsed.workouts.map((w, i) => (
               <div key={i} className="card wk-imp" data-testid="wk-import-item">
                 <div className="wk-imp-top"><b>{w.name}</b><span className="muted small">{w.date ? `${weekdayShort(w.date)} ${formatDateBR(w.date).slice(0, 5)}` : 'sem data'}</span></div>
-                <div className="small muted">{workoutLine(w)} · ≈ {fmtSec(plannedSec(w))}</div>
+                <div className="small muted">{workoutLine(w)} · cerca de {fmtSec(plannedSec(w))}</div>
                 {exists(w) && <div className="small" style={{ marginTop: 4 }}>Já está no app (não será repetido).</div>}
                 {toUpdate(w) && <div className="small" style={{ marginTop: 4 }} data-testid="wk-import-update">Já está no app: os passos serão atualizados (o status e o resultado ficam).</div>}
               </div>

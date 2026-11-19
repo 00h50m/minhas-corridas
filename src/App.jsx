@@ -80,8 +80,8 @@ function MissedRuleAuto({ ready }) {
         const { workouts, races, goals } = getState()
         const todo = applyMissedRule(rule, { workouts, races, goals, today })
         for (const x of todo) saveWorkout(x.skip ? { ...x.w, status: 'pulado' } : moveWorkout(x.w, x.to, today, true))
-        if (todo.length === 1) notify(todo[0].skip ? `“${todo[0].w.name}” marcado como não feito` : `↷ “${todo[0].w.name}” remanejado para ${dayLabel(todo[0].to)}`)
-        else if (todo.length > 1) notify(rule === 'pular' ? `${todo.length} treinos marcados como não feitos` : `↷ ${todo.length} treinos remanejados`)
+        if (todo.length === 1) notify(todo[0].skip ? `“${todo[0].w.name}” marcado como não feito` : `“${todo[0].w.name}” remanejado para ${dayLabel(todo[0].to)}`)
+        else if (todo.length > 1) notify(rule === 'pular' ? `${todo.length} treinos marcados como não feitos` : `${todo.length} treinos remanejados`)
       }).catch(() => {})
     }
     run()

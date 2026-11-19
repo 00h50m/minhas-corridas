@@ -80,7 +80,7 @@ await p.waitForFunction(() => /^\/treinos\/[^/]+$/.test(location.pathname) && !l
 await p.waitForSelector('[data-testid=workout-detail]')
 await need('Repetir 6×')
 await need('Preparação para Meia de Campinas')
-await need('≈ 56:00')
+await need('56:00')
 const saved = (await store()).workouts
 if (saved.length !== 1 || saved[0].items[1].steps[0].target.min !== 290 || saved[0].items[1].steps[0].target.max !== 310) throw new Error('Treino salvo errado: ' + JSON.stringify(saved))
 const pending = await p.evaluate(() => JSON.parse(localStorage.getItem('minhas-corridas:sync') || '{}').dirty || {})

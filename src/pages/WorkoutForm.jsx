@@ -49,7 +49,7 @@ function Editor({ initial, isNew }) {
   return (
     <>
       <TopBar title={isNew ? (isRun(w) ? 'Novo treino' : 'Nova atividade') : 'Editar treino'} back="/treinos" />
-      <form className="page" onSubmit={submit} noValidate data-testid="workout-form">
+      <form className="page form" onSubmit={submit} noValidate data-testid="workout-form">
         <Field label="Atividade" htmlFor="wk-sport">
           <select id="wk-sport" className="input" value={w.sport ?? 'corrida'} onChange={(e) => { const sp = e.target.value; set({ sport: sp, plannedMin: sp === 'corrida' ? null : w.plannedMin ?? 45 }); setErrors({}) }} data-testid="wk-sport">
             {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
@@ -58,26 +58,10 @@ function Editor({ initial, isNew }) {
         <Field label="Nome" htmlFor="wk-name" error={errors.name}>
           <input id="wk-name" className="input" value={w.name} onChange={(e) => { set({ name: e.target.value }); setErrors((x) => ({ ...x, name: null })) }} maxLength={60} placeholder={isRun(w) ? 'Ex.: Tiros 6×800' : 'Ex.: Fortalecimento de pernas'} />
         </Field>
-        <div className="grid-2">
-          <Field label="Data" optional htmlFor="wk-date">
-            <input id="wk-date" className="input" type="date" value={w.date ?? ''} onChange={(e) => set({ date: e.target.value || null })} />
-          </Field>
-          <Field label="Preparação para" optional htmlFor="wk-race">
-            <select id="wk-race" className="input" value={w.raceId ?? ''} onChange={(e) => set({ raceId: e.target.value || null })}>
-              <option value="">—</option>
-              {upcoming.map((r) => <option key={r.id} value={r.id}>{r.name} ({formatDateBR(r.date).slice(0, 5)})</option>)}
-            </select>
-          </Field>
-        </div>
+        <Field label="Data" optional htmlFor="wk-date">
+          <input id="wk-date" className="input" type="date" value={w.date ?? ''} onChange={(e) => set({ date: e.target.value || null })} />
+        </Field>
 
-        {goals.some((x) => x.status === 'andamento') && (
-          <Field label="Objetivo" optional htmlFor="wk-goal">
-            <select id="wk-goal" className="input" value={w.goalId ?? ''} onChange={(e) => set({ goalId: e.target.value || null })}>
-              <option value="">—</option>
-              {goals.filter((x) => x.status === 'andamento' || x.id === w.goalId).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
-            </select>
-          </Field>
-        )}
 
         {!isRun(w) ? (
           <>
@@ -123,9 +107,26 @@ function Editor({ initial, isNew }) {
           </>
         )}
 
-        <Field label="Observações" optional htmlFor="wk-notes">
-          <textarea id="wk-notes" className="input" rows={3} value={w.notes} onChange={(e) => set({ notes: e.target.value })} maxLength={1000} placeholder="Ex.: na pista, tênis leve" />
-        </Field>
+        <details className="wk-extra" open={!!(w.raceId || w.goalId || w.notes)}>
+          <summary>Prova, objetivo e observações <span className="opt">opcional</span></summary>
+          <Field label="Preparação para" htmlFor="wk-race">
+            <select id="wk-race" className="input" value={w.raceId ?? ''} onChange={(e) => set({ raceId: e.target.value || null })}>
+              <option value="">—</option>
+              {upcoming.map((r) => <option key={r.id} value={r.id}>{r.name} ({formatDateBR(r.date).slice(0, 5)})</option>)}
+            </select>
+          </Field>
+        {goals.some((x) => x.status === 'andamento') && (
+          <Field label="Objetivo" htmlFor="wk-goal">
+            <select id="wk-goal" className="input" value={w.goalId ?? ''} onChange={(e) => set({ goalId: e.target.value || null })}>
+              <option value="">—</option>
+              {goals.filter((x) => x.status === 'andamento' || x.id === w.goalId).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
+            </select>
+          </Field>
+        )}
+          <Field label="Observações" htmlFor="wk-notes">
+            <textarea id="wk-notes" className="input" rows={3} value={w.notes} onChange={(e) => set({ notes: e.target.value })} maxLength={1000} placeholder="Ex.: na pista, tênis leve" />
+          </Field>
+        </details>
         <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: 8 }}>{isNew ? 'Criar treino' : 'Salvar'}</button>
       </form>
     </>

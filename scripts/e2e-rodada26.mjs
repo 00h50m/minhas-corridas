@@ -53,6 +53,7 @@ await p.evaluate((ws) => { localStorage.clear(); localStorage.setItem('minhas-co
 // 1. Carga da semana
 await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=week-load]')
+await p.$eval('.tw-more', (d) => { d.open = true })
 const load = await p.$eval('[data-testid=week-load]', (e) => e.innerText.replace(/\s+/g, ' '))
 if (!load.includes('Carga da semana 93 pts (93 planejada)') || !load.includes('-36% da média') || !load.includes('média de 1 semana: 145')) throw new Error('Carga: ' + load)
 if (await p.$('[data-testid=week-load-warn]')) throw new Error('Aviso de carga com só 1 semana de histórico')

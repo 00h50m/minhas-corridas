@@ -37,7 +37,7 @@ await p.evaluate((ws) => { localStorage.clear(); localStorage.setItem('minhas-co
 await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=missed-card]')
 const label = await p.$eval('[data-testid=missed-move]', (b) => b.innerText)
-if (label !== '↷ Para qua 18/11') throw new Error('Sugestão: ' + label)
+if (label.trim() !== 'Para qua 18/11') throw new Error('Sugestão: ' + label)
 await p.screenshot({ path: `${SHOTS}/r33-passou.png` })
 await p.$eval('[data-testid=missed-move]', (b) => b.click())
 await waitText('“Tiros” remanejado para qua 18/11')
@@ -46,7 +46,7 @@ if (t.date !== '2026-11-18' || t.status !== 'planejado' || t.moves[0].from !== '
 await p.waitForSelector('[data-testid=wk-moved-chip]')
 await need('remanejado · era ter 17/11')
 if (await p.$('[data-testid=missed-card]')) throw new Error('Cartão continuou')
-ok('Passou sem marcar: “↷ Para qua 18/11” (a regra), o treino vai para hoje e fica com “remanejado · era ter 17/11”')
+ok('Passou sem marcar: “Para qua 18/11” (a regra), o treino vai para hoje e fica com “remanejado · era ter 17/11”')
 
 // 2. Remanejar pelo detalhe: sugestões com motivo
 await p.goto(BASE + '/treinos/' + encodeURIComponent('Longão'), { waitUntil: 'networkidle0' })

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { raceWeather } from '../services/weather.js'
 import { weatherLabel } from '../lib/weather.js'
+import { IconDrop } from './Icons.jsx'
 import { destinationPlace } from '../lib/logistics.js'
 
 const t = (x) => (x == null ? '—' : `${Math.round(x)}°`)
@@ -12,7 +13,15 @@ export default function WeatherCard({ race }) {
   const load = (force = false) => raceWeather(race, dest, { force }).then(setW)
   useEffect(() => { load() }, [race.id, race.date, race.startTime, dest?.lat, race.city])
   if (!w) return <div className="card weather muted small" data-testid="weather">Buscando a previsão…</div>
-  if (!w.ok) return <div className="card weather muted small" data-testid="weather">{w.error}</div>
+  if (!w.ok) {
+    const tech = /fetch|network|typeerror|load failed|json/i.test(String(w.error ?? ''))
+    return (
+      <div className="card weather muted small" data-testid="weather">
+        {tech ? 'Sem conexão para buscar a previsão agora.' : w.error}{' '}
+        <button type="button" className="link-btn" onClick={() => { setW(null); load(true) }}>Tentar de novo</button>
+      </div>
+    )
+  }
   const { start, end, tips } = w.data
   const lb = weatherLabel(start.code)
   const when = new Date(w.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -26,8 +35,8 @@ export default function WeatherCard({ race }) {
         </div>
       </div>
       <div className="chips" style={{ marginTop: 8 }}>
-        {start.rainProb != null && <span className="chip">💧 chuva {Math.max(start.rainProb, end.rainProb ?? 0)}%</span>}
-        {start.wind != null && <span className="chip">💨 {Math.round(start.wind)} km/h</span>}
+        {start.rainProb != null && <span className="chip"><IconDrop /> chuva {Math.max(start.rainProb, end.rainProb ?? 0)}%</span>}
+        {start.wind != null && <span className="chip">vento {Math.round(start.wind)} km/h</span>}
         {start.humidity != null && <span className="chip">umidade {Math.round(start.humidity)}%</span>}
       </div>
       {tips.length > 0 && <ul className="wx-tips small">{tips.map((x) => <li key={x}>{x}</li>)}</ul>}

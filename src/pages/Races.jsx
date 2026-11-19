@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { EmptyState, Field, RaceItem, Sheet, TopBar, useUI } from '../components/ui.jsx'
-import { IconCalendar, IconChevronL, IconChevronR, IconFilter, IconPlus, IconSearch, IconInfo } from '../components/Icons.jsx'
+import { IconCalendar, IconStopwatch, IconChevronL, IconChevronR, IconFilter, IconPlus, IconSearch, IconInfo } from '../components/Icons.jsx'
 import { STATUSES } from '../lib/model.js'
 import { daysBetween, formatDateBR, monthName, parseISODate, toISODate, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm } from '../lib/format.js'
@@ -110,7 +110,7 @@ export default function Races() {
     const out = []
     if (sameDates.has(r.date)) out.push(<span key="s" className="flag flag-warn">Mesma data</span>)
     else if (r.date && r.status !== 'cancelada' && r.status !== 'desisti' && list.some((o) => o.id !== r.id && o.status !== 'cancelada' && o.status !== 'desisti' && o.date && Math.abs(daysBetween(r.date, o.date)) === 1)) out.push(<span key="c" className="flag flag-info">Dia seguido</span>)
-    if (r.result) out.push(<span key="r" className="chip">⏱ {formatDuration(r.result.netTime)}</span>)
+    if (r.result) out.push(<span key="r" className="chip"><IconStopwatch /> {formatDuration(r.result.netTime)}</span>)
     // O que pede ação: kit para retirar, inscrição fechando, resultado a registrar.
     const kitDone = (r.checklist ?? []).some((i) => i.done && /kit retirado/i.test(i.text))
     if (r.status === 'inscrita' && r.kitPickupDate && !kitDone) {

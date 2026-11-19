@@ -49,7 +49,7 @@ export function dayStats(w) {
   const r = w.status === 'feito' ? w.result : null
   if (!r) {
     const s = plannedSec(w)
-    return s > 0 ? [{ v: `≈ ${fmtSec(s)}`, l: 'planejado' }] : []
+    return s > 0 ? [{ v: fmtSec(s), l: 'planejado' }] : []
   }
   const out = []
   if (r.distanceKm > 0) out.push({ v: `${String(r.distanceKm.toFixed(2)).replace('.', ',')} km`, l: 'distância' })

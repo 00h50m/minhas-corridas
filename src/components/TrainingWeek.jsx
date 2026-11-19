@@ -17,7 +17,7 @@ const mins = (s) => {
 const MARK = { feito: '✓', pulado: '–', passou: '!', hoje: '●', futuro: '○' }
 const STATE_TXT = { feito: 'feito', pulado: 'não fez', passou: 'passou sem marcar', hoje: 'hoje', futuro: 'planejado' }
 
-export default function TrainingWeek({ workouts, today, compact = false }) {
+export default function TrainingWeek({ workouts, today, compact = false, embedded = false }) {
   const [start, setStart] = useState(() => weekStart(today))
   const s = weekSummary(workouts, start, today)
   const streak = weekStreak(workouts, today)
@@ -28,7 +28,7 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
     : 'Nenhum treino nesta semana'
   if (compact) {
     return (
-      <Link to="/treinos" className="card tw tw-compact" data-testid="week-compact">
+      <Link to="/treinos" className={`${embedded ? 'tw-embedded' : 'card'} tw tw-compact`} data-testid="week-compact">
         <div className="tw-row">{s.days.map((d, i) => <Day key={d.date} d={d} i={i} today={today} />)}</div>
         <div className="small"><b>{totals}</b>{streak > 0 && <span className="tw-streak"> · <IconFlame /> {streak} {streak === 1 ? 'semana cumprida' : 'semanas seguidas'}</span>}</div>
       </Link>
@@ -51,12 +51,12 @@ export default function TrainingWeek({ workouts, today, compact = false }) {
           <span style={{ width: `${Math.round((s.done / s.planned) * 100)}%` }} />
         </div>
       )}
-      <Load workouts={workouts} start={start} today={today} />
-      <WeekZones s={s} />
-      {(s.missed > 0 || s.skipped > 0) && <p className="note" style={{ margin: '6px 0 0' }}>{s.missed > 0 ? `${s.missed} ${s.missed === 1 ? 'treino passou' : 'treinos passaram'} sem marcar: remaneje ou marque logo abaixo.` : ''}{s.skipped > 0 ? ` ${s.skipped} não ${s.skipped === 1 ? 'feito' : 'feitos'}.` : ''}</p>}
-      {!current && <button type="button" className="link-btn" onClick={() => setStart(weekStart(today))}>Voltar para esta semana</button>}
-      {current && s.planned > 0 && <Link to="/stories?modelo=semana" className="link-btn" data-testid="week-story"><IconStory /> Compartilhar a semana</Link>}
-      {streak > 0 && <div className="tw-streak small" data-testid="week-streak"><IconFlame /> {streak} {streak === 1 ? 'semana cumprida' : 'semanas seguidas cumpridas'}</div>}
+      <WeekMore workouts={workouts} start={start} today={today} s={s} />
+      <div className="tw-foot">
+        {!current && <button type="button" className="link-btn" onClick={() => setStart(weekStart(today))}>Voltar para esta semana</button>}
+        {current && s.planned > 0 && <Link to="/stories?modelo=semana" className="link-btn" data-testid="week-story"><IconStory /> Compartilhar</Link>}
+        {streak > 0 && <span className="tw-streak small" data-testid="week-streak"><IconFlame /> {streak} {streak === 1 ? 'semana cumprida' : 'semanas seguidas cumpridas'}</span>}
+      </div>
     </div>
   )
 }
@@ -84,36 +84,35 @@ function Day({ d, i, today }) {
   )
 }
 
-/** Intensidade da semana pela FC dos treinos feitos com o arquivo do relógio (2 ou mais). */
-function WeekZones({ s }) {
-  const done = s.days.flatMap((d) => d.workouts).filter((w) => w.status === 'feito' && w.result?.hrHist)
-  if (done.length < 2) return null
-  return <div className="tw-zones" data-testid="week-zones"><HrZones hist={sumHist(done.map((w) => w.result.hrHist))} hasIntervals title={`Intensidade da semana (${done.length} treinos com FC)`} compact /></div>
-}
-
-/** Carga da semana (corrida + força + outras, pela FC quando há) × a média das suas 4 semanas anteriores. */
-function Load({ workouts, start, today }) {
+/** Carga e intensidade num toque: a linha resume; o detalhe (barra, divisão, zonas) abre embaixo. */
+function WeekMore({ workouts, start, today, s }) {
   const zones = useZones()
-  const [why, setWhy] = useState(false)
   const l = weekStrain(workouts, start, today, zones)
+  const zonesDone = s.days.flatMap((d) => d.workouts).filter((w) => w.status === 'feito' && w.result?.hrHist)
   if (!l.total && !l.avg4) return null
   const max = Math.max(l.total, l.avg4, 1) * 1.1
   const pct = (v) => `${Math.min(100, (v / max) * 100)}%`
   const parts = [['corrida', l.parts.corrida], ['força', l.parts.forca], ['outras', l.parts.outras]].filter(([, v]) => v > 0)
   return (
-    <div className={`tw-load small${l.level === 'alta' ? ' warn' : ''}`} data-testid="week-load">
-      <div className="tl-head">
-        <span>Carga da semana <b>{l.total} pts</b>{l.planned > 0 ? <span className="muted"> ({l.planned} planejada)</span> : null}</span>
-        {l.pct != null && <span className={`tl-pct tl-${l.level}`}>{l.pct > 0 ? '+' : ''}{l.pct}% da média</span>}
-      </div>
-      <div className="tl-bar" aria-hidden="true">
-        <span className="tl-done" style={{ width: pct(l.done) }} />
-        <span className="tl-plan" style={{ left: pct(l.done), width: pct(l.planned) }} />
-        {l.avg4 > 0 && <span className="tl-avg" style={{ left: pct(l.avg4) }} />}
-      </div>
-      <div className="muted">{parts.length ? parts.map(([k, v]) => `${k} ${v}`).join(' · ') : 'nada feito ainda'}{l.avg4 > 0 ? ` · média de ${l.weeks} ${l.weeks === 1 ? 'semana' : 'semanas'}: ${l.avg4}` : ''} <button type="button" className="link-btn tl-why" onClick={() => setWhy((v) => !v)} aria-expanded={why}>o que é?</button></div>
-      {why && <p className="note" style={{ margin: '4px 0 0' }}>Pontos = minutos × intensidade. Com o arquivo do relógio, a intensidade vem do tempo em cada zona de FC (Z1 vale 1, Z5 vale 5); sem FC, um peso médio por atividade. Serve para comparar a semana com as suas semanas, não com outras pessoas.</p>}
-      {l.level === 'alta' && <div className="tw-warn" data-testid="week-load-warn">Semana bem mais pesada que o seu normal. Se sentir cansaço fora do normal ou dor, vale segurar o volume.</div>}
-    </div>
+    <>
+      <details className="tw-more">
+        <summary data-testid="week-load-sum">
+          <span>Carga <b>{l.total} pts</b></span>
+          {l.pct != null ? <span className={`tl-pct tl-${l.level}`}>{l.pct > 0 ? '+' : ''}{l.pct}% da média</span> : <span className="muted">detalhes</span>}
+        </summary>
+        <div className={`tw-load small${l.level === 'alta' ? ' warn' : ''}`} data-testid="week-load">
+          <div>Carga da semana <b>{l.total} pts</b>{l.planned > 0 ? <span className="muted"> ({l.planned} planejada)</span> : null}{l.pct != null ? ` · ${l.pct > 0 ? '+' : ''}${l.pct}% da média` : ''}</div>
+          <div className="tl-bar" aria-hidden="true">
+            <span className="tl-done" style={{ width: pct(l.done) }} />
+            <span className="tl-plan" style={{ left: pct(l.done), width: pct(l.planned) }} />
+            {l.avg4 > 0 && <span className="tl-avg" style={{ left: pct(l.avg4) }} />}
+          </div>
+          <div className="muted">{parts.length ? parts.map(([k, v]) => `${k} ${v}`).join(' · ') : 'nada feito ainda'}{l.avg4 > 0 ? ` · média de ${l.weeks} ${l.weeks === 1 ? 'semana' : 'semanas'}: ${l.avg4}` : ''}</div>
+          <p className="note" style={{ margin: '4px 0 0' }}>Pontos = minutos × intensidade. Com o arquivo do relógio, a intensidade vem do tempo em cada zona de FC (Z1 vale 1, Z5 vale 5); sem FC, um peso médio por atividade. Serve para comparar a semana com as suas semanas.</p>
+        </div>
+        {zonesDone.length >= 2 && <div className="tw-zones" data-testid="week-zones"><HrZones hist={sumHist(zonesDone.map((w) => w.result.hrHist))} hasIntervals title={`Intensidade da semana (${zonesDone.length} treinos com FC)`} compact /></div>}
+      </details>
+      {l.level === 'alta' && <div className="tw-warn small" data-testid="week-load-warn">Semana bem acima do seu normal. Se sentir cansaço fora do normal ou dor, vale segurar o volume.</div>}
+    </>
   )
 }

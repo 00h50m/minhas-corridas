@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
 import { Sheet, TopBar, useUI } from '../components/ui.jsx'
-import { IconDownload, IconEdit, IconMove, IconStory, IconTrash, IconUpload, IconWatch, SportIcon } from '../components/Icons.jsx'
+import { IconDownload, IconEdit, IconHeart, IconMove, IconStopwatch, IconStory, IconTrash, IconUpload, IconWatch, SportIcon } from '../components/Icons.jsx'
 import { compareStrength, exerciseName, planLine } from '../lib/strength.js'
 import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, flatten, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
@@ -97,7 +97,7 @@ function Detail({ w }) {
           </>
         ) : (
           <div className="wd-actions">
-            {run && <button type="button" className="btn btn-primary" onClick={() => setSend(true)} data-testid="wk-send"><IconWatch /> Enviar ao relógio</button>}
+            {(run || w.exercises?.length > 0) && <button type="button" className="btn btn-primary" onClick={() => setSend(true)} data-testid="wk-send"><IconWatch /> Enviar ao relógio</button>}
             <button type="button" className="btn" onClick={() => setMoving(true)} data-testid="wk-move"><IconMove /> Remanejar</button>
           </div>
         )}
@@ -106,7 +106,7 @@ function Detail({ w }) {
 
         {w.moves?.length > 0 && (
           <div className="small muted rs-history" style={{ marginTop: 10 }} data-testid="wk-moves">
-            <b>↷ Remanejado</b> {w.moves.map((m) => `de ${dayLabel(m.from)} para ${dayLabel(m.to)}${m.auto ? ' (pela regra)' : ''}`).join(' · ')}
+            <b><IconMove /> Remanejado</b> {w.moves.map((m) => `de ${dayLabel(m.from)} para ${dayLabel(m.to)}${m.auto ? ' (pela regra)' : ''}`).join(' · ')}
           </div>
         )}
 
@@ -144,8 +144,8 @@ function PlanCard({ w, est, race }) {
   return (
     <div className="card">
       <div className="chips">
-        <span className="chip">≈ {fmtSec(est.sec)}</span>
-        <span className="chip">≈ {String(est.km.toFixed(1)).replace('.', ',')} km</span>
+        <span className="chip" title="tempo estimado"><IconStopwatch /> {fmtSec(est.sec)}</span>
+        <span className="chip" title="distância estimada">{String(est.km.toFixed(1)).replace('.', ',')} km</span>
         {est.open > 0 && <span className="chip chip-dim">+ {est.open} até o botão</span>}
       </div>
       {race && <p className="small" style={{ margin: '10px 0 0' }}>Preparação para <Link to={`/corridas/${race.id}`}>{race.name}</Link></p>}
@@ -165,21 +165,22 @@ function PlanCard({ w, est, race }) {
 /** Os caminhos para mandar o treino ao relógio, num lugar só. */
 function SendSheet({ w, onClose }) {
   const [way, setWay] = useState('cabo')
+  const run = isRun(w)
   return (
     <Sheet title="Enviar para o relógio" onClose={onClose}>
       <div data-testid="wk-send-sheet">
-        <div className="seg" role="group" aria-label="Como enviar" style={{ marginBottom: 12 }}>
+        {run && <div className="seg" role="group" aria-label="Como enviar" style={{ marginBottom: 12 }}>
           <button type="button" aria-pressed={way === 'cabo'} onClick={() => setWay('cabo')} data-testid="send-cabo">Com cabo</button>
           <button type="button" aria-pressed={way === 'gc'} onClick={() => setWay('gc')} data-testid="wk-gc">Garmin Connect</button>
           <button type="button" aria-pressed={way === 'auto'} onClick={() => setWay('auto')} data-testid="send-auto">Sem cabo</button>
-        </div>
+        </div>}
         {way === 'cabo' && (
           <div className="small" data-testid="wk-howto">
             <button type="button" className="btn btn-primary btn-block" onClick={() => downloadBlob(new Blob([workoutToFit(w)], { type: 'application/octet-stream' }), fitFileName(w))} data-testid="wk-export"><IconDownload /> Baixar arquivo (.FIT)</button>
             <ol className="wk-howto">
               <li>No computador, ligue o relógio pelo cabo (feche o Garmin Express).</li>
               <li>Copie <b>{fitFileName(w)}</b> para a pasta <b>GARMIN/NewFiles</b> do relógio (ou <b>GARMIN/Workouts</b>). No Mac, use um programa como o OpenMTP.</li>
-              <li>Desconecte. No relógio: <b>Corrida → Opções → Treinos</b>.</li>
+              <li>Desconecte. No relógio: {run ? <b>Corrida → Opções → Treinos</b> : <><b>Musculação → Opções → Treinos</b> (cada série com as repetições e a carga; o descanso termina no botão de volta)</>}.</li>
             </ol>
           </div>
         )}
@@ -248,7 +249,7 @@ function Executed({ w }) {
                 <tr key={i} className={x.inTarget === true ? 'ok' : x.inTarget === false ? 'off' : ''}>
                   <td>{STEP_BY_ID[x.step.type].label.replace(' (parado)', '')}{x.step.rep ? <span className="muted"> {x.step.rep}/{x.step.of}</span> : null}</td>
                   <td>{durationLabel(x.step.duration)}{x.step.target.kind !== 'none' ? <div className="muted">{targetLabel(x.step.target)}</div> : null}</td>
-                  <td>{x.lap ? <>{fmtSec(x.lap.sec)} · {Math.round(x.lap.distanceKm * 1000)} m{x.paceSec ? <div className="muted">{fmtPace(x.paceSec)}/km {x.inTarget === true ? '✓' : x.inTarget === false ? '✗' : ''}</div> : null}{x.lap.avgHr ? <div className="muted" data-testid="lap-hr">♥ {x.lap.avgHr}{zones ? ` · Z${zoneOf(x.lap.avgHr, zones)}` : ''}</div> : null}</> : <span className="muted">—</span>}</td>
+                  <td>{x.lap ? <>{fmtSec(x.lap.sec)} · {Math.round(x.lap.distanceKm * 1000)} m{x.paceSec ? <div className="muted">{fmtPace(x.paceSec)}/km {x.inTarget === true ? '✓' : x.inTarget === false ? '✗' : ''}</div> : null}{x.lap.avgHr ? <div className="muted" data-testid="lap-hr"><IconHeart /> {x.lap.avgHr}{zones ? ` · Z${zoneOf(x.lap.avgHr, zones)}` : ''}</div> : null}</> : <span className="muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>

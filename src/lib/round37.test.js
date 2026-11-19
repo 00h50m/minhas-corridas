@@ -131,3 +131,24 @@ describe('story do mês', () => {
     expect(storyFor('mes', { races: [], workouts: ws, goals: [], today: '2026-11-18', opts: { times: false } }).badges.some((b) => b.startsWith('Recorde'))).toBe(false)
   })
 })
+
+describe('ficha de força para o relógio (.FIT)', () => {
+  it('treino de musculação: série por repetições com carga, descanso no botão e repetição por série', async () => {
+    const { Decoder, Stream } = await import('@garmin/fitsdk')
+    const { workoutToFit } = await import('./workoutFit.js')
+    const f = workoutToFit(normalizeWorkout({ name: 'Pernas', sport: 'academia', plannedMin: 50, exercises: [{ cat: 28, sets: 3, reps: 12, kg: 42.5 }, { cat: 19, sets: 2, reps: null, kg: null }, { cat: 17, sets: 1, reps: 10, kg: null }] }))
+    const d = new Decoder(Stream.fromByteArray(f))
+    expect(d.isFIT() && d.checkIntegrity()).toBe(true)
+    const { messages, errors } = d.read()
+    expect(errors).toEqual([])
+    expect(messages.workoutMesgs[0]).toMatchObject({ sport: 'training', subSport: 'strengthTraining', numValidSteps: 8, wktName: 'Pernas' })
+    const st = messages.workoutStepMesgs
+    expect(st[0]).toMatchObject({ durationType: 'reps', durationReps: 12, exerciseCategory: 'squat', exerciseName: 61, exerciseWeight: 42.5, weightDisplayUnit: 'kilogram', intensity: 'active' })
+    expect(st[1]).toMatchObject({ wktStepName: 'Descanso', durationType: 'open', intensity: 'rest' })
+    expect(st[2]).toMatchObject({ durationType: 'repeatUntilStepsCmplt', durationStep: 0, repeatSteps: 3 })
+    expect(st[3]).toMatchObject({ durationType: 'open', exerciseCategory: 'plank', exerciseName: 43 })
+    expect(st[6]).toMatchObject({ durationType: 'reps', durationReps: 10, exerciseCategory: 'lunge' })
+    expect(st[6].exerciseWeight).toBeUndefined()
+    expect(st).toHaveLength(8) // a série única do afundo não tem passo de repetição
+  })
+})

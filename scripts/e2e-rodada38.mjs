@@ -98,7 +98,7 @@ await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=workout-item]')
 const items = await p.$$eval('[data-testid=workout-item]', (e) => e.map((x) => x.innerText.replace(/\s+/g, ' ')))
 const f = items.find((x) => x.includes('Força'))
-if (!f.includes('Feito · 1:03:32') || !f.includes('412 kcal') || f.includes('0,00 km')) throw new Error('Lista: ' + f)
+if (!f.includes('1:03:32') || !f.includes('412 kcal') || f.includes('0,00 km')) throw new Error('Lista: ' + f)
 ok(`Lista de treinos: “${f.trim()}”`)
 
 // 4. Story de força

@@ -67,8 +67,8 @@ await p.evaluate((races) => { localStorage.clear(); localStorage.setItem('minhas
 // 1. Sem perfil: convite discreto e saudação sem nome; dispensar fica lembrado
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.waitForSelector('[data-testid=profile-invite]')
-await expectText('Como você quer ser chamada(o)?')
-await click('[data-testid=profile-invite] button', 'Agora não')
+await expectText('Complete seu perfil')
+await p.$eval('[data-testid=profile-invite] .pi-x', (b) => b.click())
 await p.reload({ waitUntil: 'networkidle0' })
 if (await p.$('[data-testid=profile-invite]')) throw new Error('Convite voltou depois de dispensado')
 ok('Sem perfil: convite opcional no Início, que some ao dispensar')

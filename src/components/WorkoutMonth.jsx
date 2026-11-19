@@ -11,7 +11,9 @@ import { byDay, canDrag, cellLabel, dayStats, monthGrid, monthSummary, shiftMont
 import { workoutState } from '../lib/trainingWeek.js'
 import { dayLabel, moveWorkout } from '../lib/reschedule.js'
 import { fmtSec } from '../lib/workout.js'
-import { formatDateBR, monthName } from '../lib/dates.js'
+import { addDaysISO, formatDateBR, monthName } from '../lib/dates.js'
+import { weekStrain } from '../lib/load.js'
+import { useZones } from './HrZones.jsx'
 
 const memo = {}
 const STATE_LABEL = { feito: 'feito', pulado: 'não fiz', passou: 'passou sem marcar', hoje: 'hoje', futuro: 'planejado' }
@@ -86,6 +88,8 @@ export default function WorkoutMonth({ workouts, races, today }) {
         <span className="wm-drag-hint">Arraste um treino planejado para outro dia</span>
       </div>
 
+      <MonthLoad workouts={workouts} days={days} today={today} />
+
       <div className="list-group-title">{dayLabel(sel)}</div>
       <div data-testid="wm-day">
         {selDay.races.map((r) => (
@@ -118,6 +122,36 @@ export default function WorkoutMonth({ workouts, races, today }) {
         )}
       </div>
       {moving && <Reschedule w={moving} onClose={() => setMoving(null)} onMoved={(d) => setSel(d)} />}
+    </div>
+  )
+}
+
+/** Carga de cada semana do mês (corrida + força + outras), para ver o ritmo das semanas lado a lado. */
+function MonthLoad({ workouts, days, today }) {
+  const zones = useZones()
+  const weeks = []
+  for (let i = 0; i < days.length; i += 7) {
+    const start = days[i]
+    if (start > addDaysISO(today, 7)) break
+    weeks.push({ start, ...weekStrain(workouts, start, today, zones) })
+  }
+  if (!weeks.some((w) => w.total > 0)) return null
+  const max = Math.max(...weeks.map((w) => w.total), 1)
+  return (
+    <div className="card wm-load" data-testid="wm-load">
+      <div className="wm-load-head small"><b>Carga por semana</b><span className="muted">pontos (minutos × intensidade)</span></div>
+      <div className="wm-bars">
+        {weeks.map((w) => (
+          <div key={w.start} className={`wm-bar${w.level === 'alta' ? ' alta' : ''}`} title={`${w.total} pts`}>
+            <span className="wm-bar-v">{w.total || ''}</span>
+            <span className="wm-bar-col">
+              <span className="wm-bar-plan" style={{ height: `${((w.done + w.planned) / max) * 100}%` }} />
+              <span className="wm-bar-done" style={{ height: `${(w.done / max) * 100}%` }} />
+            </span>
+            <span className="wm-bar-l">{w.start.slice(8)}/{w.start.slice(5, 7)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

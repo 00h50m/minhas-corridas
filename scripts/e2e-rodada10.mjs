@@ -35,7 +35,7 @@ async function open({ ua, prompt = false, standalone = false, clear = true }) {
   }, prompt, standalone)
   await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
   if (clear) {
-    await p.evaluate((races) => { localStorage.clear(); localStorage.setItem('minhas-corridas:v1', JSON.stringify({ version: 2, races, goals: [] })) }, races)
+    await p.evaluate((races) => { localStorage.clear(); localStorage.setItem('minhas-corridas:v1', JSON.stringify({ version: 2, races, goals: [] })); localStorage.setItem('paceon:primeiros-passos', 'escondido') }, races)
     await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
   }
   await wait(300)

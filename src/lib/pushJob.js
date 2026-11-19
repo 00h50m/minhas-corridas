@@ -5,7 +5,7 @@ import { todayInTimeZone } from './dates.js'
 import { normalizeGoal, normalizeRace } from './model.js'
 import { normalizeWorkout } from './workout.js'
 import { normalizePushPrefs } from './alerts.js'
-import { workoutPushes } from './workoutPush.js'
+import { eveningPushes, workoutPushes } from './workoutPush.js'
 
 /**
  * db: {
@@ -21,7 +21,8 @@ import { workoutPushes } from './workoutPush.js'
  * }
  * send(subscription, payload): lança erro com `statusCode` (404/410 = inscrição expirada)
  */
-export async function runPushJob({ db, send, now = new Date() }) {
+/** slot: 'manha' (prazos, treino do dia, reta final, resumos) ou 'noite' (“fez o treino?” e a semana no domingo). */
+export async function runPushJob({ db, send, now = new Date(), slot = 'manha' }) {
   const subs = await db.subscriptions()
   const byUser = new Map()
   for (const s of subs) byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s])
@@ -43,7 +44,9 @@ export async function runPushJob({ db, send, now = new Date() }) {
     } catch {
       workouts = [] // sem treinos na nuvem: segue só com as provas
     }
-    const due = [...pushNotificationsFor(races, today, prefs, goals, workouts), ...workoutPushes(workouts, races, today, normalizePushPrefs(prefs))]
+    const due = slot === 'noite'
+      ? eveningPushes(workouts, today, normalizePushPrefs(prefs))
+      : [...pushNotificationsFor(races, today, prefs, goals, workouts), ...workoutPushes(workouts, races, today, normalizePushPrefs(prefs))]
     if (!due.length) continue
     const fresh = new Set(await db.claim(userId, due.map((n) => n.key)))
     const toSend = due.filter((n) => fresh.has(n.key))
@@ -54,7 +57,7 @@ export async function runPushJob({ db, send, now = new Date() }) {
       for (const d of devices) {
         if (!alive.has(d.endpoint)) continue
         try {
-          await send(d, { title: n.title, body: n.body, url: n.url, tag: n.key })
+          await send(d, { title: n.title, body: n.body, url: n.url, tag: n.key, ...(n.actions?.length ? { actions: n.actions } : {}) })
           delivered++
           report.sent++
         } catch (e) {

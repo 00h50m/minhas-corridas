@@ -1490,3 +1490,24 @@ details.link-import { margin-top: 0; }
 .wm-bar-done { background: var(--brand); }
 .wm-bar.alta .wm-bar-done { background: var(--warn); }
 .wm-bar-l { font-size: 11px; color: var(--ink-3); font-weight: 700; }
+.wm-key.ws-feito { background: var(--ok); }
+.wm-key.ws-futuro { background: var(--brand); }
+.wm-key.ws-passou { background: var(--warn); }
+.wm-key.ws-pulado { background: var(--ink-3); }
+
+/* Primeiros passos */
+.fs-card { margin-bottom: 12px; }
+.fs-hero { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.fs-hero b { font-family: var(--display); font-size: 26px; text-transform: uppercase; line-height: 1.05; }
+.fs-head { display: flex; justify-content: space-between; align-items: baseline; }
+.fs-bar { height: 6px; border-radius: 99px; background: var(--surface-2); margin: 8px 0 4px; overflow: hidden; }
+.fs-bar span { display: block; height: 100%; background: var(--ok); border-radius: 99px; }
+.fs-list { list-style: none; margin: 0; padding: 0; }
+.fs-list li + li { border-top: 1px solid var(--line); }
+.fs-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; color: inherit; text-decoration: none; }
+.fs-ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--brand-soft); color: var(--brand-ink); }
+.fs-ic svg { width: 20px; height: 20px; }
+.fs-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fs-list li.done .fs-ic { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.fs-list li.done .fs-t b { color: var(--ink-3); text-decoration: line-through; }
+.fs-hide { margin-top: 4px; }

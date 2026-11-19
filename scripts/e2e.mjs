@@ -74,12 +74,12 @@ const br = (s) => s.split('-').reverse().join('/')
 await go('/')
 await page.evaluate(() => localStorage.clear())
 await go('/')
-await expectText('Cadastrar primeira corrida')
+await expectText('Cadastre uma prova')
 await shot('inicio-vazio')
 ok('Estado vazio na página inicial, sem números fictícios')
 
 // 1. Prova de interesse só com dados básicos
-await clickText('a', 'Cadastrar primeira corrida')
+await page.$eval('[data-testid=fs-prova] a', (a) => a.click())
 await page.waitForSelector('#name')
 await clickText('button', 'Salvar corrida') // sem nada
 await expectText('Informe o nome da prova')

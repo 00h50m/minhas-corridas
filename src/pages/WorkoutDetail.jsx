@@ -1,8 +1,8 @@
 // Detalhe do treino: passos, arquivo para o relógio, status e planejado × executado (voltas do relógio).
 import { resultFrom } from '../lib/activityMatch.js'
 import ActivityDetails from '../components/ActivityDetails.jsx'
-import { useRef, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
 import { Sheet, TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconHeart, IconMove, IconStopwatch, IconStory, IconTrash, IconUpload, IconWatch, SportIcon } from '../components/Icons.jsx'
@@ -35,6 +35,17 @@ function Detail({ w }) {
   const [msg, setMsg] = useState(null)
   const [send, setSend] = useState(false)
   const [moving, setMoving] = useState(false)
+  // Botões da notificação da noite: ?marcar=feito ou ?remanejar=1
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (params.get('marcar') === 'feito') {
+      if (w.status === 'planejado') { saveWorkout({ ...w, status: 'feito' }); notify(w.result ? 'Marcado como feito' : 'Marcado como feito. Se quiser, importe a atividade do relógio.') }
+      setParams({}, { replace: true })
+    } else if (params.get('remanejar') === '1') {
+      if (w.status !== 'feito') setMoving(true)
+      setParams({}, { replace: true })
+    }
+  }, [])
   const est = estimate(w.items)
   const race = w.raceId ? getRace(w.raceId) : null
   const run = isRun(w)

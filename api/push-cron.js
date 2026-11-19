@@ -1,4 +1,5 @@
-// Vercel Cron (vercel.json): 1x por dia manda as notificações de prazos para cada aparelho inscrito.
+// Vercel Cron (vercel.json): de manhã (prazos, treino do dia, reta final) e à noite (?slot=noite: “fez o
+// treino?” e, no domingo, a semana) manda as notificações para cada aparelho inscrito.
 // O Vercel chama com "Authorization: Bearer <CRON_SECRET>".
 import { runPushJob } from '../src/lib/pushJob.js'
 import { adminDb, pushEnv, supabaseEnv } from './_supabaseAdmin.js'
@@ -12,7 +13,8 @@ export default async function handler(req, res) {
   const push = pushEnv()
   if (!push.ok) return res.status(503).json({ error: 'Notificações não configuradas.', missing: push.missing })
   try {
-    const report = await runPushJob({ db: adminDb(supabaseEnv()), send: makeSender(push) })
+    const slot = req.query?.slot === 'noite' ? 'noite' : 'manha'
+    const report = await runPushJob({ db: adminDb(supabaseEnv()), send: makeSender(push), slot })
     return res.status(200).json(report)
   } catch (e) {
     console.error(e)

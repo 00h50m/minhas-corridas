@@ -20,7 +20,7 @@ describe('semana que fechou', () => {
   it('aviso de segunda com atalho para o story da semana', () => {
     expect(trainingWeekPush(ws, '2026-11-22')).toBeNull()
     const n = trainingWeekPush(ws, '2026-11-23')
-    expect(n.title).toBe('Semana fechada: 2 de 2 treinos 🔥')
+    expect(n.title).toBe('Semana fechada: 2 de 2 treinos')
     expect(n.body).toBe('1 h 01 de treino · 4,2 km · 2 semanas seguidas. Toque para postar no story.')
     expect(n.url).toBe('/stories?modelo=semana&semana=2026-11-16')
     expect(n.key).toBe('treinos-semana:2026-11-16')
@@ -41,7 +41,7 @@ describe('semana que fechou', () => {
       cleanup: async () => {}
     }
     await runPushJob({ db, send: async (d, payload) => sent.push(payload), now: new Date('2026-11-23T11:00:00Z') })
-    expect(sent.map((s) => s.title)).toContain('Semana fechada: 2 de 2 treinos 🔥')
+    expect(sent.map((s) => s.title)).toContain('Semana fechada: 2 de 2 treinos')
   })
   it('story da semana escolhida', () => {
     const s = storyFor('semana', { races: [], workouts: ws, today: '2026-11-23', opts: {}, week: '2026-11-16' })

@@ -238,6 +238,10 @@ function PrefsEditor({ userId }) {
         Treino do dia (de manhã) e treino de ontem que ficou sem marcar
       </label>
       <label className="check">
+        <input type="checkbox" checked={prefs.noite} disabled={off || !prefs.treino} onChange={(e) => save({ ...prefs, noite: e.target.checked })} data-testid="pref-noite" />
+        À noite (20h): “Fez o treino de hoje?”, com os botões Fiz e Remanejar (no Android); no domingo, como foi a semana
+      </label>
+      <label className="check">
         <input type="checkbox" checked={prefs.reta} disabled={off} onChange={(e) => save({ ...prefs, reta: e.target.checked })} data-testid="pref-reta" />
         Reta final da prova: o item do dia (último treino forte, kit, separar tudo…)
       </label>

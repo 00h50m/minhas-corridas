@@ -66,7 +66,7 @@ describe('avisos de treino (manhã)', () => {
     const ws = [run('Tiros', '2026-12-02'), run('Rodagem', '2026-12-01')]
     const out = workoutPushes(ws, [natal], '2026-12-02', { treino: true, reta: true })
     expect(out.map((x) => x.key)).toEqual(['treino:Tiros:2026-12-02', 'treino-passou:Rodagem:2026-12-01', 'reta:na:2026-12-02'])
-    expect(out[0]).toMatchObject({ title: 'Treino de hoje: Tiros', body: '30 min · ≈ 30:00', url: '/treinos/Tiros' })
+    expect(out[0]).toMatchObject({ title: 'Treino de hoje: Tiros', body: '30 min · cerca de 30:00', url: '/treinos/Tiros' })
     expect(out[1]).toMatchObject({ title: 'Ontem: “Rodagem” ficou sem marcar', url: '/treinos/Rodagem' })
     expect(out[2]).toMatchObject({ title: 'Reta final · Corrida de Natal (faltam 10 dias)', body: 'Último treino forte', url: '/corridas/na' })
     expect(workoutPushes(ws, [natal], '2026-12-02', { treino: false, reta: false })).toEqual([])

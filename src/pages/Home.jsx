@@ -4,6 +4,7 @@ import { Avatar, AvatarButton } from '../components/Avatar.jsx'
 import { useProfile } from '../services/profile.js'
 import { greeting } from '../lib/profile.js'
 import { InstallBanner } from '../components/Install.jsx'
+import FirstSteps, { firstStepsHidden } from '../components/FirstSteps.jsx'
 import { reviewInviteYear, reviewYears } from '../lib/yearReview.js'
 import { installAvailable, useInstall } from '../services/install.js'
 import { useStore } from '../services/store.js'
@@ -86,25 +87,20 @@ export default function Home() {
   const showInstall = installAvailable(inst) && !inst.snoozed
   // Um convite por vez: primeiro instalar, depois o perfil.
   const invite = !showInstall && !prof.data.name && !prof.data.nickname
+  // Primeiros passos enquanto o app ainda está começando (até 3 provas e 5 treinos)
+  const steps = races.length <= 3 && workouts.length <= 5 && !firstStepsHidden()
   const plannedAhead = workouts.filter((w) => w.status === 'planejado' && w.date && w.date >= today).sort((a, b) => (a.date < b.date ? -1 : 1))
   const todayWorkouts = plannedAhead.filter((w) => w.date === today)
   const nextWorkout = plannedAhead.find((w) => daysBetween(today, w.date) <= 7) ?? null
 
-  if (races.length === 0) {
+  if (races.length === 0 && workouts.length === 0) {
     return (
       <>
         <TopBar title={<Brand />} sub={<span className="greet">{hello}</span>} right={settings} />
         <div className="page">
           {showInstall && <InstallBanner />}
-          {showInstall && <InstallBanner />}
-        {invite && <ProfileInvite />}
-          <EmptyState
-            title="Bora para a primeira?"
-            text="Cadastre uma prova que você quer fazer ou em que já está inscrita. Só o nome é obrigatório — o resto você completa depois."
-            action={<Link to="/corridas/nova" className="btn btn-primary btn-block"><IconPlus /> Cadastrar primeira corrida</Link>}
-          />
-          <p className="note">Já usa o app em outro aparelho? <Link to="/conta">Entre na sua conta</Link> para trazer suas corridas.</p>
-          <p className="note">Quer montar os treinos da semana para o relógio? <Link to="/treinos">Treinos</Link></p>
+          <FirstSteps races={races} workouts={workouts} profile={prof.data} welcome />
+          <p className="note">Já usa o app em outro aparelho? <Link to="/conta">Entre na sua conta</Link> para trazer seus dados.</p>
         </div>
       </>
     )
@@ -137,7 +133,7 @@ export default function Home() {
       <div className="page home">
         <div className="home-col home-main">
         {showInstall && <InstallBanner />}
-        {invite && <ProfileInvite />}
+        {steps ? <FirstSteps races={races} workouts={workouts} profile={prof.data} /> : invite && <ProfileInvite />}
         {pending.length > 0 && (
           <Link to={`/corridas/${pending[0].id}/resultado`} className="alert alert-warn home-pending">
             <IconStopwatch />

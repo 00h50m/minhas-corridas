@@ -142,8 +142,12 @@ export function exerciseOptions() {
 
 const kgShort = (v) => `${String(Math.round(v * 10) / 10).replace('.', ',')} kg`
 
-/** Linha da ficha: “3×12 · 40 kg”. */
+/** Nome do exercício da ficha: o escrito pelo treinador ou o da categoria do relógio. */
+export const exLabel = (x) => x.name || exerciseName(x.cat)
+
+/** Linha da ficha: “3×12 · 40 kg” ou “3 × 8 + diminuir o peso + 10 · descanso 1 minuto”. */
 export function planLine(x) {
+  if (x.repsText) return `${x.sets} × ${x.repsText}${x.kg ? ` · ${kgShort(x.kg)}` : ''}`
   return `${x.sets}×${x.reps ?? '—'}${x.kg ? ` · ${kgShort(x.kg)}` : ''}`
 }
 
@@ -166,6 +170,8 @@ export function compareStrength(plan = [], sets = []) {
   const names = new Set()
   const rows = plan.map((p) => {
     const name = exerciseName(p.cat)
+    // Sem categoria do relógio (exercício escrito à mão que o app não reconhece): fica só o planejado
+    if (p.cat == null) return { name: exLabel(p), plan: p, done: null, status: 'sem-par', kgDiff: null }
     names.add(name)
     const done = doneOf(groups, name)
     let status = 'faltou'
@@ -175,8 +181,8 @@ export function compareStrength(plan = [], sets = []) {
       status = done.sets >= p.sets && repsOk && kgOk ? 'ok' : 'parcial'
     }
     const kgDiff = done?.maxKg != null && p.kg ? Math.round((done.maxKg - p.kg) * 10) / 10 : null
-    return { name, plan: p, done, status, kgDiff }
+    return { name: p.name || name, plan: p, done, status, kgDiff }
   })
   const extras = [...new Set(groups.map((g) => g.name))].filter((n) => !names.has(n) && n !== 'Exercício' && n !== 'Aquecimento').map((n) => ({ name: n, ...doneOf(groups, n) }))
-  return { rows, extras, ok: rows.filter((r) => r.status === 'ok').length, total: rows.length }
+  return { rows, extras, ok: rows.filter((r) => r.status === 'ok').length, total: rows.filter((r) => r.status !== 'sem-par').length }
 }

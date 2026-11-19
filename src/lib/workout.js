@@ -106,8 +106,17 @@ export function normalizeWorkout(raw) {
   // Ficha da academia: [{ cat (categoria Garmin ou null), sets, reps, kg }]
   w.exercises = w.sport === 'academia' ? (Array.isArray(w.exercises) ? w.exercises : []).filter((x) => x && typeof x === 'object').slice(0, 20).map((x) => {
     const n = (v, a, b) => (v == null || v === '' ? null : num(Number(String(v).replace(',', '.')), a, b))
-    return { cat: n(x.cat, 0, 65535), sets: n(x.sets, 1, 20) ?? 3, reps: n(x.reps, 1, 200), kg: n(x.kg, 0, 500) }
+    const t = (v, k) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, k) : '')
+    const out = { cat: n(x.cat, 0, 65535), sets: n(x.sets, 1, 20) ?? 3, reps: n(x.reps, 1, 200), kg: n(x.kg, 0, 500) }
+    // Da ficha do treinador: nome livre, repetições e descanso como estão escritos, observação e conjugado
+    for (const [k, len] of [['name', 80], ['repsText', 120], ['rest', 40], ['note', 80]]) if (t(x[k], len)) out[k] = t(x[k], len)
+    if (x.withNext === true) out.withNext = true
+    return out
   }) : []
+  // Treino da ficha da academia (qual treino A/B/C… foi feito)
+  w.ficha = w.sport === 'academia' && w.ficha && typeof w.ficha === 'object' && typeof w.ficha.programId === 'string' && typeof w.ficha.sheetId === 'string'
+    ? { programId: w.ficha.programId.slice(0, 20), sheetId: w.ficha.sheetId.slice(0, 20), label: String(w.ficha.label ?? '').slice(0, 20) }
+    : null
   w.items = w.sport === 'corrida' ? (Array.isArray(w.items) ? w.items : []).map(normalizeItem).filter(Boolean).slice(0, 30) : []
   w.result = normalizeResult(w.result)
   return w

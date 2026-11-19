@@ -6,7 +6,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store.js'
 import { Sheet, TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconHeart, IconMove, IconStopwatch, IconStory, IconTrash, IconUpload, IconWatch, SportIcon } from '../components/Icons.jsx'
-import { compareStrength, exerciseName, planLine } from '../lib/strength.js'
+import { compareStrength, exLabel, planLine } from '../lib/strength.js'
 import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, flatten, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
@@ -141,10 +141,15 @@ function PlanCard({ w, est, race }) {
   if (!isRun(w)) {
     return (
       <div className="card" data-testid="wk-cross">
-        <div className="wd-sport"><span className="wd-sport-ic"><SportIcon sport={w.sport} /></span><b>{sportOf(w).label}</b>{w.plannedMin ? <span className="muted small">· {w.plannedMin} min planejados</span> : null}</div>
+        <div className="wd-sport"><span className="wd-sport-ic"><SportIcon sport={w.sport} /></span><b>{sportOf(w).label}</b>{w.plannedMin ? <span className="muted small">· {w.plannedMin} min planejados</span> : null}{w.ficha ? <Link to="/academia" className="small wd-ficha" data-testid="wk-ficha-link">da ficha · Treino {w.ficha.label}</Link> : null}</div>
         {w.exercises?.length > 0 && (
           <ul className="wd-plan" data-testid="wk-plan">
-            {w.exercises.map((x, i) => <li key={i}><span>{exerciseName(x.cat)}</span><b>{planLine(x)}</b></li>)}
+            {w.exercises.map((x, i) => (
+              <li key={i} className={x.withNext || w.exercises[i - 1]?.withNext ? 'wd-pair' : ''}>
+                <span>{exLabel(x)}{x.note ? <span className="muted small"> · {x.note}</span> : null}{x.withNext ? <span className="ficha-pair-tag">conjugado</span> : null}</span>
+                <b>{planLine(x)}{x.rest ? <span className="muted small wd-rest">descanso {x.rest}</span> : null}</b>
+              </li>
+            ))}
           </ul>
         )}
         {race && <p className="small" style={{ margin: '10px 0 0' }}>Preparação para <Link to={`/corridas/${race.id}`}>{race.name}</Link></p>}
@@ -273,7 +278,7 @@ function Executed({ w }) {
   )
 }
 
-const CMP_LABEL = { ok: 'como planejado', parcial: 'parcial', faltou: 'não feito' }
+const CMP_LABEL = { ok: 'como planejado', parcial: 'parcial', faltou: 'não feito', 'sem-par': 'sem par no relógio' }
 
 /** Ficha planejada × séries do relógio. */
 function StrengthCompare({ w }) {

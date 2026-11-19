@@ -282,3 +282,8 @@ alter table public.records add constraint records_kind_check check (kind in ('ra
 --     Enquanto este trecho não rodar, esses dados ficam só no aparelho, sem se perder.
 alter table public.records drop constraint if exists records_kind_check;
 alter table public.records add constraint records_kind_check check (kind in ('race', 'goal', 'file', 'workout', 'cycle', 'garmin'));
+
+-- 13) Ficha da academia (Treino A, B, C… do treinador), um registro (id 'main'), com as mesmas regras
+--     de acesso. Enquanto este trecho não rodar, a ficha fica só no aparelho, sem se perder.
+alter table public.records drop constraint if exists records_kind_check;
+alter table public.records add constraint records_kind_check check (kind in ('race', 'goal', 'file', 'workout', 'cycle', 'garmin', 'ficha'));

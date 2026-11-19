@@ -19,6 +19,7 @@ import CopyBox from '../components/CopyBox.jsx'
 import { claudePrompt } from '../lib/workoutShare.js'
 import WorkoutMonth from '../components/WorkoutMonth.jsx'
 import StrengthProgress from '../components/StrengthProgress.jsx'
+import FichaCard from '../components/FichaCard.jsx'
 
 const PAST_N = 5
 const STATUS_LABEL = Object.fromEntries(WORKOUT_STATUSES.map((s) => [s.id, s.label]))
@@ -66,6 +67,7 @@ export default function Workouts() {
           <>
             <div style={{ marginTop: 12 }}><TrainingWeek workouts={workouts} today={today} /></div>
             <MissedCard workouts={workouts} today={today} />
+            <FichaCard workouts={workouts} />
             <Readiness date={today} style={{ marginTop: 10 }} />
             <div className="card wk-watch" style={{ marginTop: 10 }} data-testid="wk-watch">
               <GarminConnect />

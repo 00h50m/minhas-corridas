@@ -87,7 +87,7 @@ export function strengthSteps(exercises = []) {
   for (const x of exercises) {
     const start = out.length
     out.push({
-      name: '', durationType: x.reps ? REPS : DURATION.lap, durationValue: x.reps ?? null, targetType: TARGET.none, targetValue: null, low: null, high: null, intensity: INTENSITY.active,
+      name: x.name ?? '', durationType: x.reps ? REPS : DURATION.lap, durationValue: x.reps ?? null, targetType: TARGET.none, targetValue: null, low: null, high: null, intensity: INTENSITY.active,
       cat: x.cat ?? null, exName: x.cat != null ? EX_NAME[x.cat] ?? null : null, weight: x.kg ? Math.round(x.kg * 100) : null
     })
     out.push({ name: 'Descanso', durationType: DURATION.lap, durationValue: null, targetType: TARGET.none, targetValue: null, low: null, high: null, intensity: INTENSITY.rest, cat: null, exName: null, weight: null })

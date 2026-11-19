@@ -11,7 +11,7 @@
 // local:  { get(kind, id), list(kind), applyRemote({ upserts, deletes }), getBlob(id), setBlob(id, blob), filesMissingBlob() }
 // meta:   { ownerId, cursor, dirty: { 'kind:id': true }, tombstones: { 'kind:id': iso } } + save()
 
-export const KINDS = ['race', 'goal', 'file', 'workout', 'cycle', 'garmin']
+export const KINDS = ['race', 'goal', 'file', 'workout', 'cycle', 'garmin', 'ficha']
 const OVERLAP_MS = 10_000 // relê uma janela para não perder gravações que confirmaram fora de ordem
 const BATCH = 200
 

@@ -1,10 +1,10 @@
 // Registros únicos sincronizados com a conta (um por tipo, id 'main'): o ciclo menstrual e a conexão
-// do Garmin (sono, body battery, relatório). Guardados no aparelho em localStorage e enviados pela
+// do Garmin (sono, body battery, relatório) e a ficha da academia. Guardados no aparelho em localStorage e enviados pela
 // sincronização como os outros registros (kind 'cycle' e 'garmin'). Leve: não puxa o serviço do Garmin.
 // A chave pessoal do Garmin é uma credencial: NUNCA sai do aparelho (fica fora do registro sincronizado).
 import { noteDeleted, noteSaved } from './syncMeta.js'
 
-export const KV_KINDS = { cycle: 'minhas-corridas:ciclo', garmin: 'minhas-corridas:garmin' }
+export const KV_KINDS = { cycle: 'minhas-corridas:ciclo', garmin: 'minhas-corridas:garmin', ficha: 'minhas-corridas:ficha' }
 export const KV_ID = 'main'
 export const KV_EVENT = 'paceon-kv' // detail: { kind, remote }
 

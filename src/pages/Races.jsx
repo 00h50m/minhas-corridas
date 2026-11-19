@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { EmptyState, Field, RaceItem, Sheet, TopBar, useUI } from '../components/ui.jsx'
-import { IconCalendar, IconStopwatch, IconChevronL, IconChevronR, IconFilter, IconPlus, IconSearch, IconInfo } from '../components/Icons.jsx'
+import { IconCalendar, IconStopwatch, IconStory, IconChevronL, IconChevronR, IconFilter, IconPlus, IconSearch, IconInfo } from '../components/Icons.jsx'
 import { STATUSES } from '../lib/model.js'
 import { daysBetween, formatDateBR, monthName, parseISODate, toISODate, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm } from '../lib/format.js'
@@ -124,6 +124,7 @@ export default function Races() {
     if (r.status === 'inscrita' && r.date && r.date < today && !r.result) out.push(<span key="res" className="chip chip-hot">Registrar resultado</span>)
     return out
   }
+  const signedAhead = races.filter((r) => r.status === 'inscrita' && r.date && r.date >= today).length
   const counts = Object.fromEntries(QUICK.map((q) => [q.id, q.statuses.length ? races.filter((r) => q.statuses.includes(r.status)).length : races.length]))
   const quickActive = QUICK.find((q) => sameSet(q.statuses, filters.statuses))?.id ?? null
   const narrowed = !!(filters.query || nFilters)
@@ -167,6 +168,10 @@ export default function Races() {
             </button>
           ))}
         </div>
+
+        {signedAhead > 0 && (
+          <Link to="/stories?modelo=proximas" className="link-btn races-story" data-testid="races-story"><IconStory /> Postar minhas inscrições ({signedAhead})</Link>
+        )}
 
         <div className="tabs" role="tablist" style={{ marginTop: 12 }}>
           <button role="tab" aria-selected={view === 'lista'} onClick={() => setView('lista')}>Lista</button>

@@ -12,7 +12,7 @@ import { todayISO } from '../lib/dates.js'
 
 const PREF = 'minhas-corridas:stories'
 // Ordem das miniaturas: provas, treinos e conquistas
-const ORDER = [['proximas', 'Próximas'], ['contagem', 'Contagem'], ['resultado', 'Prova concluída'], ['temporada', 'Temporada'], ['semana', 'Semana'], ['treino', 'Treino feito'], ['mes', 'Mês'], ['evolucao', 'Evolução 5 km'], ['conquista', 'Conquista']]
+const ORDER = [['proximas', 'Inscrições'], ['contagem', 'Contagem'], ['resultado', 'Prova concluída'], ['temporada', 'Temporada'], ['semana', 'Semana'], ['treino', 'Treino feito'], ['mes', 'Mês'], ['evolucao', 'Evolução 5 km'], ['conquista', 'Conquista']]
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(PREF) || '{}') } catch { return {} } }
 
 export default function Stories() {
@@ -24,14 +24,15 @@ export default function Stories() {
   const [tpl, setTpl] = useState(STORY_TEMPLATES.some((t) => t.id === params.get('modelo')) ? params.get('modelo') : prefs.tpl ?? 'proximas')
   const [times, setTimes] = useState(prefs.times ?? true)
   const [cities, setCities] = useState(prefs.cities ?? true)
+  const [decidindo, setDecidindo] = useState(prefs.decidindo ?? false)
   const [photo, setPhoto] = useState(null)
   const [fontsReady, setFontsReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const canvasRef = useRef(null)
   const fileRef = useRef(null)
   useEffect(() => { loadCardFonts().then(() => setFontsReady(true)) }, [])
-  useEffect(() => { try { localStorage.setItem(PREF, JSON.stringify({ tpl, times, cities })) } catch { /* sem armazenamento: tudo bem */ } }, [tpl, times, cities])
-  const s = useMemo(() => storyFor(tpl, { races, workouts, goals, today, opts: { times, cities }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }), [tpl, races, workouts, goals, times, cities])
+  useEffect(() => { try { localStorage.setItem(PREF, JSON.stringify({ tpl, times, cities, decidindo })) } catch { /* sem armazenamento: tudo bem */ } }, [tpl, times, cities, decidindo])
+  const s = useMemo(() => storyFor(tpl, { races, workouts, goals, today, opts: { times, cities, decidindo }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }), [tpl, races, workouts, goals, times, cities, decidindo])
   useEffect(() => {
     if (s.ok && fontsReady && canvasRef.current) drawStory(canvasRef.current, tpl, s, photo)
   }, [s, tpl, photo, fontsReady])
@@ -71,7 +72,7 @@ export default function Stories() {
     }
   }
 
-  const all = useMemo(() => ORDER.map(([id, label]) => ({ id, label, s: storyFor(id, { races, workouts, goals, today, opts: { times, cities }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }) })), [races, workouts, goals, times, cities])
+  const all = useMemo(() => ORDER.map(([id, label]) => ({ id, label, s: storyFor(id, { races, workouts, goals, today, opts: { times, cities, decidindo }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }) })), [races, workouts, goals, times, cities, decidindo])
 
   return (
     <>
@@ -99,6 +100,7 @@ export default function Stories() {
         <div className="st-opts">
           <label className={`st-toggle${times ? ' on' : ''}`}><input type="checkbox" checked={times} onChange={(e) => setTimes(e.target.checked)} data-testid="story-times" /> Tempos e pace</label>
           <label className={`st-toggle${cities ? ' on' : ''}`}><input type="checkbox" checked={cities} onChange={(e) => setCities(e.target.checked)} data-testid="story-cities" /> Cidades</label>
+          {tpl === 'proximas' && <label className={`st-toggle${decidindo ? ' on' : ''}`}><input type="checkbox" checked={decidindo} onChange={(e) => setDecidindo(e.target.checked)} data-testid="story-decidindo" /> Incluir as que estou decidindo</label>}
           <button type="button" className={`st-toggle${photo ? ' on' : ''}`} onClick={() => (photo ? setPhoto(null) : fileRef.current?.click())}>{photo ? 'Tirar foto do fundo' : 'Foto de fundo'}</button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} data-testid="story-photo" />
         </div>

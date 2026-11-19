@@ -27,16 +27,27 @@ const dayMonth = (iso) => ({ day: String(Number(iso.slice(8, 10))), month: MONTH
 const place = (r, opts) => (opts.cities && r.city ? `${r.city}${r.state ? `/${r.state}` : ''}` : null)
 const km = (n) => (n ? formatKm(n) : null)
 
-/** Próximas provas (inscritas primeiro, depois as de interesse), até 5. */
+/**
+ * Minhas inscrições: quantas provas inscritas vêm pela frente (número grande), os km somados e a lista
+ * (até 5, mais “+N provas”). Com opts.decidindo, entram também as de interesse/inscrição aberta.
+ */
 export function storyProximas(races, today, opts = {}) {
-  const list = upcoming(races, today, 30)
-  const sorted = [...list.filter((r) => r.status === 'inscrita'), ...list.filter((r) => r.status !== 'inscrita')].slice(0, 5).sort(byDateAsc)
-  if (!sorted.length) return { ok: false, reason: 'Nenhuma prova com data à frente.' }
+  const list = upcoming(races, today, 60)
+  const signed = list.filter((r) => r.status === 'inscrita')
+  const shown = opts.decidindo ? list : signed
+  if (!shown.length) return { ok: false, reason: list.length ? 'Nenhuma inscrição com data à frente. Ative “Incluir as que estou decidindo” para mostrar as outras.' : 'Nenhuma prova com data à frente.' }
+  const sorted = [...shown].sort(byDateAsc)
+  const kmTotal = Math.round(signed.reduce((a, r) => a + (r.distanceKm ?? 0), 0) * 10) / 10
+  const deciding = list.length - signed.length
   return {
     ok: true,
     title: 'Próximas provas',
-    subtitle: `${list.filter((r) => r.status === 'inscrita').length} inscritas · ${list.length} no calendário`,
-    items: sorted.map((r) => ({ ...dayMonth(r.date), name: r.name, line: [km(r.distanceKm), place(r, opts), r.status === 'inscrita' ? null : 'ainda decidindo'].filter(Boolean).join(' · '), confirmed: r.status === 'inscrita', days: daysBetween(today, r.date) }))
+    // Sem inscrição (só com “decidindo”): conta as do calendário, para não estampar um zero
+    count: signed.length || shown.length,
+    countLabel: signed.length ? (signed.length === 1 ? 'prova inscrita' : 'provas inscritas') : shown.length === 1 ? 'prova no calendário' : 'provas no calendário',
+    subtitle: [kmTotal ? `${String(kmTotal).replace('.', ',')} km de prova pela frente` : null, opts.decidindo && deciding ? `+ ${deciding} ${deciding === 1 ? 'decidindo' : 'decidindo'}` : null].filter(Boolean).join(' · '),
+    items: sorted.slice(0, 5).map((r) => ({ ...dayMonth(r.date), name: r.name, line: [km(r.distanceKm), place(r, opts), r.status === 'inscrita' ? null : 'ainda decidindo'].filter(Boolean).join(' · '), confirmed: r.status === 'inscrita', days: daysBetween(today, r.date) })),
+    more: Math.max(0, sorted.length - 5)
   }
 }
 

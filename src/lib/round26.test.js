@@ -14,11 +14,23 @@ const W = (id, date, status, result = null) => ({ ...normalizeWorkout({ name: id
 const workouts = [W('Ter', '2026-11-17', 'feito', { distanceKm: 4.2, elapsedSec: 1860, laps: [] }), W('Sab', '2026-11-21', 'planejado'), W('Teste', '2026-11-12', 'feito', { distanceKm: 5.01, elapsedSec: 2330, laps: [] })]
 
 describe('stories', () => {
-  it('próximas provas: inscritas e de interesse, com ou sem cidade', () => {
+  it('minhas inscrições: número grande, km pela frente; as que estou decidindo só se pedir', () => {
     const s = storyProximas(races, today, { cities: true })
-    expect(s.subtitle).toBe('1 inscritas · 2 no calendário')
-    expect(s.items.map((i) => [i.day, i.month, i.name, i.line])).toEqual([['13', 'DEZ', 'Corrida de Natal', '10 km · Jundiaí/SP'], ['31', 'DEZ', 'São Silvestre', '15 km · São Paulo/SP · ainda decidindo']])
+    expect([s.count, s.countLabel, s.subtitle]).toEqual([1, 'prova inscrita', '10 km de prova pela frente'])
+    expect(s.items.map((i) => [i.day, i.month, i.name, i.line])).toEqual([['13', 'DEZ', 'Corrida de Natal', '10 km · Jundiaí/SP']])
+    const d = storyProximas(races, today, { cities: true, decidindo: true })
+    expect(d.subtitle).toBe('10 km de prova pela frente · + 1 decidindo')
+    expect(d.items.map((i) => [i.name, i.line])).toEqual([['Corrida de Natal', '10 km · Jundiaí/SP'], ['São Silvestre', '15 km · São Paulo/SP · ainda decidindo']])
     expect(storyProximas(races, today, { cities: false }).items[0].line).toBe('10 km')
+  })
+  it('minhas inscrições: mais de 5 vira “+N”; sem inscrição, explica como incluir as outras', () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ id: `r${i}`, name: `Prova ${i}`, date: `2026-12-${String(i + 1).padStart(2, '0')}`, status: 'inscrita', distanceKm: 5 }))
+    const s = storyProximas(many, today)
+    expect([s.count, s.countLabel, s.items.length, s.more, s.subtitle]).toEqual([7, 'provas inscritas', 5, 2, '35 km de prova pela frente'])
+    const only = storyProximas([races[3]], today)
+    expect(only.ok).toBe(false)
+    expect(only.reason).toContain('Incluir as que estou decidindo')
+    expect(storyProximas([races[3]], today, { decidindo: true })).toMatchObject({ ok: true, count: 1, countLabel: 'prova no calendário' })
   })
   it('temporada: concluídas, próximas, km e melhores tempos só com tempos ligados', () => {
     const s = storyTemporada(races, today, { times: true })

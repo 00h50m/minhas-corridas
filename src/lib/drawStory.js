@@ -66,35 +66,58 @@ function card(ctx, x, y, w, h) {
 /* ---------- Modelos ---------- */
 
 function proximas(ctx, s) {
-  title(ctx, s.title, s.subtitle, 420)
-  let y = 560
-  const rowH = Math.min(240, (STORY.h - 260 - y) / s.items.length)
+  // Número grande: quantas inscrições pela frente
+  ctx.fillStyle = BRAND
+  const n = String(s.count)
+  ctx.font = `800 260px ${DISPLAY}`
+  ctx.fillText(n, PAD, 560)
+  const nw = ctx.measureText(n).width
+  ctx.fillStyle = '#fff'
+  const label = s.countLabel.toUpperCase()
+  const size = fit(ctx, label, (k) => `800 ${k}px ${DISPLAY}`, 84, STORY.w - PAD * 2 - nw - 30, 44)
+  ctx.font = `800 ${size}px ${DISPLAY}`
+  ctx.fillText(label, PAD + nw + 30, 560)
+  if (s.subtitle) {
+    ctx.fillStyle = DIM
+    ctx.font = `700 38px ${TEXT}`
+    ctx.fillText(wrap(ctx, s.subtitle, STORY.w - PAD * 2, 1)[0], PAD, 630)
+  }
+  let y = 700
+  const bottom = STORY.h - 200 - (s.more ? 70 : 0)
+  const rowH = Math.min(220, (bottom - y) / s.items.length)
   for (const it of s.items) {
     // Data
     ctx.fillStyle = it.confirmed ? BRAND : SOFT
-    roundRect(ctx, PAD, y, 170, rowH - 34, 30)
+    roundRect(ctx, PAD, y, 160, rowH - 30, 28)
     ctx.fill()
     ctx.fillStyle = '#fff'
     ctx.textAlign = 'center'
-    ctx.font = `800 30px ${TEXT}`
-    ctx.fillText(it.weekday, PAD + 85, y + 48)
-    ctx.font = `800 84px ${DISPLAY}`
-    ctx.fillText(it.day, PAD + 85, y + 128)
-    ctx.font = `800 30px ${TEXT}`
-    ctx.fillText(it.month, PAD + 85, y + 166)
+    const scale = Math.min(1, (rowH - 30) / 190)
+    ctx.font = `800 ${Math.round(28 * scale)}px ${TEXT}`
+    ctx.fillText(it.weekday, PAD + 80, y + 44 * scale)
+    ctx.font = `800 ${Math.round(80 * scale)}px ${DISPLAY}`
+    ctx.fillText(it.day, PAD + 80, y + 120 * scale)
+    ctx.font = `800 ${Math.round(28 * scale)}px ${TEXT}`
+    ctx.fillText(it.month, PAD + 80, y + 158 * scale)
     ctx.textAlign = 'left'
     // Nome e linha
-    const x = PAD + 206
+    const x = PAD + 196
     const w = STORY.w - PAD - x
     ctx.fillStyle = '#fff'
-    ctx.font = `800 52px ${TEXT}`
-    const lines = wrap(ctx, it.name, w, 2)
-    lines.forEach((l, i) => ctx.fillText(l, x, y + 62 + i * 60))
+    ctx.font = `800 ${Math.round(48 * Math.max(scale, 0.8))}px ${TEXT}`
+    const lines = wrap(ctx, it.name, w, rowH > 170 ? 2 : 1)
+    const lh = Math.round(56 * Math.max(scale, 0.8))
+    lines.forEach((l, i) => ctx.fillText(l, x, y + lh + i * lh))
     ctx.fillStyle = DIM
-    ctx.font = `700 34px ${TEXT}`
+    ctx.font = `700 ${Math.round(32 * Math.max(scale, 0.85))}px ${TEXT}`
     const meta = [it.line, it.days === 0 ? 'hoje' : it.days === 1 ? 'amanhã' : `em ${it.days} dias`].filter(Boolean).join(' · ')
-    ctx.fillText(wrap(ctx, meta, w, 1)[0], x, y + 62 + lines.length * 60 + 4)
+    ctx.fillText(wrap(ctx, meta, w, 1)[0], x, y + lh + lines.length * lh + 2)
     y += rowH
+  }
+  if (s.more) {
+    ctx.fillStyle = '#fff'
+    ctx.font = `800 40px ${TEXT}`
+    ctx.fillText(`+ ${s.more} ${s.more === 1 ? 'prova' : 'provas'}`, PAD, y + 40)
   }
 }
 

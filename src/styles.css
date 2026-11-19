@@ -1511,3 +1511,4 @@ details.link-import { margin-top: 0; }
 .fs-list li.done .fs-ic { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
 .fs-list li.done .fs-t b { color: var(--ink-3); text-decoration: line-through; }
 .fs-hide { margin-top: 4px; }
+.races-story { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; } .races-story svg { width: 16px; height: 16px; }

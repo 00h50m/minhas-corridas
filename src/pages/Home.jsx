@@ -200,7 +200,7 @@ export default function Home() {
 
         {retroYear && reviewYears(races).includes(retroYear) && (
           <Link to={`/retrospectiva/${retroYear}`} className="card decide-link retro-invite" data-testid="retro-invite">
-            <span style={{ fontSize: 26 }} aria-hidden="true">🎉</span>
+            <IconTrophy />
             <span style={{ flex: 1, minWidth: 0 }}><b>Sua retrospectiva {retroYear}</b><br /><span className="muted small">Provas, km, recordes e o card para compartilhar.</span></span>
             <span aria-hidden="true">›</span>
           </Link>
@@ -210,11 +210,6 @@ export default function Home() {
         </div>
         <div className="home-col home-side">
         <Suspense fallback={null}><HomeLinks races={races} workouts={workouts} goals={goals} today={today} /></Suspense>
-        <Link to="/stories" className="card decide-link" data-testid="stories-link" style={{ marginTop: 10 }}>
-          <IconStory />
-          <span style={{ flex: 1, minWidth: 0 }}><b>Stories da sua rotina</b><br /><span className="muted small">Próximas provas, semana, mês, prova concluída, conquistas…</span></span>
-          <span aria-hidden="true">›</span>
-        </Link>
 
         <div className="section-title"><h2>Seu {year}</h2><Link to="/historico" onClick={() => { historyMemo.tab = 'evolucao' }}>Evolução</Link></div>
         <div className="stats">

@@ -90,9 +90,9 @@ describe('resumo do mês', () => {
     expect(s.title).toBe('Novembro 2026')
     expect(s.offset).toBe(6) // 1/11/2026 é domingo
     expect(s.days.length).toBe(30)
-    expect(s.days.filter((d) => d.kind).map((d) => [d.day, d.kind])).toEqual([[3, 'outra'], [10, 'corrida'], [13, 'corrida'], [15, 'prova'], [17, 'corrida']])
+    expect(s.days.filter((d) => d.kind).map((d) => [d.day, d.kind])).toEqual([[3, 'forca'], [10, 'corrida'], [13, 'corrida'], [15, 'prova'], [17, 'corrida']])
     expect(s.stats.map((x) => x.value)).toEqual(['5', '9,2', '3'])
-    expect(s.counts).toBe('3 corridas · 1 prova · 1 outra atividade')
+    expect(s.counts).toBe('3 corridas · 1 prova · 1 treino de força')
     expect(s.badges).toEqual(['Sub 40 nos 5 km', '2 semanas seguidas', 'Primeiros 5 km'])
     expect(storyFor('mes', { races: [], workouts: [], goals: [], today: '2026-11-17', opts: {} }).ok).toBe(false)
   })

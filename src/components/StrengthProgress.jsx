@@ -28,10 +28,11 @@ function Spark({ values, w = 96, h = 30 }) {
 
 export default function StrengthProgress({ workouts, today }) {
   const [open, setOpen] = useState(null)
+  const [all, setAll] = useState(false)
   const hist = strengthHistory(workouts)
   const rec = strengthRecency(workouts, today)
   if (!hist.length && !rec) return null
-  const shown = hist.slice(0, 6)
+  const shown = all ? hist : hist.slice(0, 3)
   const ex = open ? hist.find((h) => h.name === open) : null
   return (
     <div className="card sp-card" style={{ marginTop: 10 }} data-testid="strength-progress">
@@ -60,6 +61,7 @@ export default function StrengthProgress({ workouts, today }) {
               </button>
             )
           })}
+          {!all && hist.length > 3 && <button type="button" className="link-btn" onClick={() => setAll(true)} data-testid="sp-all">Ver todos os exercícios ({hist.length})</button>}
         </div>
       )}
       {ex && (

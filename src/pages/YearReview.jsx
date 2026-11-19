@@ -133,7 +133,7 @@ export default function YearReview() {
                 <div className="card">
                   <ul className="plain-list">
                     {rv.prs.map((p) => <li key={'pr' + p.key}><span style={{ flex: 1 }}>🏅 Recorde nos {p.label}<br /><span className="muted small">{p.race.name} · {formatDuration(p.race.result.netTime)}</span></span><span className="right small delta-good">−{formatDuration(p.gain)}</span></li>)}
-                    {rv.firsts.map((f) => <li key={'f' + f.key}><span style={{ flex: 1 }}>✨ Primeira vez: {f.label}<br /><span className="muted small">{f.race.name} · {formatDuration(f.race.result.netTime)}</span></span></li>)}
+                    {rv.firsts.map((f) => <li key={'f' + f.key}><span style={{ flex: 1 }}>Primeira vez: {f.label}<br /><span className="muted small">{f.race.name} · {formatDuration(f.race.result.netTime)}</span></span></li>)}
                   </ul>
                 </div>
               </>

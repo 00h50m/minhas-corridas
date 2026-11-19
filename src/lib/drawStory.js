@@ -424,7 +424,7 @@ function resultado(ctx, s) {
   }
 }
 
-const KIND_COLOR = { corrida: BRAND, prova: '#ffd166', outra: '#5b8def' }
+const KIND_COLOR = { corrida: BRAND, prova: '#ffd166', forca: '#22a06b', outra: '#5b8def' }
 
 function mes(ctx, s) {
   title(ctx, s.title, s.counts, 420)
@@ -456,7 +456,7 @@ function mes(ctx, s) {
   ctx.textAlign = 'left'
   ctx.font = `700 30px ${TEXT}`
   let lx = PAD
-  for (const [k, label] of [['corrida', 'corrida'], ['prova', 'prova'], ['outra', 'outra atividade']]) {
+  for (const [k, label] of [['corrida', 'corrida'], ['prova', 'prova'], ['forca', 'força'], ['outra', 'outra']].filter(([k]) => !s.kinds || s.kinds.includes(k))) {
     ctx.fillStyle = KIND_COLOR[k]
     roundRect(ctx, lx, y - 24, 28, 28, 8)
     ctx.fill()

@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { saveWorkout } from '../services/store.js'
 import { useUI } from './ui.jsx'
 import Reschedule from './Reschedule.jsx'
-import { IconChevronL, IconChevronR, IconFlag, IconPlus, SportIcon } from './Icons.jsx'
+import { IconChevronL, IconChevronR, IconFlag, IconPlus, IconStory, SportIcon } from './Icons.jsx'
 import { byDay, canDrag, cellLabel, dayStats, monthGrid, monthSummary, shiftMonth } from '../lib/monthCal.js'
 import { workoutState } from '../lib/trainingWeek.js'
 import { dayLabel, moveWorkout } from '../lib/reschedule.js'
@@ -77,6 +77,7 @@ export default function WorkoutMonth({ workouts, races, today }) {
           )
         })}
       </div>
+      {sum.done > 0 && <Link to={`/stories?modelo=mes&mes=${month}`} className="link-btn wm-story" data-testid="wm-story"><IconStory /> Story do mês</Link>}
       <div className="wm-legend small muted">
         <span><i className="wm-key ws-feito" /> feito</span>
         <span><i className="wm-key ws-futuro" /> planejado</span>

@@ -88,7 +88,7 @@ function normalizeItem(raw) {
 }
 
 export function emptyWorkout() {
-  return { id: null, name: '', sport: 'corrida', plannedMin: null, date: null, moves: [], status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
+  return { id: null, name: '', sport: 'corrida', plannedMin: null, exercises: [], date: null, moves: [], status: 'planejado', raceId: null, goalId: null, notes: '', items: [], result: null, createdAt: null, updatedAt: null }
 }
 
 export function normalizeWorkout(raw) {
@@ -103,6 +103,11 @@ export function normalizeWorkout(raw) {
   w.raceId = str(w.raceId, 60) || null
   w.goalId = str(w.goalId, 60) || null // objetivo a que este treino pertence (plano)
   w.notes = str(w.notes, 1000)
+  // Ficha da academia: [{ cat (categoria Garmin ou null), sets, reps, kg }]
+  w.exercises = w.sport === 'academia' ? (Array.isArray(w.exercises) ? w.exercises : []).filter((x) => x && typeof x === 'object').slice(0, 20).map((x) => {
+    const n = (v, a, b) => (v == null || v === '' ? null : num(Number(String(v).replace(',', '.')), a, b))
+    return { cat: n(x.cat, 0, 65535), sets: n(x.sets, 1, 20) ?? 3, reps: n(x.reps, 1, 200), kg: n(x.kg, 0, 500) }
+  }) : []
   w.items = w.sport === 'corrida' ? (Array.isArray(w.items) ? w.items : []).map(normalizeItem).filter(Boolean).slice(0, 30) : []
   w.result = normalizeResult(w.result)
   return w
@@ -217,7 +222,8 @@ export function plannedSec(w) {
 export function workoutLine(w) {
   if (isRun(w)) return summary(w.items)
   const s = sportOf(w)
-  return `${s.label}${w.plannedMin ? ` · ${w.plannedMin} min` : ''}`
+  const ex = w.exercises?.length ? ` · ${w.exercises.length} ${w.exercises.length === 1 ? 'exercício' : 'exercícios'}` : ''
+  return `${s.label}${w.plannedMin ? ` · ${w.plannedMin} min` : ''}${ex}`
 }
 
 /* ---------- Planejado x executado ---------- */

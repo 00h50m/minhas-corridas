@@ -1,12 +1,13 @@
 // Semana de treinos: segunda a domingo, planejado × feito, tempo, km e sequência de semanas cumpridas.
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { DOW_SHORT, weekLoad, weekStart, weekStreak, weekSummary, workoutState } from '../lib/trainingWeek.js'
+import { DOW_SHORT, weekStart, weekStreak, weekSummary, workoutState } from '../lib/trainingWeek.js'
 import { addDaysISO, formatDateBR } from '../lib/dates.js'
 import { IconChevronL, IconChevronR, IconFlame, IconStory } from './Icons.jsx'
 import { useCycle } from '../services/cycle.js'
 import { isPeriodDay, isPredictedDay } from '../lib/cycle.js'
-import HrZones from './HrZones.jsx'
+import HrZones, { useZones } from './HrZones.jsx'
+import { weekStrain } from '../lib/load.js'
 import { sumHist } from '../lib/hrZones.js'
 
 const mins = (s) => {
@@ -90,16 +91,29 @@ function WeekZones({ s }) {
   return <div className="tw-zones" data-testid="week-zones"><HrZones hist={sumHist(done.map((w) => w.result.hrHist))} hasIntervals title={`Intensidade da semana (${done.length} treinos com FC)`} compact /></div>
 }
 
-/** Carga: esta semana × a passada (e a média de 4), com aviso acima de 10%. */
+/** Carga da semana (corrida + força + outras, pela FC quando há) × a média das suas 4 semanas anteriores. */
 function Load({ workouts, start, today }) {
-  const l = weekLoad(workouts, start, today)
-  if (!l.thisSec && !l.lastSec) return null
+  const zones = useZones()
+  const [why, setWhy] = useState(false)
+  const l = weekStrain(workouts, start, today, zones)
+  if (!l.total && !l.avg4) return null
+  const max = Math.max(l.total, l.avg4, 1) * 1.1
+  const pct = (v) => `${Math.min(100, (v / max) * 100)}%`
+  const parts = [['corrida', l.parts.corrida], ['força', l.parts.forca], ['outras', l.parts.outras]].filter(([, v]) => v > 0)
   return (
-    <div className={`tw-load small${l.warn ? ' warn' : ''}`} data-testid="week-load">
-      Carga: <b>{mins(l.thisSec)}</b>{l.doneSec < l.plannedSec ? ' planejada' : ''}
-      {l.lastSec > 0 ? <> · semana passada {mins(l.lastSec)} ({l.pct > 0 ? '+' : ''}{l.pct}%)</> : ' · sem treinos na semana passada'}
-      {l.avg4Sec > 0 && l.avg4Sec !== l.lastSec ? <span className="muted"> · média de 4 semanas {mins(l.avg4Sec)}</span> : null}
-      {l.warn && <div className="tw-warn" data-testid="week-load-warn">Mais de 10% acima da semana passada. Se sentir cansaço fora do normal ou dor, segure o volume (repita a semana em vez de aumentar).</div>}
+    <div className={`tw-load small${l.level === 'alta' ? ' warn' : ''}`} data-testid="week-load">
+      <div className="tl-head">
+        <span>Carga da semana <b>{l.total} pts</b>{l.planned > 0 ? <span className="muted"> ({l.planned} planejada)</span> : null}</span>
+        {l.pct != null && <span className={`tl-pct tl-${l.level}`}>{l.pct > 0 ? '+' : ''}{l.pct}% da média</span>}
+      </div>
+      <div className="tl-bar" aria-hidden="true">
+        <span className="tl-done" style={{ width: pct(l.done) }} />
+        <span className="tl-plan" style={{ left: pct(l.done), width: pct(l.planned) }} />
+        {l.avg4 > 0 && <span className="tl-avg" style={{ left: pct(l.avg4) }} />}
+      </div>
+      <div className="muted">{parts.length ? parts.map(([k, v]) => `${k} ${v}`).join(' · ') : 'nada feito ainda'}{l.avg4 > 0 ? ` · média de ${l.weeks} ${l.weeks === 1 ? 'semana' : 'semanas'}: ${l.avg4}` : ''} <button type="button" className="link-btn tl-why" onClick={() => setWhy((v) => !v)} aria-expanded={why}>o que é?</button></div>
+      {why && <p className="note" style={{ margin: '4px 0 0' }}>Pontos = minutos × intensidade. Com o arquivo do relógio, a intensidade vem do tempo em cada zona de FC (Z1 vale 1, Z5 vale 5); sem FC, um peso médio por atividade. Serve para comparar a semana com as suas semanas, não com outras pessoas.</p>}
+      {l.level === 'alta' && <div className="tw-warn" data-testid="week-load-warn">Semana bem mais pesada que o seu normal. Se sentir cansaço fora do normal ou dor, vale segurar o volume.</div>}
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { paceSeriesWithTests } from './evolution.js'
 import { passport } from './passport.js'
 import { resultBadges } from './shareCard.js'
 import { compareLaps, isRun, plannedSec, sportOf, workoutLine } from './workout.js'
-import { groupSets } from './strength.js'
+import { groupSets, kgLabel, strengthHistory } from './strength.js'
 
 export const STORY_TEMPLATES = [
   { id: 'proximas', label: 'Próximas provas' },
@@ -243,7 +243,7 @@ export function storyMes(races, workouts, goals, today, opts = {}, monthParam = 
   const daysIn = new Date(y, m, 0).getDate()
   const first = (new Date(y, m - 1, 1).getDay() + 6) % 7 // segunda = 0
   const mark = new Map()
-  for (const w of cross) mark.set(w.date, 'outra')
+  for (const w of cross) mark.set(w.date, w.sport === 'academia' ? 'forca' : 'outra')
   for (const w of runs) mark.set(w.date, 'corrida')
   for (const r of raced) mark.set(r.date, 'prova')
   const km = Math.round((runs.reduce((s, w) => s + (w.result?.distanceKm ?? 0), 0) + raced.reduce((s, r) => s + (r.result.officialDistanceKm ?? r.distanceKm ?? 0), 0)) * 10) / 10
@@ -253,6 +253,11 @@ export function storyMes(races, workouts, goals, today, opts = {}, monthParam = 
   // Só a melhor de cada tipo (ex.: Sub 40, sem repetir o Sub 45 do mesmo mês)
   const fam = new Set()
   const badges = p.badges.filter((b) => b.date.slice(0, 7) === ym && !fam.has(b.family) && fam.add(b.family)).map((b) => b.title)
+  // Recordes de carga do mês (só com “mostrar tempos”, que também libera números pessoais)
+  if (opts.times) for (const h of strengthHistory(workouts)) if (h.bestKgDate?.slice(0, 7) === ym && h.sessions.length > 1 && h.sessions[0].date < h.bestKgDate) badges.push(`Recorde: ${h.name} ${kgLabel(h.bestKg)}`)
+  const planned = workouts.filter((w) => inMonth(w.date)).length
+  const gym = cross.filter((w) => w.sport === 'academia').length
+  const doneN = runs.length + cross.length
   return {
     ok: true,
     title: `${MONTH_NAMES[m - 1]} ${y}`,
@@ -264,7 +269,8 @@ export function storyMes(races, workouts, goals, today, opts = {}, monthParam = 
       { value: km ? String(km).replace('.', ',') : String(runs.length), label: km ? 'km correndo' : 'corridas' },
       { value: String(h).replace('.', ','), label: 'horas de treino' }
     ],
-    counts: [runs.length && `${runs.length} ${runs.length === 1 ? 'corrida' : 'corridas'}`, raced.length && `${raced.length} ${raced.length === 1 ? 'prova' : 'provas'}`, cross.length && `${cross.length} ${cross.length === 1 ? 'outra atividade' : 'outras atividades'}`].filter(Boolean).join(' · '),
+    kinds: [...new Set(mark.values())],
+    counts: [planned > doneN ? `${doneN} de ${planned} treinos` : null, runs.length && `${runs.length} ${runs.length === 1 ? 'corrida' : 'corridas'}`, raced.length && `${raced.length} ${raced.length === 1 ? 'prova' : 'provas'}`, gym && `${gym} ${gym === 1 ? 'treino' : 'treinos'} de força`, cross.length - gym && `${cross.length - gym} ${cross.length - gym === 1 ? 'outra atividade' : 'outras atividades'}`].filter(Boolean).join(' · '),
     badges: badges.slice(0, 3)
   }
 }

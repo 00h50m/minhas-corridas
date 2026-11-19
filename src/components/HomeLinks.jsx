@@ -17,7 +17,14 @@ export default function HomeLinks({ races, workouts, goals, today }) {
       <StretchCard races={races} workouts={workouts} today={today} />
       <CycleCard today={today} />
       <WeekRecapCard workouts={workouts} today={today} />
-      <PassportLink races={races} workouts={workouts} goals={goals} today={today} />
+      <div className="home-tiles">
+        <PassportLink races={races} workouts={workouts} goals={goals} today={today} />
+        <Link to="/stories" className="card home-tile" data-testid="stories-link">
+          <IconStory />
+          <b>Stories</b>
+          <span className="muted small">semana, mês, provas e conquistas</span>
+        </Link>
+      </div>
     </>
   )
 }
@@ -39,10 +46,10 @@ function PassportLink({ races, workouts, goals, today }) {
   const p = passport({ races, workouts, goals, today })
   const fresh = p.badges.find((b) => b.isNew)
   return (
-    <Link to="/passaporte" className="card decide-link" data-testid="passport-link" style={{ marginTop: 16 }}>
+    <Link to="/passaporte" className="card home-tile" data-testid="passport-link">
       <IconMedal />
-      <span style={{ flex: 1, minWidth: 0 }}><b>Passaporte de corredora</b><br /><span className="muted small">{fresh ? <>Nova: <b>{fresh.title}</b></> : `${p.badges.length} ${p.badges.length === 1 ? 'conquista' : 'conquistas'} · mapa · provas perto`}</span></span>
-      <span aria-hidden="true">›</span>
+      <b>Passaporte</b>
+      <span className="muted small">{fresh ? <>Nova: <b>{fresh.title}</b></> : `${p.badges.length} ${p.badges.length === 1 ? 'conquista' : 'conquistas'}`}</span>
     </Link>
   )
 }

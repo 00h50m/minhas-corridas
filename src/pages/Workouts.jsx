@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getState, saveWorkout, useStore } from '../services/store.js'
 import { saveProfile, useProfile } from '../services/profile.js'
+import { getCycle } from '../services/cycle.js'
 import { useUI } from '../components/ui.jsx'
 import Reschedule from '../components/Reschedule.jsx'
 import { dayLabel, missedWorkouts, moveWorkout, movedLabel, suggestDates } from '../lib/reschedule.js'
@@ -19,6 +20,7 @@ import { claudePrompt } from '../lib/workoutShare.js'
 import WorkoutMonth from '../components/WorkoutMonth.jsx'
 import StrengthProgress from '../components/StrengthProgress.jsx'
 
+const PAST_N = 5
 const STATUS_LABEL = Object.fromEntries(WORKOUT_STATUSES.map((s) => [s.id, s.label]))
 
 export default function Workouts() {
@@ -27,6 +29,7 @@ export default function Workouts() {
   const [params, setParams] = useSearchParams()
   const view = params.get('ver') === 'mes' ? 'mes' : 'lista'
   const setView = (v) => setParams(v === 'mes' ? { ver: 'mes' } : {}, { replace: true })
+  const [allPast, setAllPast] = useState(false)
   if (workouts.length === 0) {
     return (
       <>
@@ -62,11 +65,13 @@ export default function Workouts() {
         ) : (
           <>
             <div style={{ marginTop: 12 }}><TrainingWeek workouts={workouts} today={today} /></div>
-            <Readiness date={today} style={{ marginTop: 10 }} />
             <MissedCard workouts={workouts} today={today} />
+            <Readiness date={today} style={{ marginTop: 10 }} />
+            <div className="card wk-watch" style={{ marginTop: 10 }} data-testid="wk-watch">
+              <GarminConnect />
+              <div className="wk-watch-file"><span className="muted small">Ou um arquivo do relógio (.FIT, .ZIP, .TCX, .GPX)</span><ActivityImport compact /></div>
+            </div>
             <StrengthProgress workouts={workouts} today={today} />
-            <div style={{ marginTop: 10 }}><GarminConnect /></div>
-            <div style={{ marginTop: 10 }}><ActivityImport /></div>
             <PlanGoalHint workouts={upcoming} goals={goals} />
             <div className="list-group-title">Próximos</div>
             {upcoming.length === 0 && <div className="card muted small">Nenhum treino com data à frente.</div>}
@@ -74,20 +79,25 @@ export default function Workouts() {
             {undated.length > 0 && <div className="list-group-title">Sem data</div>}
             {undated.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
             {past.length > 0 && <div className="list-group-title">Anteriores</div>}
-            {past.map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
+            {(allPast ? past : past.slice(0, PAST_N)).map((w) => <WorkoutItem key={w.id} w={w} today={today} />)}
+            {!allPast && past.length > PAST_N && <button type="button" className="btn btn-ghost btn-block" onClick={() => setAllPast(true)} data-testid="wk-all-past">Ver todos os anteriores ({past.length})</button>}
           </>
         )}
         <div className="btn-row" style={{ marginTop: 16 }}>
           <Link to="/treinos/novo" className="btn btn-primary"><IconPlus /> Novo treino</Link>
           <Link to="/treinos/novo?tipo=academia" className="btn" data-testid="new-cross">+ Outra atividade</Link>
         </div>
-        <Link to="/treinos/importar" className="link-btn" style={{ display: 'inline-block', marginTop: 8 }}>Importar treinos (link ou arquivo)</Link>
-        {upcomingRuns.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <CopyBox label={`Copiar prompt dos ${upcomingRuns.length} próximos treinos para o Claude`} text={claudePrompt(upcomingRuns)} done="Prompt copiado: cole no Claude" testid="copy-claude-all"
-              hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado: ele cria todos, agenda nas datas e envia para o relógio." />
+        <details className="wk-more" data-testid="wk-more">
+          <summary>Mais opções</summary>
+          <div className="wk-more-body">
+            <Link to="/treinos/importar" className="link-btn">Importar treinos (link ou arquivo)</Link>
+            <RuleSelect />
+            {upcomingRuns.length > 0 && (
+              <CopyBox label={`Copiar prompt dos ${upcomingRuns.length} próximos treinos para o Claude`} text={claudePrompt(upcomingRuns)} done="Prompt copiado: cole no Claude" testid="copy-claude-all"
+                hint="Cole no Claude com acesso ao navegador (Claude no Chrome), com o Garmin Connect aberto e logado: ele cria todos, agenda nas datas e envia para o relógio." />
+            )}
           </div>
-        )}
+        </details>
         <p className="note">O PaceOn guarda e envia os treinos que <b>você</b> monta; ele não cria nem recomenda treinos.</p>
       </div>
     </>
@@ -118,14 +128,13 @@ export function WorkoutItem({ w, today }) {
 }
 
 /** Treinos que passaram sem marcar: remanejar (sugestão da regra), escolher dia, não fiz ou fiz; e a regra. */
-function MissedCard({ workouts, today }) {
+/** Regra para treinos que passam sem marcar (perguntar, remanejar sozinho ou marcar “não fiz”). */
+function RuleSelect() {
   const prof = useProfile()
   const { notify } = useUI()
-  const [moving, setMoving] = useState(null)
   const rule = prof?.data?.missedRule ?? 'perguntar'
-  const missed = missedWorkouts(workouts, today)
   const setRule = (r) => { saveProfile({ ...prof.data, missedRule: r }); notify(r === 'remanejar' ? 'Treinos que passarem vão para o próximo dia livre' : r === 'pular' ? 'Treinos que passarem serão marcados como “não fiz”' : 'O app vai perguntar') }
-  const ruleSelect = (
+  return (
     <label className="small mc-rule">
       Treino que passar sem marcar:{' '}
       <select className="input" value={rule} onChange={(e) => setRule(e.target.value)} data-testid="missed-rule">
@@ -135,13 +144,20 @@ function MissedCard({ workouts, today }) {
       </select>
     </label>
   )
-  if (!missed.length) return <div className="mc-rule-only">{ruleSelect}</div>
+}
+
+/** Treinos que passaram sem marcar: remanejar (sugestão da regra), escolher dia, não fiz ou fiz. */
+function MissedCard({ workouts, today }) {
+  const [moving, setMoving] = useState(null)
+  const { notify } = useUI()
+  const missed = missedWorkouts(workouts, today)
+  if (!missed.length) return null
   const { races, goals } = getState()
   return (
     <div className="card small missed-card" style={{ marginTop: 10 }} data-testid="missed-card">
       <b>{missed.length === 1 ? 'Treino que passou sem marcar' : `${missed.length} treinos passaram sem marcar`}</b>
       {missed.map((w) => {
-        const best = suggestDates(w, { workouts, races, goals, today })[0]
+        const best = suggestDates(w, { workouts, races, goals, today, cycle: getCycle() })[0]
         return (
           <div key={w.id} className="mc-row" data-testid="missed-row">
             <div><b>{w.name}</b> <span className="muted">· {dayLabel(w.date)}</span></div>
@@ -157,7 +173,6 @@ function MissedCard({ workouts, today }) {
           </div>
         )
       })}
-      {ruleSelect}
       {moving && <Reschedule w={moving} onClose={() => setMoving(null)} />}
     </div>
   )

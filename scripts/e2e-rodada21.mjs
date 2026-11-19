@@ -98,6 +98,8 @@ ok('Arquivo .json importa (sem data vai para “Sem data”); link quebrado avis
 // 4. Montar no Garmin Connect: passos com os campos do editor da Garmin
 const id = (await stored()).find((w) => w.name === 'S1 A Base 6x2').id
 await p.goto(`${BASE}/treinos/${id}`, { waitUntil: 'networkidle0' })
+await p.$eval('[data-testid=wk-send]', (b) => b.click())
+await p.waitForSelector('[data-testid=wk-gc]')
 await p.$eval('[data-testid=wk-gc]', (b) => b.click())
 await p.waitForSelector('[data-testid=wk-gc-guide]')
 const lines = await p.$$eval('.gc-steps li', (li) => li.map((x) => x.innerText.replace(/\s+/g, ' ')))
@@ -110,6 +112,8 @@ if (overflow > 0) throw new Error('Rolagem lateral: ' + overflow)
 ok('“Montar no Garmin Connect”: ' + lines.join(' | '))
 
 // 5. Mandar sem cabo: texto do Intervals.icu e prompt para o Claude (um treino e os próximos)
+await p.$eval('[data-testid=send-auto]', (b) => b.click())
+await p.waitForSelector('[data-testid=copy-intervals]')
 await p.evaluate(() => document.querySelector('[data-testid=copy-intervals] button').click())
 await p.waitForSelector('[data-testid=copy-intervals] textarea')
 const iv = await p.$eval('[data-testid=copy-intervals] textarea', (t) => t.value)

@@ -7,7 +7,7 @@ import { TopBar, useUI } from '../components/ui.jsx'
 import { useStore } from '../services/store.js'
 import { deleteCycle, saveCycle, useCycle } from '../services/cycle.js'
 import { useGarmin } from '../services/garmin.js'
-import { FLOW, SYMPTOMS, cycleSignals, cycleStats, dayOfCycle, endPeriod, logDay, mergeStarts, ongoing, phaseLabel, predictNext, raceCycleNote, startPeriod } from '../lib/cycle.js'
+import { FLOW, SYMPTOMS, cyclePatterns, cycleSignals, cycleStats, dayOfCycle, endPeriod, logDay, mergeStarts, ongoing, phaseLabel, predictNext, raceCycleNote, startPeriod } from '../lib/cycle.js'
 import { daysBetween, formatDateBR, todayISO } from '../lib/dates.js'
 import { dayLabel } from '../lib/reschedule.js'
 
@@ -143,6 +143,8 @@ function Enabled({ c }) {
         </div>
       ))}
 
+      <Patterns c={c} today={today} />
+
       <div className="section-title"><h2>Histórico</h2><span className="muted small">{s.count ? `ciclo médio ${s.avg} dias · menstruação ${s.bleed} dias` : ''}</span></div>
       <div className="card small" data-testid="cycle-history">
         {c.periods.length === 0 && <p className="muted" style={{ marginTop: 0 }}>Nenhuma menstruação registrada ainda.</p>}
@@ -183,6 +185,43 @@ function Enabled({ c }) {
         </div>
       </div>
       <p className="note">Dados de saúde: ficam no aparelho e na sua conta (sincronizados), nunca em stories, cards de compartilhamento, agenda, prompts ou no Intervals.icu. Não é método contraceptivo nem de fertilidade. As sugestões não substituem uma consulta.</p>
+    </>
+  )
+}
+
+const paceTxt = (s) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '—')
+
+/** Fase 2: o padrão dela por fase, com o tamanho da amostra. Sem prescrição. */
+function Patterns({ c, today }) {
+  const { workouts } = useStore()
+  const p = cyclePatterns(c, workouts, today)
+  return (
+    <>
+      <div className="section-title"><h2>Seu ciclo e seus treinos</h2></div>
+      <div className="card small" data-testid="cycle-patterns">
+        {!p.ready ? (
+          <p style={{ margin: 0 }} className="muted">Com 3 ciclos completos registrados ({p.cycles} até agora), o app compara as suas rodagens, a FC e a energia em cada fase do ciclo, só com os seus dados.</p>
+        ) : (
+          <>
+            {p.insights.length ? <ul className="cy-insights">{p.insights.map((t) => <li key={t}>{t}</li>)}</ul> : <p style={{ marginTop: 0 }}>Ainda sem diferença clara entre as fases nos seus dados.</p>}
+            <table className="cy-table">
+              <thead><tr><th>Fase</th><th>Rodagens</th><th>Pace</th><th>FC</th><th>Energia</th></tr></thead>
+              <tbody>
+                {p.phases.map((ph) => (
+                  <tr key={ph.id}>
+                    <td>{ph.label}</td>
+                    <td>{ph.runs}</td>
+                    <td>{ph.runs >= 5 ? paceTxt(ph.pace) : <span className="muted">poucos</span>}</td>
+                    <td>{ph.hrN >= 5 ? Math.round(ph.hr) : <span className="muted">—</span>}</td>
+                    <td>{ph.energyDays >= 5 ? String(Math.round(ph.energy * 10) / 10).replace('.', ',') : <span className="muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="note" style={{ marginBottom: 0 }}>Rodagens de 2 km ou mais, sem tiros, em {p.cycles} ciclos. Fases com menos de 5 registros ficam como “poucos dados”. É o seu padrão, não uma regra: se sentir diferente, vale o que você sente.</p>
+          </>
+        )}
+      </div>
     </>
   )
 }

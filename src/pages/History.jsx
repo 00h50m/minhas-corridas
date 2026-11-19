@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../services/store.js'
 import { DateTile, EmptyState, StatusBadge, TopBar } from '../components/ui.jsx'
-import { IconCompare, IconStopwatch } from '../components/Icons.jsx'
+import { IconCompare, IconStopwatch, IconTrophy } from '../components/Icons.jsx'
 import { addDaysISO, formatDateBR, todayISO } from '../lib/dates.js'
 import { formatDuration, formatKm, formatMoney, formatPace, paceSeconds } from '../lib/format.js'
 import { periodCosts } from '../lib/costs.js'
@@ -107,7 +107,7 @@ function EvolutionTab({ races, workouts = [] }) {
   return (
     <div style={{ marginTop: 12 }}>
       <Link to={`/retrospectiva/${cur.year}`} className="card decide-link" data-testid="retro-link" style={{ marginTop: 0, marginBottom: 12 }}>
-        <span style={{ fontSize: 26 }} aria-hidden="true">🎉</span>
+        <IconTrophy />
         <span style={{ flex: 1, minWidth: 0 }}><b>Retrospectiva {cur.year}</b><br /><span className="muted small">Seu ano na corrida, com card para compartilhar.</span></span>
         <span aria-hidden="true">›</span>
       </Link>

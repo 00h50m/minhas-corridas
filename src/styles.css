@@ -1380,3 +1380,73 @@ details.link-import { margin-top: 0; }
   .sp-spark { display: none; }
   .sp-row { grid-template-columns: minmax(0, 1fr) auto; }
 }
+
+/* Rodada 40: simplificação */
+.garmin-row.link-like { flex-wrap: nowrap; }
+.garmin-row.link-like > span { min-width: 0 !important; }
+.wk-watch .garmin-card { background: none; border: 0; box-shadow: none; padding: 0; margin: 0; }
+.wk-watch-file { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.wk-more { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+.wk-more summary { cursor: pointer; font-weight: 800; color: var(--ink-2); list-style: none; padding: 6px 0; }
+.wk-more summary::-webkit-details-marker { display: none; }
+.wk-more summary::after { content: ' ▾'; color: var(--ink-3); }
+.wk-more[open] summary::after { content: ' ▴'; }
+.wk-more-body { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 6px 0 4px; }
+.wk-more-body .copy-box, .wk-more-body > div { width: 100%; }
+
+/* Detalhe do treino */
+.wd-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+.wd-actions .btn:only-child { grid-column: 1 / -1; }
+.wd-sport { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wd-sport-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-ink); flex: none; }
+.wd-sport-ic svg { width: 22px; height: 22px; }
+.wd-plan { list-style: none; margin: 10px 0 0; padding: 0; }
+.wd-plan li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14.5px; }
+.wd-plan b { font-family: var(--display); font-size: 17px; white-space: nowrap; }
+
+/* Ficha planejada × feito */
+.cmp-list { list-style: none; margin: 0; padding: 0; }
+.cmp-list li { padding: 9px 0; border-top: 1px solid var(--line); }
+.cmp-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cmp-tag { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 2px 8px; background: var(--surface-2); color: var(--ink-3); white-space: nowrap; }
+.cmp-tag.cmp-ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.cmp-tag.cmp-parcial { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.cmp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 3px; }
+.cmp-up { color: var(--ok); }
+
+/* Editor da ficha */
+.ex-row { margin-bottom: 8px; padding: 10px; }
+.ex-top { display: flex; gap: 8px; align-items: center; }
+.ex-top select { flex: 1; min-width: 0; }
+.ex-del { flex: none; font-size: 22px; }
+.ex-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.ex-nums label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 800; color: var(--ink-3); }
+.ex-editor { margin-bottom: 12px; }
+
+/* Carga da semana */
+.tl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tl-pct { font-weight: 800; color: var(--ink-2); white-space: nowrap; }
+.tl-pct.tl-alta { color: var(--warn); }
+.tl-pct.tl-leve { color: var(--ink-3); }
+.tl-bar { position: relative; height: 8px; border-radius: 99px; background: var(--surface-2); margin: 6px 0 5px; overflow: visible; }
+.tl-done, .tl-plan { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+.tl-done { left: 0; background: var(--brand); }
+.tl-plan { background: repeating-linear-gradient(45deg, var(--brand-soft) 0 4px, transparent 4px 8px); border: 1px solid var(--brand-soft); }
+.tl-avg { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink-2); border-radius: 2px; }
+.tw-load.warn .tl-done { background: var(--warn); }
+.tl-why { font-size: 12.5px; padding: 0; }
+
+/* Ciclo: padrões */
+.cy-insights { margin: 0 0 10px; padding-left: 18px; }
+.cy-insights li { margin: 4px 0; }
+.cy-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cy-table th { text-align: left; font-size: 11.5px; color: var(--ink-3); font-weight: 800; padding: 4px 4px 4px 0; }
+.cy-table td { padding: 6px 4px 6px 0; border-top: 1px solid var(--line); }
+.wm-story { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; }
+.wm-story svg { width: 16px; height: 16px; }
+.home-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.home-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; color: inherit; text-decoration: none; min-width: 0; }
+.home-tile > svg { width: 26px; height: 26px; color: var(--brand); margin-bottom: 4px; }
+.home-tile .small { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.home-tiles > .card { margin: 0 !important; }
+.rs-pick-note { color: var(--warn); font-weight: 700; margin: 6px 0 0; }

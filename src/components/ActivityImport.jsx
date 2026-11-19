@@ -11,7 +11,7 @@ import { activityDate, alreadyImported, freeWorkout, matchActivity, resultFrom, 
 import { formatDateBR, weekdayShort } from '../lib/dates.js'
 import { fmtSec } from '../lib/workout.js'
 
-export default function ActivityImport() {
+export default function ActivityImport({ compact = false }) {
   const { notify } = useUI()
   const ref = useRef(null)
   const [queue, setQueue] = useState([]) // atividades esperando escolha: [{ a, candidates }]
@@ -60,9 +60,9 @@ export default function ActivityImport() {
   }
   return (
     <div className="activity-import" data-testid="activity-import">
-      <button type="button" className="btn btn-block" disabled={busy} onClick={() => ref.current?.click()}><IconUpload /> {busy ? 'Lendo…' : 'Importar atividade do relógio'}</button>
+      <button type="button" className={compact ? 'btn btn-sm' : 'btn btn-block'} disabled={busy} onClick={() => ref.current?.click()}><IconUpload /> {busy ? 'Lendo…' : compact ? 'Importar arquivo' : 'Importar atividade do relógio'}</button>
       <input ref={ref} type="file" multiple accept=".gpx,.tcx,.fit,.zip,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml" hidden onChange={onFiles} data-testid="activity-files" />
-      <p className="note" style={{ margin: '4px 2px 0' }}>.FIT, .ZIP (Garmin “Exportar original”), .TCX ou .GPX — pode escolher vários. Cada um vai para o treino planejado do dia.</p>
+      {!compact && <p className="note" style={{ margin: '4px 2px 0' }}>.FIT, .ZIP (Garmin “Exportar original”), .TCX ou .GPX — pode escolher vários. Cada um vai para o treino planejado do dia.</p>}
       {log.length > 0 && <ul className="ai-log small" data-testid="activity-log">{log.map((l, i) => <li key={i}>{l}</li>)}</ul>}
       {cur && (
         <Sheet title="De qual treino é esta corrida?" onClose={() => resolve(null)}>

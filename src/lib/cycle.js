@@ -248,3 +248,126 @@ export function mergeStarts(c, starts, periodLen = null) {
   const add = starts.filter((s) => isValidISODate(s) && ![...have].some((h) => Math.abs(daysBetween(h, s)) <= 5))
   return { cycle: normalizeCycle({ ...c, periods: [...c.periods, ...add.map((s) => ({ start: s, end: periodLen ? addDaysISO(s, periodLen - 1) : null, source: 'garmin' }))] }), added: add.length }
 }
+
+/* ---------- Fase 2: o padrão dela, com os treinos que o app já tem ---------- */
+
+export const PHASES = [
+  { id: 'menstruacao', label: 'Menstruação' },
+  { id: 'primeira', label: 'Primeira metade' },
+  { id: 'segunda', label: 'Segunda metade' },
+  { id: 'antes', label: '5 dias antes' }
+]
+
+/**
+ * Fase de uma data já vivida, pelo ciclo registrado em que ela cai (do início até o próximo início):
+ * 'menstruacao' | 'antes' | 'primeira' | 'segunda' | null (antes do 1º registro ou ciclo sem fim plausível).
+ */
+export function phaseOf(c, date) {
+  const i = c.periods.findLastIndex((p) => p.start <= date)
+  if (i < 0) return null
+  const p = c.periods[i]
+  const next = c.periods[i + 1]?.start ?? null
+  const s = cycleStats(c.periods)
+  const len = next ? daysBetween(p.start, next) : s.avg ?? DEFAULT_CYCLE
+  if (len < 15 || len > 60) return null
+  const n = daysBetween(p.start, date) + 1
+  if (n > len) return null
+  const bleed = bleedOf(p) ?? s.bleed
+  if (n <= bleed) return 'menstruacao'
+  if (len - n < 5) return 'antes'
+  return n <= len / 2 ? 'primeira' : 'segunda'
+}
+
+const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
+export const easyRun = (w) => (w.sport ?? 'corrida') === 'corrida' && !(w.items ?? []).some((it) => it.kind === 'repeat' || it.type === 'tiro')
+const MIN_N = 5
+
+/**
+ * Padrões pessoais por fase (só com 3+ ciclos completos): pace das rodagens (sem tiros, 2+ km), FC média,
+ * energia anotada e treinos não feitos/remanejados. Sempre com o tamanho da amostra; < 5 → “poucos dados”.
+ * { ready, cycles, phases: [{ id, label, runs, pace, hr, energy, energyDays, planned, missed }], insights: [texto] }
+ */
+export function cyclePatterns(c, workouts = [], today) {
+  const cycles = cycleStats(c.periods).count
+  const ready = c.enabled && cycles >= 3
+  const by = Object.fromEntries(PHASES.map((p) => [p.id, { ...p, paces: [], hrs: [], energies: [], planned: 0, missed: 0 }]))
+  if (ready) {
+    for (const w of workouts) {
+      if (!w.date || w.date > today) continue
+      const ph = phaseOf(c, w.date)
+      if (!ph) continue
+      const b = by[ph]
+      b.planned++
+      if (w.status === 'pulado' || w.moves?.some((m) => phaseOf(c, m.from) === ph)) b.missed++
+      const r = w.result
+      if (w.status === 'feito' && r && easyRun(w) && r.distanceKm >= 2 && r.elapsedSec > 0) {
+        b.paces.push(r.elapsedSec / r.distanceKm)
+        if (r.avgHr) b.hrs.push(r.avgHr)
+      }
+    }
+    for (const [d, v] of Object.entries(c.days)) {
+      if (!v.energy || d > today) continue
+      const ph = phaseOf(c, d)
+      if (ph) by[ph].energies.push(v.energy)
+    }
+  }
+  const phases = PHASES.map((p) => {
+    const b = by[p.id]
+    return { id: p.id, label: p.label, runs: b.paces.length, pace: avg(b.paces), hr: avg(b.hrs), hrN: b.hrs.length, energy: avg(b.energies), energyDays: b.energies.length, planned: b.planned, missed: b.missed }
+  })
+  const insights = []
+  if (ready) {
+    const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1)
+    for (const ph of phases) {
+      const name = ph.id === 'menstruacao' ? 'Nos dias de menstruação' : ph.id === 'antes' ? 'Nos 5 dias antes da menstruação' : `Na ${lower(ph.label)} do ciclo`
+      const rest = phases.filter((x) => x.id !== ph.id)
+      if (ph.runs >= MIN_N) {
+        const base = avg(rest.flatMap((x) => by[x.id].paces))
+        if (base != null) {
+          const diff = Math.round(ph.pace - base)
+          insights.push(Math.abs(diff) >= 8
+            ? `${name}, suas rodagens foram em média ${Math.abs(diff)} s/km mais ${diff > 0 ? 'lentas' : 'rápidas'} (${ph.runs} treinos em ${cycles} ciclos).`
+            : `${name}: sem diferença clara no seu ritmo (${ph.runs} treinos).`)
+        }
+        if (ph.hrN >= MIN_N) {
+          const hb = avg(rest.flatMap((x) => by[x.id].hrs))
+          if (hb != null && Math.abs(ph.hr - hb) >= 4) insights.push(`${name}, a FC média nas rodagens ficou ${Math.round(Math.abs(ph.hr - hb))} bpm ${ph.hr > hb ? 'mais alta' : 'mais baixa'}.`)
+        }
+      }
+      if (ph.energyDays >= MIN_N) {
+        const eb = avg(rest.flatMap((x) => by[x.id].energies))
+        if (eb != null && eb - ph.energy >= 0.8) insights.push(`${name}, você costuma anotar menos energia (${String(Math.round(ph.energy * 10) / 10).replace('.', ',')} de 5, em ${ph.energyDays} dias).`)
+      }
+      if (ph.planned >= MIN_N && ph.missed / ph.planned >= 0.3) insights.push(`${name}, ${ph.missed} de ${ph.planned} treinos ficaram para outro dia ou não foram feitos.`)
+    }
+  }
+  return { ready, cycles, phases, insights }
+}
+
+/** Dia do ciclo previsto numa data futura (pela previsão), ou o atual. */
+function cycleDayAt(c, date, today) {
+  const n = predictNext(c, today)
+  if (n && date >= n.start) return (daysBetween(n.start, date) % n.len) + 1
+  return dayOfCycle(c, date)
+}
+
+/**
+ * Aviso (não bloqueio) para remanejar um treino forte: o dia cai num dia do ciclo em que ela costuma
+ * registrar energia baixa ou fluxo intenso (pelos registros dela, 3+ ciclos). Texto ou null.
+ */
+export function hardDayNote(c, date, today) {
+  if (!c?.enabled || cycleStats(c.periods).count < 3) return null
+  const n = cycleDayAt(c, date, today)
+  if (!n) return null
+  const energies = []
+  const flows = []
+  for (const [d, v] of Object.entries(c.days)) {
+    if (d > today || dayOfCycle(c, d) !== n) continue
+    if (v.energy) energies.push(v.energy)
+    if (v.flow) flows.push(v.flow)
+  }
+  const lowEnergy = energies.length >= 2 && avg(energies) <= 2
+  const heavy = flows.length >= 2 && avg(flows) >= 2.5
+  if (!lowEnergy && !heavy) return null
+  return `nos seus últimos ciclos, este dia costuma ser difícil (${lowEnergy ? 'energia baixa' : 'fluxo intenso'})`
+}

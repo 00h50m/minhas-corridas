@@ -3,7 +3,8 @@
 // (3) nunca no dia de uma prova inscrita, e evita os 2 dias antes; (4) de preferência na mesma semana;
 // (5) dentro do prazo do objetivo do plano; (6) entre iguais, o mais cedo.
 import { addDaysISO, formatDateBR, weekdayShort } from './dates.js'
-import { isRun } from './workout.js'
+import { isRun, plannedSec } from './workout.js'
+import { easyRun, hardDayNote } from './cycle.js'
 import { weekStart } from './trainingWeek.js'
 
 export const dayLabel = (iso) => `${weekdayShort(iso)} ${formatDateBR(iso).slice(0, 5)}`
@@ -17,8 +18,10 @@ export function firstCandidate(w, today) {
  * Dias sugeridos para `w`, do melhor para o pior: [{ date, score, notes: [aviso], clean }].
  * clean: nenhum aviso (usado pelo remanejamento automático).
  */
-export function suggestDates(w, { workouts = [], races = [], goals = [], today, days = 7 } = {}) {
+export function suggestDates(w, { workouts = [], races = [], goals = [], today, days = 7, cycle = null } = {}) {
   const run = isRun(w)
+  // Treino forte (tiros ou longo): avisa se cair num dia do ciclo que costuma ser difícil para ela
+  const hard = run && (!easyRun(w) || plannedSec(w) >= 4500)
   // Treinos que passaram sem marcar não ocupam mais o dia antigo.
   const others = workouts.filter((x) => x.id !== w.id && x.date && x.status !== 'pulado' && !(x.status === 'planejado' && x.date < today))
   const sameKind = others.filter((x) => isRun(x) === run && (run || x.sport === w.sport))
@@ -44,6 +47,8 @@ export function suggestDates(w, { workouts = [], races = [], goals = [], today, 
     const other = others.find((x) => x.date === d && isRun(x) !== run)
     if (other) { score -= 0.5; notes.push(`mesmo dia de “${other.name}”`) }
     if (weekStart(d) !== origWeek) { score -= 1; notes.push('vai para a semana seguinte') }
+    const cyc = hard && cycle ? hardDayNote(cycle, d, today) : null
+    if (cyc) { score -= 1; notes.push(cyc) }
     out.push({ date: d, score, notes, clean: notes.length === 0 })
   }
   return out.sort((a, b) => b.score - a.score || (a.date < b.date ? -1 : 1))

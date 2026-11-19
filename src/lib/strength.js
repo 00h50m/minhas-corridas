@@ -127,3 +127,56 @@ export function strengthRecency(workouts = [], today) {
 }
 
 export const kgLabel = (v) => `${String(Math.round(v * 10) / 10).replace('.', ',')} kg`
+
+/** Exercícios mais comuns primeiro, no seletor da ficha (o resto vem depois, em ordem alfabética). */
+export const COMMON_EXERCISES = [28, 17, 8, 10, 0, 23, 24, 21, 22, 19, 6, 1, 15, 7, 30, 14, 5, 20]
+export function exerciseOptions() {
+  const common = COMMON_EXERCISES.map((cat) => ({ cat, name: EXERCISE[cat] }))
+  const seen = new Set(common.map((x) => x.name))
+  const rest = Object.entries(EXERCISE)
+    .map(([cat, name]) => ({ cat: Number(cat), name }))
+    .filter((x) => !seen.has(x.name) && (seen.add(x.name), true))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  return { common, rest }
+}
+
+const kgShort = (v) => `${String(Math.round(v * 10) / 10).replace('.', ',')} kg`
+
+/** Linha da ficha: “3×12 · 40 kg”. */
+export function planLine(x) {
+  return `${x.sets}×${x.reps ?? '—'}${x.kg ? ` · ${kgShort(x.kg)}` : ''}`
+}
+
+/** O que foi feito de um exercício (somando os blocos com o mesmo nome). */
+function doneOf(groups, name) {
+  const gs = groups.filter((g) => g.name === name)
+  if (!gs.length) return null
+  const reps = gs.flatMap((g) => g.reps)
+  const kgs = gs.map((g) => g.maxKg).filter((v) => v != null)
+  return { sets: gs.reduce((a, g) => a + g.sets, 0), reps, maxKg: kgs.length ? Math.max(...kgs) : null }
+}
+
+/**
+ * Ficha planejada × séries do relógio, por exercício:
+ * { rows: [{ name, plan, done, status: 'ok' | 'parcial' | 'faltou', kgDiff }], extras: [{ name, sets, reps, maxKg }], ok, total }
+ * “ok”: todas as séries, ~todas as repetições (90%+) e a carga planejada (quando há).
+ */
+export function compareStrength(plan = [], sets = []) {
+  const { groups } = groupSets(sets)
+  const names = new Set()
+  const rows = plan.map((p) => {
+    const name = exerciseName(p.cat)
+    names.add(name)
+    const done = doneOf(groups, name)
+    let status = 'faltou'
+    if (done) {
+      const repsOk = p.reps == null || !done.reps.length || done.reps.reduce((a, b) => a + b, 0) >= p.sets * p.reps * 0.9
+      const kgOk = !p.kg || (done.maxKg ?? 0) >= p.kg
+      status = done.sets >= p.sets && repsOk && kgOk ? 'ok' : 'parcial'
+    }
+    const kgDiff = done?.maxKg != null && p.kg ? Math.round((done.maxKg - p.kg) * 10) / 10 : null
+    return { name, plan: p, done, status, kgDiff }
+  })
+  const extras = [...new Set(groups.map((g) => g.name))].filter((n) => !names.has(n) && n !== 'Exercício' && n !== 'Aquecimento').map((n) => ({ name: n, ...doneOf(groups, n) }))
+  return { rows, extras, ok: rows.filter((r) => r.status === 'ok').length, total: rows.length }
+}

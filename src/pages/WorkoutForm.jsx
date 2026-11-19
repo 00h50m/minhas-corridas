@@ -8,6 +8,7 @@ import { IconPlus } from '../components/Icons.jsx'
 import { SPORTS, SPORT_BY_ID, STEP_TYPES, TEMPLATES, isRun, emptyWorkout, estimate, fmtPace, fmtSec, newRepeat, newStep, normalizeWorkout, summary, validateWorkout } from '../lib/workout.js'
 import { formatDateBR, isValidISODate, todayISO } from '../lib/dates.js'
 import { parseDuration } from '../lib/format.js'
+import { exerciseOptions } from '../lib/strength.js'
 
 export default function WorkoutForm() {
   const { id } = useParams()
@@ -16,7 +17,7 @@ export default function WorkoutForm() {
   if (id && !editing) return <Navigate to="/treinos" replace />
   const copyOf = params.get('copiar') ? getWorkout(params.get('copiar')) : null
   const tipo = SPORT_BY_ID[params.get('tipo')] ? params.get('tipo') : 'corrida'
-  return <Editor key={id || 'novo'} initial={editing ?? (copyOf ? { ...copyOf, id: null, name: `${copyOf.name} (cópia)`.slice(0, 60), status: 'planejado', result: null, date: null, moves: [] } : { ...emptyWorkout(), sport: tipo, plannedMin: tipo === 'corrida' ? null : 45, date: isValidISODate(params.get('data')) ? params.get('data') : null })} isNew={!editing} />
+  return <Editor key={id || 'novo'} initial={editing ?? (copyOf ? { ...copyOf, id: null, name: `${copyOf.name} (cópia)`.slice(0, 60), status: 'planejado', result: null, date: isValidISODate(params.get('data')) ? params.get('data') : null, moves: [] } : { ...emptyWorkout(), sport: tipo, plannedMin: tipo === 'corrida' ? null : 45, date: isValidISODate(params.get('data')) ? params.get('data') : null })} isNew={!editing} />
 }
 
 function Editor({ initial, isNew }) {
@@ -83,6 +84,7 @@ function Editor({ initial, isNew }) {
             <Field label="Duração planejada (min)" htmlFor="wk-min" error={errors.plannedMin}>
               <input id="wk-min" className="input" inputMode="numeric" value={w.plannedMin ?? ''} onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 3); set({ plannedMin: v ? Number(v) : null }); setErrors((x) => ({ ...x, plannedMin: null })) }} placeholder="45" data-testid="wk-min" />
             </Field>
+            {w.sport === 'academia' && <ExercisesEditor list={w.exercises ?? []} onChange={(exercises) => set({ exercises })} />}
             <p className="note" style={{ marginTop: 0 }}>Entra na semana de treinos (tempo e dias cumpridos) e na sequência. Não conta no pace nem nos km de corrida.</p>
           </>
         ) : !picked ? (
@@ -232,6 +234,37 @@ function StepEditor({ step: s, onChange, tools, nested }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Ficha da academia: exercício, séries, repetições e carga (tudo opcional, como a pessoa montou). */
+function ExercisesEditor({ list, onChange }) {
+  const { common, rest } = exerciseOptions()
+  const upd = (i, patch) => onChange(list.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+  const numIn = (v, max) => { const t = String(v).replace(',', '.').replace(/[^\d.]/g, ''); return t === '' ? null : Math.min(max, Number(t)) }
+  return (
+    <div className="ex-editor" data-testid="wk-exercises">
+      <div className="section-title"><h2>Exercícios</h2><span className="muted small">opcional</span></div>
+      {list.length === 0 && <p className="small muted" style={{ marginTop: 0 }}>Monte a ficha (a sua ou a do seu treinador). Com o arquivo do relógio, o app compara o planejado com o que você fez.</p>}
+      {list.map((x, i) => (
+        <div key={i} className="card ex-row" data-testid="wk-ex-row">
+          <div className="ex-top">
+            <select className="input" value={x.cat ?? ''} onChange={(e) => upd(i, { cat: e.target.value === '' ? null : Number(e.target.value) })} aria-label={`Exercício ${i + 1}`} data-testid="wk-ex-cat">
+              <option value="">Escolha o exercício</option>
+              <optgroup label="Mais comuns">{common.map((o) => <option key={o.cat} value={o.cat}>{o.name}</option>)}</optgroup>
+              <optgroup label="Todos">{rest.map((o) => <option key={o.cat} value={o.cat}>{o.name}</option>)}</optgroup>
+            </select>
+            <button type="button" className="icon-btn ex-del" onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label={`Remover exercício ${i + 1}`}>×</button>
+          </div>
+          <div className="ex-nums">
+            <label><span>Séries</span><input className="input" inputMode="numeric" value={x.sets ?? ''} onChange={(e) => upd(i, { sets: numIn(e.target.value, 20) })} onFocus={(e) => e.target.select()} data-testid="wk-ex-sets" /></label>
+            <label><span>Reps</span><input className="input" inputMode="numeric" value={x.reps ?? ''} onChange={(e) => upd(i, { reps: numIn(e.target.value, 200) })} placeholder="12" onFocus={(e) => e.target.select()} data-testid="wk-ex-reps" /></label>
+            <label><span>Carga (kg)</span><input className="input" inputMode="decimal" value={x.kg == null ? '' : String(x.kg).replace('.', ',')} onChange={(e) => upd(i, { kg: e.target.value.replace(/[^\d,.]/g, '').replace('.', ',').slice(0, 6) || null })} placeholder="—" onFocus={(e) => e.target.select()} data-testid="wk-ex-kg" /></label>
+          </div>
+        </div>
+      ))}
+      <button type="button" className="btn btn-block" onClick={() => onChange([...list, { cat: null, sets: 3, reps: 12, kg: null }])} disabled={list.length >= 20} data-testid="wk-ex-add"><IconPlus /> Exercício</button>
     </div>
   )
 }

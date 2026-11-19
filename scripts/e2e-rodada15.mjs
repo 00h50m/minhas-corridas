@@ -89,6 +89,8 @@ await shot('detalhe')
 ok('Treino salvo (pace guardado em s/km: 290–310), ligado à prova e pendente para sincronizar com a conta')
 
 // 4. Arquivo .FIT para o relógio (lido de volta com o SDK oficial da Garmin)
+await p.$eval('[data-testid=wk-send]', (b) => b.click())
+await p.waitForSelector('[data-testid=wk-export]')
 await p.$eval('[data-testid=wk-export]', (b) => b.click())
 let fitPath = null
 for (let i = 0; i < 40 && !fitPath; i++) { await wait(150); const f = fs.readdirSync(DL).find((n) => n.endsWith('.FIT')); if (f) fitPath = path.join(DL, f) }
@@ -151,17 +153,21 @@ if (after.status !== 'feito' || after.result.laps.length !== 14 || Math.abs(afte
 await shot('executado')
 ok('Planejado × executado: 14 voltas casadas com os 14 passos; 5 de 6 tiros na faixa (4:55 ✓, 5:31 ✗); treino marcado como feito')
 
-// 7. Duplicar, lista e excluir
-await click('a', 'Duplicar')
+// 7. Repetir (+7 dias), lista e excluir
+await p.keyboard.press('Escape')
+await p.$eval('[data-testid=wk-dup]', (a) => a.click())
 await p.waitForSelector('[data-testid=workout-form]')
 const copyName = await p.$eval('#wk-name', (i) => i.value)
 if (copyName !== 'Tiros 6×800 (cópia)') throw new Error('Nome da cópia: ' + copyName)
+const copyDate = await p.$eval('#wk-date', (i) => i.value)
+const plus7 = new Date(`${today}T12:00:00Z`); plus7.setUTCDate(plus7.getUTCDate() + 7)
+if (copyDate !== plus7.toISOString().slice(0, 10)) throw new Error('Data da cópia: ' + copyDate)
 await click('button', 'Criar treino')
 await p.waitForSelector('[data-testid=workout-detail]')
 await p.goto(BASE + '/treinos', { waitUntil: 'networkidle0' })
 const items = await p.$$('[data-testid=workout-item]')
 if (items.length !== 2) throw new Error('Esperava 2 treinos na lista')
-await need('Sem data')
+await need('Próximos')
 await need('Anteriores')
 await need('não cria nem recomenda treinos')
 await shot('lista')
@@ -171,7 +177,7 @@ await click('button', 'Excluir')
 await click('.dialog button, [role=dialog] button', 'Excluir')
 await p.waitForFunction(() => location.pathname === '/treinos')
 if ((await store()).workouts.length !== 1) throw new Error('Cópia não foi excluída')
-ok('Duplicar (sem data e sem resultado), lista com “Sem data” e “Anteriores”, excluir com confirmação')
+ok('Repetir em 7 dias (sem resultado), lista com “Próximos” e “Anteriores”, excluir com confirmação')
 
 // 8. Backup leva os treinos
 await p.goto(BASE + '/ajustes', { waitUntil: 'networkidle0' })

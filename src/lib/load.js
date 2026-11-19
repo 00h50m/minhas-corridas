@@ -4,7 +4,7 @@
 // com o peso padrão. É uma régua para comparar a semana com as suas semanas, não uma prescrição.
 import { addDaysISO } from './dates.js'
 import { timeInZones, zoneOf } from './hrZones.js'
-import { plannedSec } from './workout.js'
+import { doneSec, plannedSec } from './workout.js'
 import { weekSummary } from './trainingWeek.js'
 
 const DEFAULT = { corrida: 2.5, academia: 2, bike: 2, natacao: 2.5, caminhada: 1.5, alongamento: 1, outro: 2 }
@@ -15,7 +15,7 @@ export function activityLoad(w, zones = null) {
   const sport = w.sport ?? 'corrida'
   const base = DEFAULT[sport] ?? 2
   const r = w.status === 'feito' ? w.result : null
-  const min = (r?.elapsedSec > 0 ? r.elapsedSec : plannedSec(w)) / 60
+  const min = (w.status === 'feito' ? doneSec(w) : plannedSec(w)) / 60
   if (!(min > 0)) return 0
   if (r && zones) {
     const t = r.hrHist ? timeInZones(r.hrHist, zones) : null

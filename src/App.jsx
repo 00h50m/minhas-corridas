@@ -40,6 +40,11 @@ const NearRaces = lazy(() => import('./pages/NearRaces.jsx'))
 const Cycle = lazy(() => import('./pages/Cycle.jsx'))
 const Ficha = lazy(() => import('./pages/Ficha.jsx'))
 const FichaEdit = lazy(() => import('./pages/FichaEdit.jsx'))
+const GymSession = lazy(() => import('./pages/GymSession.jsx'))
+const WeekPlanner = lazy(() => import('./pages/WeekPlanner.jsx'))
+const Challenges = lazy(() => import('./pages/Challenges.jsx'))
+const ChallengeDetail = lazy(() => import('./pages/Challenges.jsx').then((m) => ({ default: m.ChallengeDetail })))
+const JoinChallenge = lazy(() => import('./pages/Challenges.jsx').then((m) => ({ default: m.JoinChallenge })))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 /** Busca sozinha as atividades novas do Garmin ao abrir e ao voltar para o app (só se conectado). */
@@ -146,13 +151,18 @@ export default function App() {
                 <Route path="/mapa" element={<RunsMap />} />
                 <Route path="/provas-perto" element={<NearRaces />} />
                 <Route path="/ciclo" element={<Cycle />} />
+                <Route path="/desafios" element={<Challenges />} />
+                <Route path="/desafios/entrar/:code" element={<JoinChallenge />} />
+                <Route path="/desafios/:id" element={<ChallengeDetail />} />
                 <Route path="/academia" element={<Ficha />} />
                 <Route path="/academia/editar" element={<FichaEdit />} />
                 <Route path="/treinos" element={<Workouts />} />
                 <Route path="/treinos/novo" element={<WorkoutForm />} />
                 <Route path="/treinos/importar" element={<WorkoutImport />} />
+                <Route path="/treinos/planejar" element={<WeekPlanner />} />
                 <Route path="/treinos/:id" element={<WorkoutDetail />} />
                 <Route path="/treinos/:id/editar" element={<WorkoutForm />} />
+                <Route path="/treinos/:id/agora" element={<GymSession />} />
               </>
             )}
             <Route path="/ajustes" element={<Settings />} />

@@ -11,18 +11,19 @@ import { activeProgram, blocks, claudeFichaPrompt, lastDone, nextSheet, sheetNam
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { dayLabel } from '../lib/reschedule.js'
 
-/** Registra o treino da ficha como feito numa data (aproveita a academia planejada do dia). */
+/** Registra o treino da ficha como feito numa data, ou começa agora (abre o “treinando agora”). */
 export function useMarkSheet() {
   const { workouts } = useStore()
   const { notify } = useUI()
   const nav = useNavigate()
-  return (program, sheet, date, { go = false } = {}) => {
-    const same = workouts.find((w) => w.status === 'feito' && w.date === date && w.ficha?.sheetId === sheet.id)
+  return (program, sheet, date, { start = false } = {}) => {
+    const same = workouts.find((w) => w.date === date && w.ficha?.sheetId === sheet.id && (start || w.status === 'feito'))
+    if (same && start) { nav(`/treinos/${same.id}/agora`); return same }
     if (same) { notify(`${sheetName(sheet)} já está registrado em ${formatDateBR(date).slice(0, 5)}`); return same }
     const planned = workouts.find((w) => w.date === date && w.sport === 'academia' && w.status === 'planejado')
-    const saved = saveWorkout(workoutFromSheet(program, sheet, date, planned))
+    const saved = saveWorkout(workoutFromSheet(program, sheet, date, planned, start ? 'planejado' : 'feito'))
+    if (start) { nav(`/treinos/${saved.id}/agora`); return saved }
     notify(`${sheetName(sheet)} registrado${date === todayISO() ? ' hoje' : ` em ${formatDateBR(date).slice(0, 5)}`}`)
-    if (go) nav(`/treinos/${saved.id}`)
     return saved
   }
 }
@@ -78,7 +79,10 @@ export default function Ficha() {
               <b>{sheetName(next)}</b>
               <span className="muted small">{next.exercises.length} exercícios{last[next.id] ? ` · último em ${dayLabel(last[next.id])}` : ''}</span>
             </div>
-            <button type="button" className="btn btn-primary" onClick={() => mark(p, next, today)} data-testid="ficha-done-next"><IconCheck /> Fiz hoje</button>
+            <div className="ficha-next-b">
+              <button type="button" className="btn btn-primary" onClick={() => mark(p, next, today, { start: true })} data-testid="ficha-start-next">Começar</button>
+              <button type="button" className="link-btn" onClick={() => mark(p, next, today)} data-testid="ficha-done-next"><IconCheck /> Já fiz</button>
+            </div>
           </div>
         )}
 
@@ -113,6 +117,7 @@ export default function Ficha() {
               ))}
             </div>
             <div className="btn-row ficha-actions">
+              <button type="button" className="btn btn-sm" onClick={() => mark(p, s, today, { start: true })} data-testid={`ficha-start-${s.label}`}>Começar agora</button>
               <button type="button" className="btn btn-sm" onClick={() => mark(p, s, today)} data-testid={`ficha-done-${s.label}`}><IconCheck /> Fiz hoje</button>
               <button type="button" className="link-btn" onClick={() => setOther(s)}>Fiz em outro dia</button>
             </div>

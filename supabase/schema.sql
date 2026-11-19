@@ -287,3 +287,97 @@ alter table public.records add constraint records_kind_check check (kind in ('ra
 --     de acesso. Enquanto este trecho não rodar, a ficha fica só no aparelho, sem se perder.
 alter table public.records drop constraint if exists records_kind_check;
 alter table public.records add constraint records_kind_check check (kind in ('race', 'goal', 'file', 'workout', 'cycle', 'garmin', 'ficha'));
+
+-- 14) Desafio com amigas: km de corrida, treinos feitos ou horas de treino num período, por convite.
+--     Cada pessoa só envia o TOTAL dela no período (nunca as atividades). As tabelas ficam fechadas
+--     (RLS sem políticas); tudo passa pelas funções abaixo, que conferem quem pode ver o quê.
+create table if not exists public.challenges (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 60),
+  metric text not null check (metric in ('km', 'treinos', 'horas')),
+  start_date date not null,
+  end_date date not null check (end_date >= start_date and end_date - start_date <= 92),
+  code text not null unique check (char_length(code) between 8 and 16),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.challenge_members (
+  challenge_id uuid not null references public.challenges (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 30),
+  value numeric not null default 0 check (value >= 0 and value < 100000),
+  joined_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (challenge_id, user_id)
+);
+alter table public.challenges enable row level security;
+alter table public.challenge_members enable row level security;
+
+create or replace function public.create_challenge(p_title text, p_metric text, p_start date, p_end date, p_name text)
+returns table (id uuid, code text)
+language plpgsql security definer set search_path = '' as $$
+#variable_conflict use_column
+declare uid uuid := auth.uid(); c text; cid uuid;
+begin
+  if uid is null then raise exception 'não autenticado'; end if;
+  if (select count(*) from public.challenges ch where ch.owner = uid and ch.end_date >= current_date) >= 10 then raise exception 'limite de desafios ativos'; end if;
+  c := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 10));
+  insert into public.challenges (owner, title, metric, start_date, end_date, code)
+    values (uid, left(trim(p_title), 60), p_metric, p_start, p_end, c) returning challenges.id into cid;
+  insert into public.challenge_members (challenge_id, user_id, name) values (cid, uid, left(trim(p_name), 30));
+  return query select cid, c;
+end; $$;
+
+create or replace function public.join_challenge(p_code text, p_name text)
+returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); cid uuid;
+begin
+  if uid is null then raise exception 'não autenticado'; end if;
+  select ch.id into cid from public.challenges ch where ch.code = upper(trim(p_code)) and ch.end_date >= current_date - 7;
+  if cid is null then raise exception 'convite inválido ou encerrado'; end if;
+  if (select count(*) from public.challenge_members m where m.challenge_id = cid) >= 30 then raise exception 'desafio cheio'; end if;
+  insert into public.challenge_members (challenge_id, user_id, name) values (cid, uid, left(trim(p_name), 30))
+    on conflict (challenge_id, user_id) do update set name = excluded.name;
+  return cid;
+end; $$;
+
+create or replace function public.my_challenges()
+returns table (id uuid, title text, metric text, start_date date, end_date date, code text, is_owner boolean, members bigint)
+language sql security definer set search_path = '' stable as $$
+  select ch.id, ch.title, ch.metric, ch.start_date, ch.end_date, ch.code, ch.owner = auth.uid(),
+    (select count(*) from public.challenge_members x where x.challenge_id = ch.id)
+  from public.challenges ch
+  join public.challenge_members m on m.challenge_id = ch.id and m.user_id = auth.uid()
+  order by ch.end_date desc;
+$$;
+
+create or replace function public.challenge_board(p_id uuid)
+returns table (name text, value numeric, updated_at timestamptz, is_me boolean)
+language sql security definer set search_path = '' stable as $$
+  select m.name, m.value, m.updated_at, m.user_id = auth.uid()
+  from public.challenge_members m
+  where m.challenge_id = p_id
+    and exists (select 1 from public.challenge_members me where me.challenge_id = p_id and me.user_id = auth.uid())
+  order by m.value desc, m.joined_at;
+$$;
+
+create or replace function public.set_challenge_value(p_id uuid, p_value numeric)
+returns void
+language sql security definer set search_path = '' as $$
+  update public.challenge_members set value = greatest(0, least(p_value, 99999)), updated_at = now()
+  where challenge_id = p_id and user_id = auth.uid();
+$$;
+
+create or replace function public.leave_challenge(p_id uuid)
+returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.challenge_members where challenge_id = p_id and user_id = auth.uid();
+  delete from public.challenges ch where ch.id = p_id and not exists (select 1 from public.challenge_members m where m.challenge_id = p_id);
+end; $$;
+
+revoke all on function public.create_challenge(text, text, date, date, text), public.join_challenge(text, text), public.my_challenges(),
+  public.challenge_board(uuid), public.set_challenge_value(uuid, numeric), public.leave_challenge(uuid) from public, anon;
+grant execute on function public.create_challenge(text, text, date, date, text), public.join_challenge(text, text), public.my_challenges(),
+  public.challenge_board(uuid), public.set_challenge_value(uuid, numeric), public.leave_challenge(uuid) to authenticated;

@@ -54,6 +54,7 @@ export default function TrainingWeek({ workouts, today, compact = false, embedde
       <WeekMore workouts={workouts} start={start} today={today} s={s} />
       <div className="tw-foot">
         {!current && <button type="button" className="link-btn" onClick={() => setStart(weekStart(today))}>Voltar para esta semana</button>}
+        <Link to="/treinos/planejar" className="link-btn" data-testid="week-plan">Planejar a semana</Link>
         {current && s.planned > 0 && <Link to="/stories?modelo=semana" className="link-btn" data-testid="week-story"><IconStory /> Compartilhar</Link>}
         {streak > 0 && <span className="tw-streak small" data-testid="week-streak"><IconFlame /> {streak} {streak === 1 ? 'semana cumprida' : 'semanas seguidas cumpridas'}</span>}
       </div>

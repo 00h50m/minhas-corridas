@@ -7,6 +7,7 @@ import { deleteWorkout, getRace, saveWorkout, useStore } from '../services/store
 import { Sheet, TopBar, useUI } from '../components/ui.jsx'
 import { IconDownload, IconEdit, IconHeart, IconMove, IconStopwatch, IconStory, IconTrash, IconUpload, IconWatch, SportIcon } from '../components/Icons.jsx'
 import { compareStrength, exLabel, planLine } from '../lib/strength.js'
+import { exerciseSummary, gymDurationSec } from '../lib/gymSession.js'
 import { STEP_BY_ID, WORKOUT_STATUSES, compareLaps, durationLabel, estimate, flatten, fmtPace, fmtSec, isRun, sportOf, targetLabel } from '../lib/workout.js'
 import { fitFileName, workoutToFit } from '../lib/workoutFit.js'
 import { claudePrompt, garminLines, intervalsText } from '../lib/workoutShare.js'
@@ -98,7 +99,8 @@ function Detail({ w }) {
 
         {done ? (
           <>
-            {w.result ? <Executed w={w} /> : (
+            {w.gymLog?.entries.length > 0 && <GymLogCard w={w} />}
+            {w.result ? <Executed w={w} /> : w.gymLog?.entries.length ? null : (
               <div className="card small" style={{ marginTop: 12 }} data-testid="wk-done-nofile">
                 <b>Feito.</b> <span className="muted">Importe a atividade do relógio para ver duração, FC, calorias{w.sport === 'academia' ? ' e as séries' : ' e o percurso'}.</span>
               </div>
@@ -107,10 +109,15 @@ function Detail({ w }) {
             {w.date && <Readiness date={w.date} past style={{ marginTop: 10 }} />}
           </>
         ) : (
-          <div className="wd-actions">
-            {(run || w.exercises?.length > 0) && <button type="button" className="btn btn-primary" onClick={() => setSend(true)} data-testid="wk-send"><IconWatch /> Enviar ao relógio</button>}
-            <button type="button" className="btn" onClick={() => setMoving(true)} data-testid="wk-move"><IconMove /> Remanejar</button>
-          </div>
+          <>
+            {!run && w.exercises?.length > 0 && (
+              <Link to={`/treinos/${w.id}/agora`} className="btn btn-primary btn-block" style={{ marginTop: 12 }} data-testid="wk-gym-start">{w.gymLog?.entries.length ? `Continuar treino (${w.gymLog.entries.length} séries)` : 'Treinar agora'}</Link>
+            )}
+            <div className="wd-actions">
+              {(run || w.exercises?.length > 0) && <button type="button" className={`btn${run ? ' btn-primary' : ''}`} onClick={() => setSend(true)} data-testid="wk-send"><IconWatch /> {run ? 'Enviar ao relógio' : 'Relógio'}</button>}
+              <button type="button" className="btn" onClick={() => setMoving(true)} data-testid="wk-move"><IconMove /> Remanejar</button>
+            </div>
+          </>
         )}
         {moving && <Reschedule w={w} onClose={() => setMoving(false)} />}
         {send && <SendSheet w={w} onClose={() => setSend(false)} />}
@@ -305,6 +312,23 @@ function StrengthCompare({ w }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/** O que foi anotado na academia (treinando agora): séries, cargas e repetições por exercício. */
+function GymLogCard({ w }) {
+  const dur = gymDurationSec(w.gymLog)
+  return (
+    <div className="card" style={{ marginTop: 12 }} data-testid="wk-gymlog">
+      <div className="det-head"><b>Anotado na academia</b><span className="muted small">{dur ? fmtSec(dur) : ''}</span></div>
+      <ul className="wd-plan">
+        {w.exercises.map((x, i) => {
+          const sum = exerciseSummary(w.gymLog, i, x.sets ?? 1)
+          return <li key={i}><span>{exLabel(x)}</span><b className={sum ? '' : 'muted'}>{sum ?? 'não feito'}</b></li>
+        })}
+      </ul>
+      <Link to={`/treinos/${w.id}/agora`} className="link-btn" data-testid="wk-gym-edit">Corrigir séries</Link>
     </div>
   )
 }

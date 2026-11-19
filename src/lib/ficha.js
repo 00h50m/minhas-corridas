@@ -168,14 +168,14 @@ export function lastDone(program, workouts = []) {
 }
 
 /** O treino de academia feito numa data a partir da ficha (reaproveita um planejado do mesmo dia). */
-export function workoutFromSheet(program, sheet, date, existing = null) {
+export function workoutFromSheet(program, sheet, date, existing = null, status = 'feito') {
   const base = existing ?? { id: null, items: [], notes: '', result: null, goalId: null, raceId: null, moves: [] }
   return {
     ...base,
     sport: 'academia',
     name: existing?.name && !/^(força|academia|treino)$/i.test(existing.name) ? existing.name : sheetName(sheet),
     date,
-    status: 'feito',
+    status,
     plannedMin: existing?.plannedMin ?? 60,
     exercises: sheetToExercises(sheet),
     ficha: { programId: program.id, sheetId: sheet.id, label: sheet.label }

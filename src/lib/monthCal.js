@@ -2,7 +2,7 @@
 // o que há em cada dia e o resumo do mês. Sem React: a tela fica em components/WorkoutMonth.jsx.
 import { addDaysISO } from './dates.js'
 import { weekStart, workoutState } from './trainingWeek.js'
-import { fmtSec, plannedSec } from './workout.js'
+import { doneSec, fmtSec, plannedSec } from './workout.js'
 import { groupSets } from './strength.js'
 
 /** Dias da grade do mês 'AAAA-MM' (semanas inteiras, segunda primeiro). */
@@ -33,7 +33,7 @@ export function byDay(workouts = [], races = []) {
 }
 
 /** Tempo da atividade: o do relógio; sem arquivo, o planejado. */
-export const activitySec = (w) => (w.status === 'feito' && w.result?.elapsedSec > 0 ? w.result.elapsedSec : plannedSec(w))
+export const activitySec = (w) => (w.status === 'feito' ? doneSec(w) : plannedSec(w))
 
 /** Rótulo curto para a célula do dia (“1h03”, “45min”, “5,0km”). */
 export function cellLabel(w) {

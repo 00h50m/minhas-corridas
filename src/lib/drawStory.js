@@ -529,7 +529,40 @@ function conquista(ctx, s) {
   ctx.textAlign = 'left'
 }
 
-const DRAW = { proximas, temporada, semana, contagem, evolucao, treino, conquista, resultado, mes }
+function desafio(ctx, s) {
+  title(ctx, s.title, s.subtitle, 420)
+  let y = 560
+  const rowH = Math.min(150, (STORY.h - 280 - y) / s.rows.length)
+  for (const r of s.rows) {
+    if (r.me) { card(ctx, PAD - 20, y - 10, STORY.w - PAD * 2 + 40, rowH - 16) }
+    ctx.fillStyle = r.pos === 1 ? BRAND : '#fff'
+    ctx.font = `800 64px ${DISPLAY}`
+    ctx.fillText(`${r.pos}º`, PAD, y + 62)
+    const x = PAD + 130
+    const w = STORY.w - PAD - x
+    ctx.fillStyle = '#fff'
+    ctx.font = `800 44px ${TEXT}`
+    ctx.fillText(wrap(ctx, r.name, w * 0.6, 1)[0], x, y + 46)
+    ctx.textAlign = 'right'
+    ctx.font = `800 44px ${DISPLAY}`
+    ctx.fillText(r.value, STORY.w - PAD, y + 46)
+    ctx.textAlign = 'left'
+    ctx.fillStyle = 'rgba(255,244,236,0.14)'
+    roundRect(ctx, x, y + 70, w, 16, 8)
+    ctx.fill()
+    ctx.fillStyle = r.me ? BRAND : 'rgba(255,244,236,0.7)'
+    roundRect(ctx, x, y + 70, Math.max(16, w * r.pct), 16, 8)
+    ctx.fill()
+    y += rowH
+  }
+  if (s.more) {
+    ctx.fillStyle = DIM
+    ctx.font = `700 36px ${TEXT}`
+    ctx.fillText(`+ ${s.more} ${s.more === 1 ? 'pessoa' : 'pessoas'}`, PAD, y + 30)
+  }
+}
+
+const DRAW = { proximas, temporada, semana, contagem, evolucao, treino, conquista, resultado, mes, desafio }
 
 /** Desenha o story `id` com o conteúdo `s` (de storyFor). photo: ImageBitmap opcional. */
 export function drawStory(canvas, id, s, photo = null) {

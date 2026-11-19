@@ -1,6 +1,7 @@
 // Treinos estruturados criados por você (ou pelo seu treinador): passos com duração e alvo,
 // blocos de repetição, agenda e o que foi executado. O app NÃO prescreve treinos.
 import { isValidISODate } from './dates.js'
+import { gymDurationSec, normalizeGymLog } from './gymSession.js'
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 const newId = () => Math.random().toString(36).slice(2, 10)
@@ -113,6 +114,8 @@ export function normalizeWorkout(raw) {
     if (x.withNext === true) out.withNext = true
     return out
   }) : []
+  // Séries anotadas no “treinando agora” (carga e repetições por série)
+  w.gymLog = w.sport === 'academia' ? normalizeGymLog(w.gymLog) : null
   // Treino da ficha da academia (qual treino A/B/C… foi feito)
   w.ficha = w.sport === 'academia' && w.ficha && typeof w.ficha === 'object' && typeof w.ficha.programId === 'string' && typeof w.ficha.sheetId === 'string'
     ? { programId: w.ficha.programId.slice(0, 20), sheetId: w.ficha.sheetId.slice(0, 20), label: String(w.ficha.label ?? '').slice(0, 20) }
@@ -220,6 +223,11 @@ export function estimate(items, refPace = 360) {
     }
   }
   return { sec: Math.round(sec), km: Math.round(m / 10) / 100, open }
+}
+
+/** Tempo feito (s): o do relógio; sem arquivo, o anotado na academia; senão, o planejado. */
+export function doneSec(w) {
+  return w.result?.elapsedSec > 0 ? w.result.elapsedSec : gymDurationSec(w.gymLog) ?? plannedSec(w)
 }
 
 /** Tempo planejado de qualquer atividade (s): estimativa dos passos na corrida, minutos nas outras. */

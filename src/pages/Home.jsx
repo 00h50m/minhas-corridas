@@ -1,5 +1,6 @@
-import { Suspense, lazy, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useSync } from '../services/sync.js'
 import { Avatar, AvatarButton } from '../components/Avatar.jsx'
 import { useProfile } from '../services/profile.js'
 import { greeting } from '../lib/profile.js'
@@ -70,8 +71,18 @@ function ProfileInvite() {
   )
 }
 
+const CH_INVITE_KEY = 'paceon:convite'
+
 export default function Home() {
   const { races, goals, workouts } = useStore()
+  // Convite de desafio aberto antes de ter conta: depois do login, volta para ele
+  const sync = useSync()
+  const nav = useNavigate()
+  useEffect(() => {
+    let code = null
+    try { code = localStorage.getItem(CH_INVITE_KEY) } catch { code = null }
+    if (code && sync.user) nav(`/desafios/entrar/${encodeURIComponent(code)}`)
+  }, [sync.user])
   const prof = useProfile()
   const settings = (
     <>

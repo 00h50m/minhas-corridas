@@ -1,3 +1,4 @@
+import { gymSets } from './gymSession.js'
 // Detalhes de qualquer atividade do relógio: séries de força agrupadas por exercício (categorias do
 // perfil FIT da Garmin), efeito do treino e velocidade/pace conforme o esporte.
 
@@ -55,7 +56,23 @@ export function speedLabel(sport, km, sec) {
   return `${Math.floor(p / 60)}:${String(Math.round(p % 60)).padStart(2, '0')} /km`
 }
 
-const isStrength = (w) => w.status === 'feito' && w.date && w.result?.sets?.length > 0
+const isStrength = (w) => w.status === 'feito' && w.date && (w.result?.sets?.length > 0 || w.gymLog?.entries?.length > 0)
+
+/** Exercícios de um treino feito: os anotados no app (pelo nome da ficha) ou as séries do relógio. */
+function groupsOf(w) {
+  const logged = gymSets(w)
+  if (!logged.length) return groupSets(w.result?.sets ?? []).groups
+  const by = new Map()
+  for (const x of logged) {
+    const g = by.get(x.name) ?? { name: x.name, sets: 0, reps: [], maxKg: null, volume: 0, sec: 0 }
+    g.sets++
+    if (x.reps != null) g.reps.push(x.reps)
+    if (x.kg) g.maxKg = Math.max(g.maxKg ?? 0, x.kg)
+    if (x.kg && x.reps) g.volume += x.kg * x.reps
+    by.set(x.name, g)
+  }
+  return [...by.values()]
+}
 
 /**
  * Evolução por exercício a partir dos treinos feitos com séries do relógio (mais antigos primeiro):
@@ -67,7 +84,7 @@ export function strengthHistory(workouts = []) {
   const done = workouts.filter(isStrength).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
   for (const w of done) {
     const merged = new Map()
-    for (const g of groupSets(w.result.sets).groups) {
+    for (const g of groupsOf(w)) {
       if (g.name === 'Exercício' || g.name === 'Aquecimento') continue
       const m = merged.get(g.name) ?? { date: w.date, workoutId: w.id, sets: 0, reps: 0, maxKg: null, volume: 0 }
       m.sets += g.sets

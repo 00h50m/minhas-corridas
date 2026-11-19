@@ -1,6 +1,6 @@
 // Cards do Início que dependem do passaporte (conquistas, mapa) e da semana de treinos.
 // Ficam num arquivo à parte para não pesar a abertura do app.
-import { IconDrop, IconFlag, IconFlame, IconMedal, IconStory } from './Icons.jsx'
+import { IconDrop, IconFlag, IconFlame, IconMedal, IconStory, IconUsers } from './Icons.jsx'
 import { Link } from 'react-router-dom'
 import { passport } from '../lib/passport.js'
 import { weekRecap } from '../lib/trainingWeek.js'
@@ -22,7 +22,12 @@ export default function HomeLinks({ races, workouts, goals, today }) {
         <Link to="/stories" className="card home-tile" data-testid="stories-link">
           <IconStory />
           <b>Stories</b>
-          <span className="muted small">semana, mês, provas e conquistas</span>
+          <span className="muted small">semana, mês, provas</span>
+        </Link>
+        <Link to="/desafios" className="card home-tile" data-testid="challenges-link">
+          <IconUsers />
+          <b>Desafios</b>
+          <span className="muted small">com amigas</span>
         </Link>
       </div>
     </>

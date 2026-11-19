@@ -30,7 +30,12 @@ export default function FichaCard({ workouts }) {
         <b>Academia</b>
         <span className="muted small">{doneToday ? `Hoje: Treino ${doneToday.ficha.label} feito` : `Próximo: ${sheetName(next)}`} · ver ficha</span>
       </Link>
-      {!doneToday && next && <button type="button" className="btn btn-sm btn-primary" onClick={() => mark(p, next, today)} data-testid="ficha-card-done"><IconCheck /> Fiz {next.label}</button>}
+      {!doneToday && next && (
+        <span className="ficha-card-b">
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => mark(p, next, today, { start: true })} data-testid="ficha-card-start">Começar {next.label}</button>
+          <button type="button" className="link-btn small" onClick={() => mark(p, next, today)} data-testid="ficha-card-done"><IconCheck /> Já fiz</button>
+        </span>
+      )}
     </div>
   )
 }

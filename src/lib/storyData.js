@@ -19,7 +19,8 @@ export const STORY_TEMPLATES = [
   { id: 'treino', label: 'Treino concluído' },
   { id: 'conquista', label: 'Conquista' },
   { id: 'resultado', label: 'Prova concluída' },
-  { id: 'mes', label: 'Resumo do mês' }
+  { id: 'mes', label: 'Resumo do mês' },
+  { id: 'desafio', label: 'Desafio' }
 ]
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
@@ -287,7 +288,23 @@ export function storyMes(races, workouts, goals, today, opts = {}, monthParam = 
 }
 
 /** Monta o story pelo modelo. */
-export function storyFor(id, { races, workouts, goals = [], today, opts, raceId, workoutId, badgeId, week = null, month = null }) {
+/** Ranking do desafio com amigas (os nomes e totais que as participantes já veem no app). */
+export function storyDesafio(ch) {
+  if (!ch?.board?.length) return { ok: false, reason: 'Abra um desafio em Desafios e toque em “Story”.' }
+  const unit = { km: 'km', treinos: '', horas: 'h' }[ch.metric] ?? ''
+  const top = Math.max(...ch.board.map((m) => Number(m.value) || 0), 0.0001)
+  const fmt = (v) => (ch.metric === 'treinos' ? `${v} ${v === 1 ? 'treino' : 'treinos'}` : `${String(v).replace('.', ',')} ${unit}`)
+  return {
+    ok: true,
+    title: ch.title,
+    subtitle: `${{ km: 'km correndo', treinos: 'treinos feitos', horas: 'horas de treino' }[ch.metric] ?? ''} · ${formatDateBR(ch.start).slice(0, 5)} a ${formatDateBR(ch.end).slice(0, 5)}`,
+    rows: ch.board.slice(0, 8).map((m) => ({ pos: m.pos, name: m.name, value: fmt(m.value), pct: (Number(m.value) || 0) / top, me: !!m.me })),
+    more: Math.max(0, ch.board.length - 8)
+  }
+}
+
+export function storyFor(id, { races, workouts, goals = [], today, opts, raceId, workoutId, badgeId, week = null, month = null, challenge = null }) {
+  if (id === 'desafio') return storyDesafio(challenge)
   if (id === 'proximas') return storyProximas(races, today, opts)
   if (id === 'temporada') return storyTemporada(races, today, opts)
   if (id === 'semana') return storySemana(workouts, today, opts, week)

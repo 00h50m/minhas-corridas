@@ -151,8 +151,8 @@ ok('Mês → “Story do mês” abre o modelo do mês de novembro')
 await p.goto(BASE + '/', { waitUntil: 'networkidle0' })
 await p.waitForSelector('.home-tiles [data-testid=passport-link]')
 const tiles = await p.$$eval('.home-tiles > .card', (e) => e.map((x) => Math.round(x.getBoundingClientRect().top)))
-if (tiles.length !== 2 || tiles[0] !== tiles[1]) throw new Error('Tiles: ' + tiles)
-ok('Início: Passaporte e Stories lado a lado')
+if (tiles.length !== 3 || new Set(tiles).size !== 1) throw new Error('Tiles: ' + tiles)
+ok('Início: Passaporte, Stories e Desafios lado a lado')
 
 for (const W of [320, 1280]) {
   await p.setViewport({ width: W, height: 800, isMobile: W < 1000, hasTouch: W < 1000 })

@@ -21,7 +21,14 @@ export default function Stories() {
   const [params] = useSearchParams()
   const today = todayISO()
   const prefs = loadPrefs()
-  const [tpl, setTpl] = useState(STORY_TEMPLATES.some((t) => t.id === params.get('modelo')) ? params.get('modelo') : prefs.tpl ?? 'proximas')
+  // Desafio com amigas: o ranking que a tela do desafio guardou para o story (só com ?desafio=)
+  const challenge = useMemo(() => {
+    const id = params.get('desafio')
+    if (!id) return null
+    try { const c = JSON.parse(localStorage.getItem('paceon:desafio-story')); return c?.id === id ? c : null } catch { return null }
+  }, [])
+  const order = challenge ? [['desafio', 'Desafio'], ...ORDER] : ORDER
+  const [tpl, setTpl] = useState(STORY_TEMPLATES.some((t) => t.id === params.get('modelo')) && (params.get('modelo') !== 'desafio' || challenge) ? params.get('modelo') : prefs.tpl && prefs.tpl !== 'desafio' ? prefs.tpl : 'proximas')
   const [times, setTimes] = useState(prefs.times ?? true)
   const [cities, setCities] = useState(prefs.cities ?? true)
   const [decidindo, setDecidindo] = useState(prefs.decidindo ?? false)
@@ -32,7 +39,7 @@ export default function Stories() {
   const fileRef = useRef(null)
   useEffect(() => { loadCardFonts().then(() => setFontsReady(true)) }, [])
   useEffect(() => { try { localStorage.setItem(PREF, JSON.stringify({ tpl, times, cities, decidindo })) } catch { /* sem armazenamento: tudo bem */ } }, [tpl, times, cities, decidindo])
-  const s = useMemo(() => storyFor(tpl, { races, workouts, goals, today, opts: { times, cities, decidindo }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }), [tpl, races, workouts, goals, times, cities, decidindo])
+  const s = useMemo(() => storyFor(tpl, { races, workouts, goals, today, opts: { times, cities, decidindo }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes'), challenge }), [tpl, races, workouts, goals, times, cities, decidindo])
   useEffect(() => {
     if (s.ok && fontsReady && canvasRef.current) drawStory(canvasRef.current, tpl, s, photo)
   }, [s, tpl, photo, fontsReady])
@@ -72,7 +79,7 @@ export default function Stories() {
     }
   }
 
-  const all = useMemo(() => ORDER.map(([id, label]) => ({ id, label, s: storyFor(id, { races, workouts, goals, today, opts: { times, cities, decidindo }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes') }) })), [races, workouts, goals, times, cities, decidindo])
+  const all = useMemo(() => order.map(([id, label]) => ({ id, label, s: storyFor(id, { races, workouts, goals, today, opts: { times, cities, decidindo }, raceId: params.get('prova'), workoutId: params.get('treino'), badgeId: params.get('conquista'), week: params.get('semana'), month: params.get('mes'), challenge }) })), [races, workouts, goals, times, cities, decidindo])
 
   return (
     <>

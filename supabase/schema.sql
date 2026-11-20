@@ -381,3 +381,55 @@ revoke all on function public.create_challenge(text, text, date, date, text), pu
   public.challenge_board(uuid), public.set_challenge_value(uuid, numeric), public.leave_challenge(uuid) from public, anon;
 grant execute on function public.create_challenge(text, text, date, date, text), public.join_challenge(text, text), public.my_challenges(),
   public.challenge_board(uuid), public.set_challenge_value(uuid, numeric), public.leave_challenge(uuid) to authenticated;
+
+-- 15) Relatório para o treinador: link só de leitura (sem conta) com o RESUMO do período (contagens,
+--     cargas, km), nunca os registros completos. O token é gerado no banco (2 UUIDs aleatórios). O link
+--     vence em 90 dias e a dona pode apagá-lo a qualquer momento. Tabela fechada: tudo pelas funções.
+create table if not exists public.shared_reports (
+  token text primary key check (char_length(token) >= 48),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 80),
+  data jsonb not null check (pg_column_size(data) < 200000),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '90 days'
+);
+alter table public.shared_reports enable row level security;
+
+create or replace function public.create_shared_report(p_title text, p_data jsonb)
+returns text
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); t text;
+begin
+  if uid is null then raise exception 'não autenticado'; end if;
+  -- no máximo 20 links por pessoa: apaga os mais antigos
+  delete from public.shared_reports s where s.user_id = uid and s.token in (
+    select s2.token from public.shared_reports s2 where s2.user_id = uid order by s2.created_at desc offset 19);
+  t := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+  insert into public.shared_reports (token, user_id, title, data) values (t, uid, left(trim(p_title), 80), p_data);
+  return t;
+end; $$;
+
+create or replace function public.my_shared_reports()
+returns table (token text, title text, created_at timestamptz, expires_at timestamptz)
+language sql security definer set search_path = '' stable as $$
+  select s.token, s.title, s.created_at, s.expires_at from public.shared_reports s
+  where s.user_id = auth.uid() and s.expires_at > now() order by s.created_at desc;
+$$;
+
+create or replace function public.delete_shared_report(p_token text)
+returns void
+language sql security definer set search_path = '' as $$
+  delete from public.shared_reports where token = p_token and user_id = auth.uid();
+$$;
+
+-- Quem tem o link lê (sem conta); vencido ou apagado não aparece.
+create or replace function public.get_shared_report(p_token text)
+returns table (title text, data jsonb, created_at timestamptz, expires_at timestamptz)
+language sql security definer set search_path = '' stable as $$
+  select s.title, s.data, s.created_at, s.expires_at from public.shared_reports s
+  where s.token = p_token and char_length(p_token) >= 48 and s.expires_at > now();
+$$;
+
+revoke all on function public.create_shared_report(text, jsonb), public.my_shared_reports(), public.delete_shared_report(text), public.get_shared_report(text) from public, anon;
+grant execute on function public.create_shared_report(text, jsonb), public.my_shared_reports(), public.delete_shared_report(text) to authenticated;
+grant execute on function public.get_shared_report(text) to anon, authenticated;

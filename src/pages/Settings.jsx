@@ -140,6 +140,11 @@ export default function Settings() {
     <>
       <TopBar title="Ajustes" back="/" />
       <div className="page">
+        <Link to="/ajustes/status" className="card decide-link" data-testid="status-link" style={{ marginBottom: 10 }}>
+          <IconInfo />
+          <span style={{ flex: 1, minWidth: 0 }}><b>Está tudo ligado?</b><br /><span className="muted small">Conta, banco, notificações, Garmin e ficha num lugar só</span></span>
+          <span aria-hidden="true">›</span>
+        </Link>
         <Link to="/perfil" className="card account-card" style={{ marginBottom: 12 }} data-testid="profile-link">
           <Avatar size={40} />
           <span style={{ flex: 1, minWidth: 0 }}>

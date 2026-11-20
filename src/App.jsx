@@ -44,6 +44,9 @@ const GymSession = lazy(() => import('./pages/GymSession.jsx'))
 const WeekPlanner = lazy(() => import('./pages/WeekPlanner.jsx'))
 const Challenges = lazy(() => import('./pages/Challenges.jsx'))
 const ChallengeDetail = lazy(() => import('./pages/Challenges.jsx').then((m) => ({ default: m.ChallengeDetail })))
+const SetupStatus = lazy(() => import('./pages/SetupStatus.jsx'))
+const CoachReport = lazy(() => import('./pages/CoachReport.jsx'))
+const SharedReport = lazy(() => import('./pages/CoachReport.jsx').then((m) => ({ default: m.SharedReport })))
 const JoinChallenge = lazy(() => import('./pages/Challenges.jsx').then((m) => ({ default: m.JoinChallenge })))
 import UpdatePrompt from './components/UpdatePrompt.jsx'
 
@@ -108,6 +111,17 @@ function ScrollTop() {
 
 export default function App() {
   const store = useStore()
+  const { pathname } = useLocation()
+  // Relatório compartilhado (/r/token): página só de leitura, sem o menu do app
+  if (pathname.startsWith('/r/')) {
+    return (
+      <UIProvider>
+        <Suspense fallback={<div className="loading"><div><div className="spinner" />Abrindo…</div></div>}>
+          <Routes><Route path="/r/:token" element={<SharedReport />} /></Routes>
+        </Suspense>
+      </UIProvider>
+    )
+  }
   return (
     <UIProvider>
       <div className="app">
@@ -155,6 +169,7 @@ export default function App() {
                 <Route path="/desafios/entrar/:code" element={<JoinChallenge />} />
                 <Route path="/desafios/:id" element={<ChallengeDetail />} />
                 <Route path="/academia" element={<Ficha />} />
+                <Route path="/academia/relatorio" element={<CoachReport />} />
                 <Route path="/academia/editar" element={<FichaEdit />} />
                 <Route path="/treinos" element={<Workouts />} />
                 <Route path="/treinos/novo" element={<WorkoutForm />} />
@@ -166,6 +181,7 @@ export default function App() {
               </>
             )}
             <Route path="/ajustes" element={<Settings />} />
+            <Route path="/ajustes/status" element={<SetupStatus />} />
             <Route path="/conta" element={<Account />} />
             <Route path="/lembretes" element={<Reminders />} />
             <Route path="/perfil" element={<Profile />} />

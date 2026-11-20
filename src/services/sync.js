@@ -92,7 +92,7 @@ export async function syncNow() {
     try {
       const meta = getMeta()
       const sum = await syncOnce({ remote: supabaseRemote(state.user.id), local, meta, userId: state.user.id, saveMeta })
-      set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending(), notice: sum.deferred ? 'Parte dos dados (treinos, ciclo, Garmin ou ficha da academia) ainda não sobe para a nuvem: rode os trechos 11, 12 e 13 do arquivo supabase/schema.sql no Supabase. Até lá, ficam guardados neste aparelho.' : null })
+      set({ phase: 'idle', lastSyncAt: new Date().toISOString(), error: null, pending: pending(), deferredKinds: sum.deferredKinds ?? [], notice: sum.deferred ? 'Parte dos dados (treinos, ciclo, Garmin ou ficha da academia) ainda não sobe para a nuvem: rode os trechos 11 a 13 do arquivo supabase/schema.sql no Supabase. Até lá, ficam guardados neste aparelho.' : null })
       syncProfile(state.user.id).catch(() => {})
     } catch (e) {
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false

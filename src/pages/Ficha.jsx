@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState, Sheet, TopBar, useUI } from '../components/ui.jsx'
 import CopyBox from '../components/CopyBox.jsx'
-import { IconCheck, IconDumbbell, IconEdit, IconPlus } from '../components/Icons.jsx'
+import { IconCheck, IconDumbbell, IconEdit, IconPlus, IconShare } from '../components/Icons.jsx'
 import { saveWorkout, useStore } from '../services/store.js'
 import { useFicha } from '../services/ficha.js'
 import { activeProgram, blocks, claudeFichaPrompt, lastDone, nextSheet, sheetName, workoutFromSheet } from '../lib/ficha.js'
@@ -128,6 +128,7 @@ export default function Ficha() {
           <Link to="/academia/editar" className="btn"><IconEdit /> Editar ficha</Link>
           <Link to="/academia/editar?nova=1" className="btn">Nova ficha</Link>
         </div>
+        <Link to="/academia/relatorio" className="btn btn-block" style={{ marginTop: 8 }} data-testid="ficha-report"><IconShare /> Relatório para o treinador</Link>
         <p className="note">O app guarda a ficha do seu treinador e registra o que você fez; ele não monta nem muda treinos. Com o relógio, as séries do arquivo aparecem ao lado da ficha no treino.</p>
       </div>
       {other && <OtherDay p={p} s={other} onClose={() => setOther(null)} mark={mark} />}

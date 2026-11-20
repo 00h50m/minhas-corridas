@@ -52,7 +52,7 @@ function localStamp(kind, rec) {
 
 /** Uma rodada completa. Retorna um resumo para a interface. */
 export async function syncOnce({ remote, local, meta, userId, saveMeta }) {
-  const summary = { pushed: 0, pulled: 0, downloaded: 0, rejected: 0, failedDownloads: 0, deferred: 0 }
+  const summary = { pushed: 0, pulled: 0, downloaded: 0, rejected: 0, failedDownloads: 0, deferred: 0, deferredKinds: [] }
 
   // 1) Enviar pendências
   const keys = Object.keys(meta.dirty)
@@ -107,6 +107,7 @@ export async function syncOnce({ remote, local, meta, userId, saveMeta }) {
         }
       } else if (deferred.has(r.kind)) {
         summary.deferred++
+        if (!summary.deferredKinds.includes(r.kind)) summary.deferredKinds.push(r.kind)
       } else {
         rejected.push({ kind: r.kind, id: r.id })
       }

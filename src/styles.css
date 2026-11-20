@@ -1636,3 +1636,54 @@ details.link-import { margin-top: 0; }
 .ch-rbar { height: 8px; border-radius: 99px; background: var(--surface-2); margin-top: 5px; overflow: hidden; }
 .ch-rbar span { display: block; height: 100%; background: var(--ink-3); border-radius: 99px; }
 .ch-row.me .ch-rbar span { background: var(--brand); }
+
+/* Relatório para o treinador */
+.report { margin-top: 12px; }
+.rp-head { display: flex; flex-direction: column; gap: 3px; }
+.rp-head b { font-family: var(--display); font-size: 26px; text-transform: uppercase; line-height: 1.05; }
+.rp-stats { margin-top: 10px; }
+.rp-sheet { display: grid; grid-template-columns: 90px 44px 1fr; align-items: baseline; gap: 8px; padding: 6px 0; }
+.rp-sheet + .rp-sheet { border-top: 1px solid var(--line); }
+.rp-count { font-family: var(--display); font-weight: 800; font-size: 20px; }
+.rp-exrow { padding: 8px 0; }
+.rp-exrow + .rp-exrow { border-top: 1px solid var(--line); }
+.rp-exhead { display: flex; justify-content: space-between; gap: 8px; }
+.rp-delta { font-family: var(--display); font-weight: 800; white-space: nowrap; }
+.rp-delta.up { color: var(--ok); }
+.rp-sessions { display: flex; flex-direction: column; gap: 1px; color: var(--ink-2); margin-top: 3px; }
+.rp-runs { display: flex; flex-direction: column; gap: 4px; }
+.rp-week { display: grid; grid-template-columns: 46px 1fr; gap: 2px 10px; align-items: center; padding: 5px 0; }
+.rp-wk { font-weight: 800; font-size: 13px; }
+.rp-wbar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.rp-wbar span { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+.rp-wtxt { grid-column: 2; color: var(--ink-3); }
+.rp-actions { margin-top: 14px; }
+.rp-linkrow { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--line); }
+.shared-report { min-height: 100vh; background: var(--bg); }
+.sr-top { display: flex; align-items: baseline; gap: 10px; padding: 16px; border-bottom: 1px solid var(--line); }
+.sr-top b { font-family: var(--display); font-size: 22px; color: var(--brand); }
+@media print {
+  .bottom-nav, .side-nav, .topbar, .no-print, .toast, .update-prompt { display: none !important; }
+  body, .app, .page, .shared-report { background: #fff !important; color: #111 !important; }
+  .card, .stat { background: #fff !important; border: 1px solid #ddd !important; box-shadow: none !important; break-inside: avoid; }
+  .page { padding: 0 !important; max-width: none !important; }
+  .muted, .note, .rp-wtxt, .rp-sessions { color: #555 !important; }
+  .rp-wbar { background: #eee !important; } .rp-wbar span { background: #e85d2a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* Está tudo ligado? */
+.ss-sum { display: flex; gap: 12px; align-items: center; }
+.ss-sum > svg { width: 28px; height: 28px; color: var(--ok); flex: none; }
+.ss-sum.warn > svg { color: var(--warn); }
+.ss-sum > span { display: flex; flex-direction: column; gap: 2px; }
+.ss-list { padding: 4px 12px; }
+.ss-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; }
+.ss-row + .ss-row { border-top: 1px solid var(--line); }
+.ss-dot { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 99px; background: var(--surface-2); color: var(--ink-3); font-weight: 800; }
+.ss-dot svg { width: 15px; height: 15px; }
+.ss-row.ss-ok .ss-dot { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.ss-row.ss-warn .ss-dot { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.ss-row.ss-check .ss-dot { background: var(--brand-soft); color: var(--brand-ink); }
+.ss-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ss-body .small { color: var(--ink-2); }
+.ss-act { flex: none; align-self: center; }

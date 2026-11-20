@@ -93,6 +93,7 @@ export default function Workouts() {
           <summary>Mais opções</summary>
           <div className="wk-more-body">
             <Link to="/treinos/importar" className="link-btn">Importar treinos (link ou arquivo)</Link>
+            <Link to="/academia/relatorio" className="link-btn" data-testid="wk-report">Relatório para o treinador</Link>
             <RuleSelect />
             {upcomingRuns.length > 0 && (
               <CopyBox label={`Copiar prompt dos ${upcomingRuns.length} próximos treinos para o Claude`} text={claudePrompt(upcomingRuns)} done="Prompt copiado: cole no Claude" testid="copy-claude-all"

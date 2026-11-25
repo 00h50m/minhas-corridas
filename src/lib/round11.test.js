@@ -78,6 +78,13 @@ describe('logística: trajetos, rota e custos', () => {
     const moved = race(log, { venueAddress: 'Outra rua, 10' })
     expect(tripSummary(moved, moved.logistics, 'ida')).toMatchObject({ complete: false, stale: true })
   })
+  it('volta pelo mesmo caminho sem rota calculada: combustível estimado igual à ida', () => {
+    const r = race({ ...baseLog, outbound: { ...baseLog.outbound, route: routeIda(baseLog) }, back: { mode: 'reverse' } })
+    const by = Object.fromEntries(costItems(r, r.logistics).map((i) => [i.id, i]))
+    expect(by.fuelBack).toMatchObject({ est: 24.09, source: 'ida' })
+    const outro = race({ ...baseLog, outbound: { ...baseLog.outbound, route: routeIda(baseLog) }, back: { mode: 'custom', stops: [{ label: 'Padaria', address: 'Rua X, Itatiba' }] } })
+    expect(costItems(outro, outro.logistics).find((i) => i.id === 'fuelBack').est).toBeNull()
+  })
   it('combustível = distância ÷ consumo × preço; volta e kit somam; transporte sem duplicar', () => {
     expect(fuelCost(39.3, { kmPerL: 7, pricePerL: 4.29 })).toBe(24.09) // 39,3 ÷ 7 × 4,29 = 24,0853
     expect(fuelCost(39.3, { kmPerL: null, pricePerL: 4.29 })).toBe(null)

@@ -315,8 +315,12 @@ export function costItems(race, log) {
   add('fuelOut', 'Combustível (ida)', fuelEst(ida, c.fuelOut.est), c.fuelOut.paid, c.fuelOut.est != null ? 'manual' : 'calc', 'ida')
   add('tollsOut', 'Pedágios (ida)', c.tollsOut.est ?? routeToll(ida), c.tollsOut.paid, c.tollsOut.est != null ? 'manual' : routeToll(ida) != null ? 'rota' : null, 'ida')
   if (volta.enabled) {
-    add('fuelBack', 'Combustível (volta)', fuelEst(volta, c.fuelBack.est), c.fuelBack.paid, c.fuelBack.est != null ? 'manual' : 'calc', 'volta')
-    add('tollsBack', 'Pedágios (volta)', c.tollsBack.est ?? routeToll(volta), c.tollsBack.paid, c.tollsBack.est != null ? 'manual' : routeToll(volta) != null ? 'rota' : null, 'volta')
+    // Volta sem rota calculada pelo mesmo caminho da ida (ao contrário): estima pela ida até calcular a volta.
+    const mirror = !volta.complete && log.back.mode === 'reverse' && ida.complete
+    const fb = c.fuelBack.est != null ? [c.fuelBack.est, 'manual'] : volta.complete ? [fuelEst(volta), 'calc'] : mirror && fuelEst(ida) != null ? [fuelEst(ida), 'ida'] : [null, 'calc']
+    add('fuelBack', 'Combustível (volta)', fb[0], c.fuelBack.paid, fb[1], 'volta')
+    const tb = c.tollsBack.est != null ? [c.tollsBack.est, 'manual'] : routeToll(volta) != null ? [routeToll(volta), 'rota'] : mirror && routeToll(ida) != null ? [routeToll(ida), 'ida'] : [null, null]
+    add('tollsBack', 'Pedágios (volta)', tb[0], c.tollsBack.paid, tb[1], 'volta')
   }
   add('parking', 'Estacionamento', c.parking.est, c.parking.paid, 'manual', 'ida')
   add('extras', c.extras.desc ? `Outras: ${c.extras.desc}` : 'Outras despesas', c.extras.est, c.extras.paid, 'manual', 'ida')

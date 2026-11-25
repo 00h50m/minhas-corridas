@@ -887,7 +887,7 @@ function CostsPanel({ race: r, log, update }) {
     notify('Veículo salvo no perfil')
   }
   const fuelCalc = (s) => (s.complete ? fuelCost(s.distanceKm, v) : null)
-  const SOURCE = { calc: 'calculado', rota: 'da rota', manual: 'informado' }
+  const SOURCE = { calc: 'calculado', rota: 'da rota', manual: 'informado', ida: 'igual à ida' }
   return (
     <>
       <div className="section-title" style={{ marginTop: 0 }}><h2>Veículo</h2></div>
@@ -909,10 +909,11 @@ function CostsPanel({ race: r, log, update }) {
           <thead><tr><th scope="col">Item</th><th scope="col">Estimado</th><th scope="col">Pago</th></tr></thead>
           <tbody>
             {items.map((i) => {
-              const auto = { fuelOut: fuelCalc(ida), fuelBack: fuelCalc(volta), kitFuel: fuelCalc(kit) }[i.id] ?? null
+              const auto = { fuelOut: fuelCalc(ida), fuelBack: fuelCalc(volta) ?? (i.source === 'ida' ? i.est : null), kitFuel: fuelCalc(kit) }[i.id] ?? null
+              const backMissing = i.id === 'fuelBack' && i.est == null && !volta.complete
               return (
                 <tr key={i.id}>
-                  <th scope="row">{i.label}{i.source && i.est != null && <span className="muted small"> · {SOURCE[i.source]}</span>}</th>
+                  <th scope="row">{i.label}{i.source && i.est != null && <span className="muted small"> · {SOURCE[i.source]}</span>}{backMissing && <span className="muted small" data-testid="back-missing"> · calcule a rota na aba Volta</span>}</th>
                   <td><MoneyCell value={log.costs[i.id].est} placeholder={auto ? moneyToInput(auto) : i.est != null ? moneyToInput(i.est) : '—'} label={`${i.label} estimado`} onChange={(n) => update((l) => { l.costs[i.id].est = n })} /></td>
                   <td><MoneyCell value={log.costs[i.id].paid} placeholder="—" label={`${i.label} pago`} onChange={(n) => update((l) => { l.costs[i.id].paid = n })} /></td>
                 </tr>

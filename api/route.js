@@ -64,6 +64,7 @@ export function explain(why, fallback, status) {
   if (/not authorized to use this API|has not been used|is disabled|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED/i.test(w)) return `O Google recusou: a API não está ativada ou a chave não tem permissão para ela. Ative a Routes API e a Geocoding API e inclua as duas nas restrições da chave.${tail(160)}`
   if (/referer|IP address|API key not valid|API_KEY_INVALID/i.test(w)) return `O Google recusou a chave: confira se a chave está correta e sem restrição de sites/IPs.${tail(160)}`
   // OpenRouteService
+  if (status === 410 || /deprecated/i.test(w)) return 'O serviço de rotas mudou de endereço e o app ainda chama o antigo. Avise para atualizar a função de rotas.'
   if (/routable point|\[2010\]/i.test(w)) return 'Um dos pontos ficou longe de uma rua (localização aproximada). Edite o ponto e escolha o endereço com número, ou use “minha localização” estando no lugar.'
   if (/quota|rate limit/i.test(w)) return 'Limite de consultas de rota atingido (cota do dia). Tente mais tarde.'
   if (/\[2004\]|exceed the server configuration limits/i.test(w)) return 'A rota ficou longa demais para o serviço. Confira se os pontos estão nas cidades certas.'
@@ -138,7 +139,7 @@ async function googleRoute(points, departureAt, cfg, fetchImpl, now = Date.now()
 /* ---------- OpenRouteService ---------- */
 
 async function orsGeocode(q, cfg, fetchImpl) {
-  const url = `https://api.openrouteservice.org/geocode/search?api_key=${encodeURIComponent(cfg.key)}&text=${encodeURIComponent(q)}&boundary.country=BR&size=5`
+  const url = `https://api.heigit.org/pelias/v1/search?api_key=${encodeURIComponent(cfg.key)}&text=${encodeURIComponent(q)}&boundary.country=BR&size=5`
   const body = await getJson(fetchImpl, url)
   return (body.features ?? []).map((f) => {
     const p = f.properties ?? {}
@@ -157,7 +158,7 @@ async function orsDirections(coords, opts, cfg, fetchImpl) {
   if (opts.preference === 'shortest') body.preference = 'shortest'
   if (opts.avoid?.length) body.options = { avoid_features: opts.avoid }
   if (opts.alternatives && coords.length === 2) body.alternative_routes = { target_count: 3, weight_factor: 1.6, share_factor: 0.6 }
-  const res = await getJson(fetchImpl, 'https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+  const res = await getJson(fetchImpl, 'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: cfg.key },
     body: JSON.stringify(body)

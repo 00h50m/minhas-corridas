@@ -72,6 +72,19 @@ describe('rota recusada: o motivo sempre aparece', async () => {
     expect(explain('', 'x', 401)).toMatch(/recusou a chave/)
     expect(explain('Quota exceeded', 'x', 403)).toMatch(/Limite de consultas/)
     expect(explain('[2009] Route could not be found', 'x', 404)).toMatch(/caminho de carro/)
+    expect(explain('Deprecated HeiGIT API URL', 'x', 410)).toMatch(/mudou de endereço/)
     expect(explain('algo novo', 'Recusou (código 500).', 500)).toBe('Recusou (código 500). (algo novo)')
+  })
+})
+
+describe('OpenRouteService no endereço novo (api.heigit.org)', () => {
+  it('rota e busca usam api.heigit.org, nunca o endereço desligado', async () => {
+    const { handleRoute } = await import('../../api/route.js')
+    const urls = []
+    const fetchImpl = async (u) => { urls.push(String(u)); return new Response(JSON.stringify({ features: [] }), { status: 200 }) }
+    const req = { method: 'POST', headers: {}, query: {}, body: { points: [{ address: 'A', lat: -23.3, lon: -46.7 }, { address: 'B', lat: -23.2, lon: -46.6 }] } }
+    await handleRoute(req, { env: { ORS_API_KEY: 'K' }, fetchImpl }).catch(() => {})
+    expect(urls.length).toBeGreaterThan(0)
+    expect(urls.every((u) => u.startsWith('https://api.heigit.org/openrouteservice/v2/'))).toBe(true)
   })
 })

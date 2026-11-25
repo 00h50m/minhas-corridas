@@ -56,7 +56,7 @@ describe('função de rotas', () => {
   })
   it('OpenRouteService: geocodifica, calcula e devolve o traçado codificado', async () => {
     const fetchImpl = vi.fn(async (url) => {
-      if (String(url).includes('/geocode/search')) return json({ features: [{ properties: { label: String(url).includes('Eloy') ? 'Y' : 'X', confidence: 1, layer: 'address', housenumber: '1' }, geometry: { coordinates: String(url).includes('Eloy') ? [-46.95, -23.15] : [-46.9, -23.2] } }] })
+      if (String(url).includes('/pelias/v1/search')) return json({ features: [{ properties: { label: String(url).includes('Eloy') ? 'Y' : 'X', confidence: 1, layer: 'address', housenumber: '1' }, geometry: { coordinates: String(url).includes('Eloy') ? [-46.95, -23.15] : [-46.9, -23.2] } }] })
       return json({ features: [{ properties: { segments: [{ distance: 6200, duration: 660 }] }, geometry: { coordinates: [[-46.9, -23.2], [-46.95, -23.15]] } }] })
     })
     const r = await handleRoute(req({ method: 'POST', body: { points: pts.slice(0, 2) } }), { env: { ORS_API_KEY: 'O' }, fetchImpl })

@@ -172,7 +172,7 @@ Por prova, em abas **Ida · Volta · Kit · Custos · Agenda** (dados em `race.l
 | Variável | Serviço | Trânsito previsto | Pedágios | Custo |
 |---|---|---|---|---|
 | `GOOGLE_MAPS_API_KEY` | Google Routes API + Geocoding API | sim (saída futura) | quando o Google tem a tarifa | precisa de conta de faturamento; cota mensal gratuita (confira a tabela atual) |
-| `ORS_API_KEY` | OpenRouteService | não | não | gratuito (limite diário) |
+| `ORS_API_KEY` | OpenRouteService (`api.heigit.org`; o antigo `api.openrouteservice.org` foi desligado em 24/11/2026, a mesma chave vale no novo) | não | não | gratuito (limite diário) |
 | nenhuma | — | — | — | distância e tempo informados à mão |
 
 Quando o serviço recusa, a mensagem traz o motivo real (código HTTP e texto do serviço) e traduz os casos comuns: chave recusada (confira `ORS_API_KEY`/`GOOGLE_MAPS_API_KEY`), cota do dia, ponto longe de uma rua (endereço aproximado: escolha com número) e caminho não encontrado.

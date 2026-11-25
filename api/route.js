@@ -34,23 +34,42 @@ async function getJson(fetchImpl, url, init = {}) {
   } finally {
     clearTimeout(timer)
   }
-  const body = await res.json().catch(() => ({}))
+  const raw = await res.text().catch(() => '')
+  let body = {}
+  try { body = raw ? JSON.parse(raw) : {} } catch { body = {} }
   if (!res.ok) {
     if (res.status === 429) throw fail(429, 'Limite de consultas de rota atingido (cota do dia). Tente mais tarde.')
-    const why = body?.error?.message || body?.error_message || ''
+    const why = reasonOf(body, raw)
     console.error('Serviço de rotas recusou:', res.status, why)
-    throw fail(502, explain(why, 'O serviço de rotas recusou a consulta.'))
+    throw fail(502, explain(why, `O serviço de rotas recusou a consulta (código ${res.status}).`, res.status))
   }
   return body
 }
 
-/** Traduz os motivos mais comuns do Google para o que a pessoa precisa fazer. */
-export function explain(why, fallback) {
+/** O motivo da recusa, venha como for: { error: { message } }, { error: "…" }, { message }, error_message ou texto. */
+export function reasonOf(body, raw = '') {
+  const e = body?.error
+  const code = e?.code != null ? `[${e.code}] ` : ''
+  const msg = typeof e === 'string' ? e : e?.message || body?.message || body?.error_message || (typeof body?.status === 'string' && body.status !== 'OK' ? body.status : '')
+  if (msg) return code + msg
+  return String(raw || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+}
+
+/** Traduz os motivos mais comuns (Google e OpenRouteService) para o que a pessoa precisa fazer. */
+export function explain(why, fallback, status) {
   const w = String(why || '')
+  const tail = (n) => (w ? ` (${w.slice(0, n)})` : '')
+  // Google
   if (/billing/i.test(w)) return 'O Google recusou: o faturamento não está ativo no projeto do Google Cloud. Vincule uma conta de faturamento ao projeto.'
-  if (/not authorized to use this API|has not been used|is disabled|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|blocked/i.test(w)) return `O Google recusou: a API não está ativada ou a chave não tem permissão para ela. Ative a Routes API e a Geocoding API e inclua as duas nas restrições da chave. (${w.slice(0, 160)})`
-  if (/referer|IP address|API key not valid|API_KEY_INVALID|invalid/i.test(w)) return `O Google recusou a chave: confira se a chave está correta e sem restrição de sites/IPs. (${w.slice(0, 160)})`
-  return w ? `${fallback} (${w.slice(0, 200)})` : fallback
+  if (/not authorized to use this API|has not been used|is disabled|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED/i.test(w)) return `O Google recusou: a API não está ativada ou a chave não tem permissão para ela. Ative a Routes API e a Geocoding API e inclua as duas nas restrições da chave.${tail(160)}`
+  if (/referer|IP address|API key not valid|API_KEY_INVALID/i.test(w)) return `O Google recusou a chave: confira se a chave está correta e sem restrição de sites/IPs.${tail(160)}`
+  // OpenRouteService
+  if (/routable point|\[2010\]/i.test(w)) return 'Um dos pontos ficou longe de uma rua (localização aproximada). Edite o ponto e escolha o endereço com número, ou use “minha localização” estando no lugar.'
+  if (/quota|rate limit/i.test(w)) return 'Limite de consultas de rota atingido (cota do dia). Tente mais tarde.'
+  if (/\[2004\]|exceed the server configuration limits/i.test(w)) return 'A rota ficou longa demais para o serviço. Confira se os pontos estão nas cidades certas.'
+  if (/\[2009\]|route could not be found/i.test(w)) return 'Não encontrei caminho de carro entre esses pontos. Confira os endereços.'
+  if (status === 401 || status === 403 || /disallowed|unauthori[sz]ed|forbidden|blocked/i.test(w)) return `O serviço de rotas recusou a chave: confira a variável ORS_API_KEY (ou GOOGLE_MAPS_API_KEY) na Vercel e se a chave continua ativa.${tail(120)}`
+  return w ? `${fallback}${tail(200)}` : fallback
 }
 
 /* ---------- Google ---------- */

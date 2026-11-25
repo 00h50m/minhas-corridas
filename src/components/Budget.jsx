@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { budgetStatus, currentBudget } from '../lib/budget.js'
 import { formatMoney } from '../lib/format.js'
 import { todayISO } from '../lib/dates.js'
+import { IconWallet } from './Icons.jsx'
 
 const pctText = (x) => `${Math.round(x * 100)}%`
 
@@ -24,7 +25,7 @@ export default function BudgetCard({ goals, races, today = todayISO(), showEmpty
     if (!showEmpty) return null
     return (
       <Link to={`/objetivos/novo?tipo=orcamento&ano=${year}`} className="card goal-empty" data-testid="budget-empty">
-        <span style={{ fontSize: 26 }} aria-hidden="true">💰</span>
+        <span className="budget-ic" aria-hidden="true"><IconWallet /></span>
         <span><b>Definir orçamento de {year}</b><br /><span className="muted small">Um teto para gastar com provas, com aviso ao chegar perto e ajuda para decidir em quais se inscrever.</span></span>
       </Link>
     )

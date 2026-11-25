@@ -120,7 +120,7 @@ describe('rota no OpenRouteService: 5 pontos, 4 trechos, na ordem', () => {
     expect(sum.status).toBe(502)
     const down = await handleRoute(req({ method: 'POST', body: { points: pts } }), { ...env, fetchImpl: async () => json({ error: { message: 'Quota exceeded' } }, 403) })
     expect(down.status).toBe(502)
-    expect(down.body.error).toContain('recusou')
+    expect(down.body.error).toContain('Limite de consultas')
   })
   it('ponto sem coordenada: só aceita se o serviço achar o número (cidade não serve)', async () => {
     const fetchImpl = vi.fn(async (url) => (String(url).includes('/geocode/') ? json({ features: [{ properties: { label: 'Jundiaí, SP', layer: 'locality', confidence: 1 }, geometry: { coordinates: [-46.8978, -23.1857] } }] }) : json({})))

@@ -10,10 +10,16 @@ import { candidates, decisionFlags, decisionInfo, simulate } from '../lib/decisi
 import { formatDateBR, todayISO } from '../lib/dates.js'
 import { formatKm, formatMoney } from '../lib/format.js'
 import { byDateAsc } from '../lib/stats.js'
+import { useProfile } from '../services/profile.js'
+import { PROFILES, rankByWorth, typicalPerKm, worthScore } from '../lib/worth.js'
 
-export const decideMemo = { sort: 'prazo', selected: new Set() }
+const PROFILE_KEY = 'paceon:perfil-decisao'
+const readProfile = () => { try { const v = localStorage.getItem(PROFILE_KEY); return PROFILES.some((p) => p.id === v) ? v : 'equilibrio' } catch { return 'equilibrio' } }
+
+export const decideMemo = { sort: 'nota', selected: new Set() }
 
 const SORTS = [
+  { id: 'nota', label: 'Vale a pena' },
   { id: 'prazo', label: 'Prazo' },
   { id: 'data', label: 'Data' },
   { id: 'vontade', label: 'Vontade' }
@@ -21,22 +27,28 @@ const SORTS = [
 
 export default function Decide() {
   const { races, goals } = useStore()
+  const prof = useProfile()
   const today = todayISO()
+  const [wp, setWpState] = useState(readProfile)
+  const setWp = (v) => { setWpState(v); try { localStorage.setItem(PROFILE_KEY, v) } catch { /* ok */ } }
   const [sort, setSortState] = useState(decideMemo.sort)
   const setSort = (s) => { decideMemo.sort = s; setSortState(s) }
   const [selected, setSelectedState] = useState(() => new Set(decideMemo.selected))
   const setSelected = (s) => { decideMemo.selected = s; setSelectedState(s) }
 
-  const list = useMemo(() => {
-    const items = candidates(races, today).map((r) => ({ r, d: decisionInfo(r, { races, goals, today }) }))
+  const listData = useMemo(() => {
+    const typical = typicalPerKm(races)
+    const items = candidates(races, today).map((r) => { const d = decisionInfo(r, { races, goals, today }); return { r, d, w: worthScore(d, { races, homeCity: prof?.data?.city ?? '', typical, profile: wp }) } })
     const byDeadline = (x) => x.d.deadline?.date ?? x.r.date ?? '9999'
     const cmp = {
       prazo: (a, b) => (byDeadline(a) < byDeadline(b) ? -1 : byDeadline(a) > byDeadline(b) ? 1 : byDateAsc(a.r, b.r)),
       data: (a, b) => byDateAsc(a.r, b.r),
       vontade: (a, b) => (b.r.wish ?? 0) - (a.r.wish ?? 0) || byDateAsc(a.r, b.r)
     }[sort]
-    return items.sort(cmp)
-  }, [races, goals, today, sort])
+    const ranked = rankByWorth(items)
+    return { items: sort === 'nota' ? ranked.sorted : items.sort(cmp), top: ranked.top }
+  }, [races, goals, today, sort, wp, prof?.data?.city])
+  const list = listData.items
 
   const chosen = list.filter((x) => selected.has(x.r.id)).map((x) => x.r)
   const sim = chosen.length ? simulate(chosen, { races, goals, today }) : null
@@ -69,9 +81,18 @@ export default function Decide() {
                 {SORTS.map((s) => <button key={s.id} type="button" aria-pressed={sort === s.id} onClick={() => setSort(s.id)}>{s.label}</button>)}
               </div>
             </div>
-            <p className="note" style={{ marginTop: 0 }}>Marque as que está pensando em fazer para simular o total. Tocar nas estrelas registra o quanto você quer cada uma.</p>
-            {list.map(({ r, d }) => (
-              <div key={r.id} className={`card cand${selected.has(r.id) ? ' picked' : ''}`} data-testid="candidate">
+            {sort === 'nota' && (
+              <div className="worth-prof" data-testid="worth-profile">
+                <span className="muted small">O que pesa mais:</span>
+                <div className="seg seg-sm" role="group" aria-label="Perfil da nota">
+                  {PROFILES.map((p) => <button key={p.id} type="button" aria-pressed={wp === p.id} onClick={() => setWp(p.id)} data-testid={`worth-${p.id}`}>{p.label}</button>)}
+                </div>
+              </div>
+            )}
+            <p className="note" style={{ marginTop: 0 }}>Marque as que está pensando em fazer para simular o total. Tocar nas estrelas registra o quanto você quer cada uma (e entra na nota).</p>
+            {list.map(({ r, d, w }) => (
+              <div key={r.id} className={`card cand${selected.has(r.id) ? ' picked' : ''}${listData.top === r.id ? ' top' : ''}`} data-testid="candidate">
+                {listData.top === r.id && <div className="worth-top" data-testid="worth-top">Vale mais a pena</div>}
                 <div className="cand-top">
                   <label className="cand-check" aria-label={`Simular ${r.name}`}>
                     <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} />
@@ -83,17 +104,40 @@ export default function Decide() {
                     <div className="row" style={{ marginTop: 6 }}><StatusBadge status={r.status} /><WishPicker compact value={r.wish} onChange={(v) => setWish(r.id, v)} /></div>
                   </div>
                 </div>
+                <div className="worth" data-testid="worth">
+                  <span className={`worth-score${w.score == null ? ' none' : w.score >= 70 ? ' hi' : w.score >= 45 ? ' mid' : ' lo'}${w.provisional ? ' prov' : ''}`} title={w.provisional ? 'Nota provisória: falta o preço' : 'Nota de 0 a 100'}>{w.score ?? '—'}{w.provisional && w.score != null ? '*' : ''}</span>
+                  <div className="worth-why small">
+                    {w.score == null ? <span className="muted">Sem dados para dar nota: cadastre {w.missing.join(', ')}.</span> : (
+                      <>
+                        {w.best.map((t) => <span key={t} className="fl-good">{t}</span>)}
+                        {w.caveat && <span className="fl-bad">{w.caveat}</span>}
+                        {w.missing.length > 0 && <span className="muted">Falta: {w.missing.join(', ')}</span>}
+                      </>
+                    )}
+                  </div>
+                </div>
                 <ul className="flags">
                   {decisionFlags(d).map((f, i) => <li key={i} className={`fl-${f.tone}`}>{f.text}</li>)}
                 </ul>
                 <details className="cand-more">
                   <summary>Ver todos os fatores</summary>
+                  {w.parts.length > 0 && (
+                    <ul className="worth-parts" data-testid="worth-parts">
+                      {w.parts.map((p) => (
+                        <li key={p.key}>
+                          <span className="wp-l">{p.label}</span>
+                          <span className="wp-bar"><span className={`wp-${p.tone}`} style={{ width: `${Math.round(p.value * 100)}%` }} /></span>
+                          <span className="wp-t muted small">{p.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <DecisionDetails race={r} races={races} goals={goals} today={today} />
                   <DecisionActions race={r} />
                 </details>
               </div>
             ))}
-            <p className="note">O app mostra os fatores; a escolha é sua. Intervalos entre provas são só informação de calendário, não recomendação de treino.</p>
+            <p className="note">A nota (0 a 100) junta os critérios com os pesos do perfil escolhido; o que não tem informação fica de fora. O app mostra os fatores; a escolha é sua. Intervalos entre provas são só informação de calendário, não recomendação de treino.</p>
           </>
         )}
       </div>

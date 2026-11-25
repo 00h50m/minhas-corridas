@@ -1687,3 +1687,26 @@ details.link-import { margin-top: 0; }
 .ss-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ss-body .small { color: var(--ink-2); }
 .ss-act { flex: none; align-self: center; }
+
+/* Decidir: vale a pena */
+.worth-prof { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.cand.top { border: 2px solid var(--brand); }
+.worth-top { display: inline-block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--brand); border-radius: 999px; padding: 2px 10px; margin-bottom: 8px; }
+.worth { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; }
+.worth-score { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; font-family: var(--display); font-weight: 800; font-size: 26px; background: var(--surface-2); color: var(--ink-2); }
+.worth-score.hi { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.worth-score.mid { background: var(--brand-soft); color: var(--brand-ink); }
+.worth-score.lo { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.worth-why { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.worth-why .fl-good { color: var(--ok); font-weight: 700; }
+.worth-why .fl-bad { color: var(--warn); font-weight: 700; }
+.worth-parts { list-style: none; margin: 8px 0; padding: 0; }
+.worth-parts li { display: grid; grid-template-columns: 110px 1fr; gap: 2px 10px; align-items: center; padding: 5px 0; }
+.wp-l { font-size: 13px; font-weight: 800; }
+.wp-bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.wp-bar span { display: block; height: 100%; border-radius: 99px; }
+.wp-good { background: var(--ok); } .wp-info { background: var(--brand); } .wp-bad { background: var(--warn); }
+.wp-t { grid-column: 2; }
+@media (max-width: 360px) { .worth-parts li { grid-template-columns: 1fr; } .wp-t { grid-column: 1; } }
+.worth-score.prov { opacity: .75; border: 1px dashed var(--line); }
+.budget-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-ink); } .budget-ic svg { width: 22px; height: 22px; }
